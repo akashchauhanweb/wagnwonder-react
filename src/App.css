@@ -1,0 +1,80 @@
+.navbar-items {
+    font-size: 1.3rem;
+}
+
+
+#hero-scroll-icon {
+    @media (max-width: 768px) {
+        width: 100px;
+        min-width: 100px;
+    }
+}
+
+#hero-icons {
+    width: 35px;
+    height: 35px;
+    object-fit: contain;
+
+    @media (max-width: 768px) {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+    }
+}
+
+#login-form {
+    @media (min-width:768px) {
+        width:50%;
+    }
+}
+
+.list-group-item {
+  cursor: pointer;
+}
+.list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+@media (min-width: 768px) {
+  .border-md-end {
+    border-right: 1px solid #dee2e6; /* same as Bootstrap's border color */
+  }
+}
+
+.login-loader-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(90deg, #E94E1B 0%, #FFD166 100%);
+  animation: slideRight 1s linear infinite;
+}
+
+@keyframes slideRight {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+#reviewCarousel .carousel-control-prev,
+#reviewCarousel .carousel-control-next {
+    width: 3rem;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+        #reviewCarousel .carousel-control-prev {
+            left: -60px;
+        }
+
+        #reviewCarousel .carousel-control-next {
+            right: -60px;
+        }
+    }
