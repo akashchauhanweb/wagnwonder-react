@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import logo from '../images/horizontal-compressed.png';
 
 function Header() {
     const [shopOpen, setShopOpen] = useState(false);
@@ -17,7 +17,7 @@ function Header() {
             <div className="d-flex justify-content-between align-items-center px-4 py-2 border-bottom" style={{ backgroundColor: '#fff' }}>
                 {/* Logo Section */}
                 <div className="d-flex align-items-center" onClick={() => navigate("/")}>
-                    <img src="src/assets/images/horizontal-compressed.png" alt="logo" style={{ height: '40px' }} />
+                    <img src={logo} alt="logo" style={{ height: '40px' }} />
                 </div>
 
                 {/* Navigation Links */}

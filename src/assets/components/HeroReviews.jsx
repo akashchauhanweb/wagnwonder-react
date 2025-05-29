@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
+import meetaSharmaPhoto from '../images/reviews/meeta-sharma.png';
+import jayeetaMitraPhoto from '../images/reviews/jayeeta-mitra.png';
 
 function HeroReviews() {
     const reviews = [
         {
             name: "Meeta Sharma",
             role: "Entrepreneur",
-            photo: "src/assets/images/reviews/meeta-sharma.png",
+            photo: meetaSharmaPhoto,
             content: `We boarded our pet here, and the experience was truly exceptional. He had an amazing time exploring the wide, open spaces and playing to his heart's content.
                     It's rare to find such a safe, clean, and thoughtfully designed environment where pets can just be themselves. Our furry friend came back happy and full of energy.
                     This place is nothing short of perfect for pet parents looking for quality care.`,
@@ -13,7 +15,7 @@ function HeroReviews() {
         {
             name: "Jayeeta Mitra",
             role: "Homemaker",
-            photo: "src/assets/images/reviews/jayeeta-mitra.png",
+            photo: jayeetaMitraPhoto,
             content: `The facility is beautifully designed with pets in mind, offering a safe and
                     welcoming space for them to feel at home. Every corner reflects thoughtful attention to detail.
                     The staff is incredibly cooperative and genuinely

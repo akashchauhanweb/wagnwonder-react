@@ -1,3 +1,5 @@
+import logo from '../images/horizontal-compressed.png';
+
 function Footer() {
     return (
         <>
@@ -8,7 +10,7 @@ function Footer() {
                         {/* Column 1: Logo + Contact Info */}
                         <div className="col-md-3">
                             <div className="mb-3">
-                                <img src="src/assets/images/horizontal-compressed.png" alt="Wag N Wonder" style={{ height: "40px" }} />
+                                <img src={logo} alt="Wag N Wonder" style={{ height: "40px" }} />
                             </div>
                             <p className="small mb-1">Address: Sikha Road, Ballam Para,<br />Farabari, West Bengal, 735135</p>
                             <p className="small mb-1">E-mail: customersupport@wagnwonder.co</p>

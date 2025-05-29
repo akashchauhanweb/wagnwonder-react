@@ -1,9 +1,15 @@
+import boardingIcon from '../icons/boarding.svg';
+import shopIcon from '../icons/shop.svg';
+import servicesIcon from '../icons/services.svg';
+import healthIcon from '../icons/health.svg';
+
+
 function HeroForm() {
     const navItems = [
-        { label: 'Boarding', icon: 'src/assets/icons/boarding.svg', active: true },
-        { label: 'Shop', icon: 'src/assets/icons/shop.svg' },
-        { label: 'Services', icon: 'src/assets/icons/services.svg' },
-        { label: 'Health', icon: 'src/assets/icons/health.svg' },
+        { label: 'Boarding', icon: boardingIcon, active: true },
+        { label: 'Shop', icon: shopIcon },
+        { label: 'Services', icon: servicesIcon },
+        { label: 'Health', icon: healthIcon },
     ];
     const today = new Date();
     const tomorrow = new Date();
