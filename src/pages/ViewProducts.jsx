@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
-import { useLoading } from "../contexts/LoadingContext";
 
 
 const ViewProducts = () => {
@@ -16,10 +15,12 @@ const ViewProducts = () => {
     const [zoomImages, setZoomImages] = useState([]);
     const [zoomIndex, setZoomIndex] = useState(0);
     const [productInfo, setProductInfo] = useState(null);
+    const [fetchingProducts, setFetchingProducts] = useState(true);
+    const [successMsg, setSuccessMsg] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
 
-    const { setLoading } = useLoading();
     const fetchProducts = async () => {
-        setLoading(true);
+        setFetchingProducts(true);
         const session_id = localStorage.getItem("session_id");
 
         const response = await callServicesApi({
@@ -38,7 +39,7 @@ const ViewProducts = () => {
         } else {
             setProducts([]);
         }
-        setLoading(false);
+        setFetchingProducts(false);
     };
 
 
@@ -89,16 +90,38 @@ const ViewProducts = () => {
         }
 
         if (response?.success) {
-            alert("Product deleted successfully.");
+            setSuccessMsg("Product deleted successfully.");
             setShowModal(false);
             setZoomImages([]); // reset viewer state
             setZoomIndex(0);
             fetchProducts(); // 👈 refresh main list
         } else {
-            alert("Failed to delete the product.");
+            setErrorMsg("Failed to delete the product.");
         }
     };
 
+    const handleDeleteDirectly = async (product_id) => {
+        const session_id = localStorage.getItem("session_id");
+
+        const response = await callServicesApi({
+            action: "DELETE_PRODUCT",
+            session_id,
+            product_id,
+        });
+
+        if (response?.status_code === 498) {
+            localStorage.clear();
+            window.location.href = "/login";
+            return;
+        }
+
+        if (response?.success) {
+            setSuccessMsg("Product deleted successfully.");
+            fetchProducts(); // refresh product list
+        } else {
+            setErrorMsg("Failed to delete the product.");
+        }
+    };
 
     // Get filtered product list
     const filtered = products.filter((p) => {
@@ -202,6 +225,31 @@ const ViewProducts = () => {
 
             </div>
 
+            {successMsg && (
+                <div className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
+                    <div>{successMsg}</div>
+                    <button
+                        type="button"
+                        className="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Close"
+                        onClick={() => setSuccessMsg("")}
+                    ></button>
+                </div>
+            )}
+            {errorMsg && (
+                <div className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
+                    <div>{errorMsg}</div>
+                    <button
+                        type="button"
+                        className="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Close"
+                        onClick={() => setErrorMsg("")}
+                    ></button>
+                </div>
+            )}
+
             {/* Table */}
             <div className="table-responsive">
                 <table className="table table-bordered align-middle">
@@ -215,6 +263,7 @@ const ViewProducts = () => {
                             <th>Images</th>
                             <th>Variants</th>
                             <th>Attributes</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -228,13 +277,35 @@ const ViewProducts = () => {
                                 <td>{product.no_of_images}</td>
                                 <td>{product.no_of_variants}</td>
                                 <td>{product.no_of_attributes}</td>
+                                <td className="text-end">
+                                    <button
+                                        className="btn btn-sm btn-outline-danger"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm("Are you sure you want to delete this product?")) {
+                                                handleDeleteDirectly(product.product_id);
+                                            }
+                                        }}
+                                    >
+                                        <i className="bi bi-trash"></i> Delete
+                                    </button>
+                                </td>
                             </tr>
                         ))}
-                        {filtered.length === 0 && (
+                        {fetchingProducts ? (
                             <tr>
-                                <td colSpan="8" className="text-center text-muted">No products found</td>
+                                <td colSpan="9" className="text-center py-4">
+                                    <div className="spinner-border" role="status" style={{ borderColor: "#471915", borderRightColor: "transparent" }} />
+                                </td>
+                            </tr>
+                        ) : filtered.length === 0 && (
+                            <tr>
+                                <td colSpan="9" className="text-center text-muted">
+                                    No products found
+                                </td>
                             </tr>
                         )}
+
                     </tbody>
                 </table>
             </div>
@@ -270,9 +341,10 @@ const ViewProducts = () => {
                                             <p className="text-muted">{productInfo.description}</p>
 
                                             <div className="row mb-4">
-                                                <div className="col-md-4"><strong>Category:</strong> {productInfo.category_name}</div>
-                                                <div className="col-md-4"><strong>Subcategory:</strong> {productInfo.subcategory_name || "—"}</div>
-                                                <div className="col-md-4"><strong>Brand:</strong> {productInfo.brand_name}</div>
+                                                <div className="col-md-3"><strong>Category:</strong> {productInfo.category_name}</div>
+                                                <div className="col-md-3"><strong>Subcategory:</strong> {productInfo.subcategory_name || "—"}</div>
+                                                <div className="col-md-3"><strong>Brand:</strong> {productInfo.brand_name}</div>
+                                                <div className="col-md-3"><strong>Suitable For:</strong> {productInfo.suitable_for || "—"}</div>
                                             </div>
 
                                             <div className="mb-4">

@@ -15,6 +15,7 @@ const ManageProducts = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "view" ? "active" : ""}`}
+                        style={{ color: activeTab === "view" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("view")}
                     >
                         View Products
@@ -23,6 +24,7 @@ const ManageProducts = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "add" ? "active" : ""}`}
+                        style={{ color: activeTab === "add" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("add")}
                     >
                         Add Product
@@ -31,6 +33,7 @@ const ManageProducts = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "category" ? "active" : ""}`}
+                        style={{ color: activeTab === "category" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("category")}
                     >
                         Add Category
@@ -39,6 +42,7 @@ const ManageProducts = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "subcategory" ? "active" : ""}`}
+                        style={{ color: activeTab === "subcategory" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("subcategory")}
                     >
                         Add Subcategory
@@ -47,6 +51,7 @@ const ManageProducts = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "brand" ? "active" : ""}`}
+                        style={{ color: activeTab === "brand" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("brand")}
                     >
                         Add Brand
@@ -58,7 +63,7 @@ const ManageProducts = () => {
                 {activeTab === "view" && <ViewProducts />}
                 {activeTab === "add" && <AddProduct />}
                 {activeTab === "category" && <AddCategory />}
-                {activeTab === "subcategory" && <AddSubcategory/>}
+                {activeTab === "subcategory" && <AddSubcategory />}
                 {activeTab === "brand" && <AddBrand />}
             </div>
         </div>

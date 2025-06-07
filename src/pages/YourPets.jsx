@@ -11,6 +11,7 @@ const YourPets = () => {
     const [breedOptions, setBreedOptions] = useState([]);
     const [editPetId, setEditPetId] = useState(null);
     const [editFormData, setEditFormData] = useState({});
+    const [fetchingPets, setFetchingPets] = useState(true);
 
     const handleTypeChange = (e) => {
         const type = e.target.value;
@@ -192,7 +193,7 @@ const YourPets = () => {
 
         if (cachedPets) {
             const parsed = JSON.parse(cachedPets);
-            console.log(parsed);
+            setFetchingPets(false);
             setPets(parsed);
         } else {
             fetchPets();
@@ -200,6 +201,7 @@ const YourPets = () => {
     }, []);
 
     const fetchPets = async () => {
+        setFetchingPets(true);
         try {
             // Replace this with actual API call later
             const response = await callServicesApi({
@@ -207,10 +209,12 @@ const YourPets = () => {
                 session_id: localStorage.getItem("session_id")
             })
             localStorage.setItem("pets", JSON.stringify(response.pet_list));
+            console.log(response.pet_list);
             setPets(response.pet_list);
         } catch (error) {
             console.error("Error fetching pets:", error);
         }
+        setFetchingPets(false);
     };
 
     return (
@@ -322,7 +326,14 @@ const YourPets = () => {
                     </div>
 
                     <div className="mt-4 col-12">
-                        <button type="submit" className="btn btn-success w-100">Add Pet</button>
+                        <button
+                            type="submit"
+                            className="btn w-100"
+                            style={{ backgroundColor: "#471915", color: "#fff" }}
+                        >
+                            Add Pet
+                        </button>
+
 
                     </div>
                 </form>
@@ -330,7 +341,11 @@ const YourPets = () => {
             )}
 
 
-            {pets.length === 0 ? (
+            {fetchingPets ? (
+                <div className="text-center my-4">
+                    <div className="spinner-border" role="status" style={{ color: "#471915" }} />
+                </div>
+            ) : pets.length === 0 ? (
                 <div className="alert alert-info">You have not added any pets yet.</div>
             ) : (
                 <div className="row g-4">
@@ -584,7 +599,14 @@ const YourPets = () => {
                                             )}
 
                                             <div className="col-12 text-end">
-                                                <button type="submit" className="btn btn-sm btn-success me-2">Save</button>
+                                                <button
+                                                    type="submit"
+                                                    className="btn btn-sm me-2"
+                                                    style={{ backgroundColor: "#471915", color: "#fff" }}
+                                                >
+                                                    Save
+                                                </button>
+
                                                 <button
                                                     type="button"
                                                     className="btn btn-sm btn-outline-secondary"

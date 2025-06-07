@@ -9,10 +9,11 @@ const AddCategory = () => {
     const [errorMsg, setErrorMsg] = useState("");
     const [categoryList, setCategoryList] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [fetchingCategories, setFetchingCategories] = useState(true);
     const { setLoading } = useLoading();
 
     const fetchCategories = async () => {
-        setLoading(true);
+        setFetchingCategories(true);
         const session_id = localStorage.getItem("session_id");
         const response = await callServicesApi({
             action: "GET_CATEGORIES",
@@ -28,7 +29,7 @@ const AddCategory = () => {
         if (response?.success) {
             setCategoryList(response.categories);
         }
-        setLoading(false);
+        setFetchingCategories(false);
     };
 
     useEffect(() => {
@@ -123,12 +124,19 @@ const AddCategory = () => {
                             disabled={categoryLoad}
                         />
                         <button
-                            className="btn btn-primary"
+                            className="btn"
                             type="submit"
                             disabled={categoryLoad}
+                            style={{
+                                backgroundColor: "#471915",
+                                color: "#fff",
+                                opacity: categoryLoad ? 0.65 : 1,
+                                cursor: categoryLoad ? "not-allowed" : "pointer",
+                            }}
                         >
                             {categoryLoad ? "Adding..." : "Add"}
                         </button>
+
                     </div>
                 </div>
                 {errorMsg && (
@@ -201,13 +209,24 @@ const AddCategory = () => {
                                     </td>
                                 </tr>
                             ))}
-                        {categoryList.length === 0 && (
+                        {fetchingCategories ? (
+                            <tr>
+                                <td colSpan="3" className="text-center py-4">
+                                    <div
+                                        className="spinner-border"
+                                        role="status"
+                                        style={{ borderColor: "#471915", borderRightColor: "transparent" }}
+                                    />
+                                </td>
+                            </tr>
+                        ) : categoryList.length === 0 && (
                             <tr>
                                 <td colSpan="3" className="text-center text-muted">
                                     No categories available
                                 </td>
                             </tr>
                         )}
+
                     </tbody>
                 </table>
             </div>

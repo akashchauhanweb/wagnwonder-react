@@ -12,6 +12,8 @@ const AddSubcategory = () => {
     const [categoryList, setCategoryList] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const session_id = localStorage.getItem("session_id");
+    const [fetchingSubcategories, setFetchingSubcategories] = useState(true);
+
     const { setLoading } = useLoading();
 
     const fetchCategories = async () => {
@@ -29,7 +31,7 @@ const AddSubcategory = () => {
     };
 
     const fetchSubcategories = async (parentId) => {
-        setLoading(true);
+        setFetchingSubcategories(true);
         const session_id = localStorage.getItem("session_id");
         let payload = {
             action: "GET_SUBCATEGORIES",
@@ -42,7 +44,7 @@ const AddSubcategory = () => {
             setSubcategoryList(response.subcategories);
         }
 
-        setLoading(false);
+        setFetchingSubcategories(false);
     };
 
 
@@ -163,12 +165,19 @@ const AddSubcategory = () => {
                             disabled={subcategoryLoad}
                         />
                         <button
-                            className="btn btn-primary"
+                            className="btn"
                             type="submit"
                             disabled={subcategoryLoad}
+                            style={{
+                                backgroundColor: "#471915",
+                                color: "#fff",
+                                opacity: subcategoryLoad ? 0.65 : 1,
+                                cursor: subcategoryLoad ? "not-allowed" : "pointer",
+                            }}
                         >
                             {subcategoryLoad ? "Adding..." : "Add"}
                         </button>
+
                     </div>
                 </div>
 
@@ -237,6 +246,16 @@ const AddSubcategory = () => {
                                     Select a category to view subcategories
                                 </td>
                             </tr>
+                        ) : fetchingSubcategories ? (
+                            <tr>
+                                <td colSpan="3" className="text-center py-4">
+                                    <div
+                                        className="spinner-border"
+                                        role="status"
+                                        style={{ borderColor: "#471915", borderRightColor: "transparent" }}
+                                    />
+                                </td>
+                            </tr>
                         ) : subcategoryList.length === 0 ? (
                             <tr>
                                 <td colSpan="3" className="text-center text-muted">
@@ -264,6 +283,7 @@ const AddSubcategory = () => {
                                     </tr>
                                 ))
                         )}
+
                     </tbody>
                 </table>
             </div>

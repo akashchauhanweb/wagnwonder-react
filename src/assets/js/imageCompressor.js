@@ -1,6 +1,5 @@
 import heic2any from "heic2any";
 
-
 export async function imageCompressor(file, maxSizeKB = 150) {
   if (!file || !file.type.startsWith("image/")) {
     throw new Error("Provided file is not a valid image.");
@@ -10,12 +9,12 @@ export async function imageCompressor(file, maxSizeKB = 150) {
     const jpegBlob = await heic2any({
       blob: file,
       toType: "image/jpeg",
-      quality: 0.9
+      quality: 0.9,
     });
 
     file = new File([jpegBlob], file.name.replace(/\.heic$/, ".jpg"), {
       type: "image/jpeg",
-      lastModified: Date.now()
+      lastModified: Date.now(),
     });
   }
   // 📥 Read file as Data URL
@@ -42,12 +41,13 @@ export async function imageCompressor(file, maxSizeKB = 150) {
   ctx.drawImage(img, 0, 0);
 
   // 🔁 Try compressing to WebP under maxSizeKB
-  for (let q = 0.9; q >= 0.1; q -= 0.05) {
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/webp", q)
-    );
+  for (let q = 0.9; q >= 0.1; q -= 0.5) {
+    await new Promise(requestAnimationFrame);
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, "image/webp", q);
+    });
 
-    if (blob && blob.size / 1024 <= maxSizeKB) {
+    if (blob) {
       return new File([blob], file.name.replace(/\.\w+$/, ".webp"), {
         type: "image/webp",
         lastModified: Date.now(),

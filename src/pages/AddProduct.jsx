@@ -19,6 +19,7 @@ const AddProduct = () => {
         category_id: "",
         subcategory_id: "",
         brand_id: "",
+        suitable_for: "",
     });
 
     const [showVariant, setShowVariant] = useState(false);
@@ -143,6 +144,7 @@ const AddProduct = () => {
             category_id: parseInt(formData.category_id),
             subcategory_id: parseInt(formData.subcategory_id),
             brand_id: parseInt(formData.brand_id),
+            suitable_for: formData.suitable_for,
             variants: showVariant
                 ? variants.map(v => ({
                     name: v.name,
@@ -179,6 +181,7 @@ const AddProduct = () => {
         }
 
         payload.image_urls = image_urls;
+        console.log(payload);
         const res = await callServicesApi(payload);
 
         if (res?.success) {
@@ -192,25 +195,23 @@ const AddProduct = () => {
                 stock_quantity: "",
                 category_id: "",
                 subcategory_id: "",
-                brand_id: ""
+                brand_id: "",
+                suitable_for: "",
             });
             setVariants([]);
             setAttributes([]);
             setImages([]);
             setShowVariant(false);
             setShowAttributes(false);
-            setLoading(false);
         } else if (res?.status_code === 498) {
-            setLoading(false);
             alert("Session expired. Please login again.");
             localStorage.clear();
             window.location.href = "/login.html";
         } else {
-            setLoading(false);
             setErrorMsg(res?.message || "Failed to add product.");
         }
+        setLoading(false);
     };
-
 
     return (
         <>
@@ -249,6 +250,23 @@ const AddProduct = () => {
                     <label className="form-label">Description</label>
                     <textarea name="description" className="form-control" rows="3" value={formData.description} onChange={handleChange}></textarea>
                 </div>
+                <div className="mb-3">
+                    <label className="form-label">Suitable For</label>
+                    <select
+                        name="suitable_for"
+                        className="form-select"
+                        value={formData.suitable_for}
+                        onChange={handleChange}
+                        required
+                    >
+                        <option value="">Select Type</option>
+                        <option value="dog">Dog</option>
+                        <option value="cat">Cat</option>
+                        <option value="bird">Bird</option>
+                        <option value="others">Others</option>
+                    </select>
+                </div>
+
                 <div className="form-check form-switch mb-3">
                     <input className="form-check-input" type="checkbox" id="hasVariant" checked={showVariant} onChange={() => setShowVariant(!showVariant)} />
                     <label className="form-check-label" htmlFor="hasVariant">Does this product have a variant?</label>
@@ -449,7 +467,14 @@ const AddProduct = () => {
                     <input type="file" accept="image/*" multiple className="form-control" onChange={handleImageChange} />
                 </div>
 
-                <button type="submit" className="btn btn-primary col-12">Save Product</button>
+                <button
+                    type="submit"
+                    className="btn col-12"
+                    style={{ backgroundColor: "#471915", color: "#fff" }}
+                >
+                    Save Product
+                </button>
+
             </form>
 
 

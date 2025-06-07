@@ -6,6 +6,8 @@ const ManageUsers = () => {
     const [activeTab, setActiveTab] = useState("list");
     const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [emailFilter, setEmailFilter] = useState("");
+    const [phoneFilter, setPhoneFilter] = useState("");
     const [accessFilter, setAccessFilter] = useState([]);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -21,20 +23,22 @@ const ManageUsers = () => {
         has_services_access: false,
         has_clinic_access: false,
     });
+    const [fetchingUsers, setFetchingUsers] = useState(true);
     const { setLoading } = useLoading();
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
     const fetchUsers = async () => {
-        setLoading(true);
+        setFetchingUsers(true);
         const res = await callServicesApi({
             action: "GET_ALL_USERS",
             session_id: localStorage.getItem("session_id")
         });
         if (res?.success) setUsers(res.data || []);
-        setLoading(false);
+        else if (res?.status_code === 498) {
+            localStorage.clear();
+            window.location.href = "/login";
+            return;
+        }
+        setFetchingUsers(false);
     };
 
     const handleDelete = async (id) => {
@@ -57,6 +61,10 @@ const ManageUsers = () => {
         setLoading(false);
     };
 
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
     const matchesSearch = (user) => (
         user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -74,7 +82,12 @@ const ManageUsers = () => {
         });
     };
 
-    const filteredUsers = users.filter(user => matchesSearch(user) && matchesAccess(user));
+    const filteredUsers = users.filter(user =>
+        matchesSearch(user) &&
+        matchesAccess(user) &&
+        user.email.toLowerCase().includes(emailFilter.toLowerCase()) &&
+        user.phone_number.includes(phoneFilter)
+    );
 
     const handleAccessChange = (e) => {
         const { options } = e.target;
@@ -131,6 +144,7 @@ const ManageUsers = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "list" ? "active" : ""}`}
+                        style={{ color: activeTab === "list" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("list")}
                     >
                         List Users
@@ -139,12 +153,14 @@ const ManageUsers = () => {
                 <li className="nav-item">
                     <button
                         className={`nav-link ${activeTab === "add" ? "active" : ""}`}
+                        style={{ color: activeTab === "add" ? "#000" : "#471915" }}
                         onClick={() => setActiveTab("add")}
                     >
                         Add User
                     </button>
                 </li>
             </ul>
+
 
             {activeTab === "list" && (
                 <div>
@@ -159,7 +175,28 @@ const ManageUsers = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        
+                        <div className="col-md-6">
+                            <label className="form-label">Filter by Email</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Enter email"
+                                value={emailFilter}
+                                onChange={(e) => setEmailFilter(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="col-md-6">
+                            <label className="form-label">Filter by Mobile</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Enter phone number"
+                                value={phoneFilter}
+                                onChange={(e) => setPhoneFilter(e.target.value)}
+                            />
+                        </div>
+
                         <div className="col-md-6">
                             <label className="form-label">Select filter</label>
                             <select
@@ -216,8 +253,18 @@ const ManageUsers = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredUsers.length ? (
-                                    filteredUsers.map((u, idx) => (  //eslint-disable-line
+                                {fetchingUsers ? (
+                                    <tr>
+                                        <td colSpan="6" className="text-center py-4">
+                                            <div
+                                                className="spinner-border"
+                                                role="status"
+                                                style={{ borderColor: "#471915", borderRightColor: "transparent" }}
+                                            />
+                                        </td>
+                                    </tr>
+                                ) : filteredUsers.length ? (
+                                    filteredUsers.map((u, idx) => (  // eslint-disable-line
                                         <tr key={u.id}>
                                             <td>{u.id}</td>
                                             <td>{u.first_name} {u.last_name}</td>
@@ -240,7 +287,11 @@ const ManageUsers = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan="6" className="text-center">No users found.</td></tr>
+                                    <tr>
+                                        <td colSpan="6" className="text-center text-muted">
+                                            No users found.
+                                        </td>
+                                    </tr>
                                 )}
                             </tbody>
                         </table>
@@ -393,7 +444,10 @@ const ManageUsers = () => {
                         )}
 
                         <div className="col-12 d-flex justify-content-center align-items-center">
-                            <button type="submit" className="btn btn-primary col-12">Add User</button>
+                            <button type="submit" className="btn col-12" style={{ backgroundColor: "#471915", color: "#fff" }}>
+                                Add User
+                            </button>
+
                         </div>
                     </form>
                 </div>

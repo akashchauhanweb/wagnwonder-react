@@ -9,10 +9,11 @@ const AddBrand = () => {
     const [errorMsg, setErrorMsg] = useState("");
     const [brandList, setBrandList] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [fetchingBrands, setFetchingBrands] = useState(true);
     const { setLoading } = useLoading();
 
     const fetchBrands = async () => {
-        setLoading(true);
+        setFetchingBrands(true);
         const session_id = localStorage.getItem("session_id");
         const response = await callServicesApi({
             action: "GET_BRANDS",
@@ -28,7 +29,7 @@ const AddBrand = () => {
         if (response?.success) {
             setBrandList(response.brands);
         }
-        setLoading(false);
+        setFetchingBrands(false);
     };
 
     useEffect(() => {
@@ -97,7 +98,7 @@ const AddBrand = () => {
 
         if (response?.success) {
             setBrandList((prev) => prev.filter(([id]) => id !== brand_id));
-            setSuccessMsg("Subcategory deleted successfully.");
+            setSuccessMsg("Brand deleted successfully.");
         } else {
             alert("Failed to delete brand.");
         }
@@ -123,12 +124,19 @@ const AddBrand = () => {
                             disabled={brandLoad}
                         />
                         <button
-                            className="btn btn-primary"
+                            className="btn"
                             type="submit"
                             disabled={brandLoad}
+                            style={{
+                                backgroundColor: "#471915",
+                                color: "#fff",
+                                opacity: brandLoad ? 0.65 : 1,
+                                cursor: brandLoad ? "not-allowed" : "pointer",
+                            }}
                         >
                             {brandLoad ? "Adding..." : "Add"}
                         </button>
+
                     </div>
                 </div>
                 {errorMsg && (
@@ -182,32 +190,42 @@ const AddBrand = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {brandList
-                            .filter(([id, name]) => // eslint-disable-line
-                                name.toLowerCase().includes(searchTerm.toLowerCase())
-                            )
-                            .map(([id, name]) => (
-                                <tr key={id}>
-                                    <td>{id}</td>
-                                    <td>{name}</td>
-                                    <td className="text-end">
-                                        <button
-                                            className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
-                                            onClick={() => handleDeleteBrand(id)}
-                                        >
-                                            <i className="bi bi-trash me-1"></i>
-                                            Delete
-                                        </button>
-
-                                    </td>
-                                </tr>
-                            ))}
-                        {brandList.length === 0 && (
+                        {fetchingBrands ? (
+                            <tr>
+                                <td colSpan="3" className="text-center py-4">
+                                    <div
+                                        className="spinner-border"
+                                        role="status"
+                                        style={{ borderColor: "#471915", borderRightColor: "transparent" }}
+                                    />
+                                </td>
+                            </tr>
+                        ) : brandList.length === 0 ? (
                             <tr>
                                 <td colSpan="3" className="text-center text-muted">
                                     No brands available
                                 </td>
                             </tr>
+                        ) : (
+                            brandList
+                                .filter(([id, name]) =>  //eslint-disable-line
+                                    name.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                .map(([id, name]) => (
+                                    <tr key={id}>
+                                        <td>{id}</td>
+                                        <td>{name}</td>
+                                        <td className="text-end">
+                                            <button
+                                                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
+                                                onClick={() => handleDeleteBrand(id)}
+                                            >
+                                                <i className="bi bi-trash me-1"></i>
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
                         )}
                     </tbody>
                 </table>

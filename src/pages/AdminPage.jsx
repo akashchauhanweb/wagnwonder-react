@@ -5,7 +5,7 @@ import { Outlet } from "react-router-dom";
 const AdminPage = () => {
     const location = useLocation();
     const userData = JSON.parse(localStorage.getItem("user_data"));
-    
+
     if (
         !userData ||
         userData.user_type !== "admin" ||
@@ -18,13 +18,16 @@ const AdminPage = () => {
     return (
         <div className="container my-4">
             <div className="row border">
-                <div className="col-md-4 border-end">
+                <div className={`col-md-4 border-md-end ${isBaseAdminRoute ? 'd-block' : 'd-none d-md-block'}`}>
                     <ul className="list-group list-group-flush">
                         <Link to="/admin/manage-products" className="list-group-item list-group-item-action">
                             <i className="bi bi-box"></i> Manage Products
                         </Link>
                         <Link to="/admin/manage-users" className="list-group-item list-group-item-action">
                             <i className="bi bi-people"></i> Manage Users
+                        </Link>
+                        <Link to="/admin/manage-kennels" className="list-group-item list-group-item-action">
+                            <i className="bi bi-house-door"></i> Manage Kennels
                         </Link>
                         <Link to="/admin/manage-bookings" className="list-group-item list-group-item-action">
                             <i className="bi bi-calendar-check"></i> View Bookings

@@ -11,6 +11,7 @@ import TopPageLoader from "./assets/components/TopPageLoader";
 import AdminPage from './pages/AdminPage';
 import ManageProducts from './pages/ManageProducts';
 import ManageUsers from './pages/ManageUsers.jsx';
+import ManageKennels from "./pages/ManageKennels";
 import { useLoading } from "./contexts/LoadingContext";
 
 
@@ -31,6 +32,7 @@ function App() {
           <Route path="/admin" element={<AdminPage />}>
             <Route path="manage-products" element={<ManageProducts />} />
             <Route path="manage-users" element={<ManageUsers />} />
+            <Route path="manage-kennels" element={<ManageKennels />} />
           </Route>
         </Routes>
 
