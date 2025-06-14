@@ -288,10 +288,8 @@ const YourPets = () => {
                             <label htmlFor="weight" className="form-label">Weight (kg)</label>
                             <select className="form-select" id="weight" name="weight" required>
                                 <option value="">Select Weight</option>
-                                <option value="below 10kgs">below 10kgs</option>
-                                <option value="above 10kgs and below 20kgs">10-20kgs</option>
-                                <option value="above 20kgs and below 30kgs">20-30kgs</option>
-                                <option value="above 30kgs and below 40kgs">30-40kgs</option>
+                                <option value="below 15kgs">below 15kgs</option>
+                                <option value="above 15kgs and below 40kgs">15-40kgs</option>
                                 <option value="above 40kgs">above 40kgs</option>
                             </select>
                         </div>
@@ -487,10 +485,8 @@ const YourPets = () => {
                                                     onChange={(e) => setEditFormData({ ...editFormData, weight: e.target.value })}
                                                 >
                                                     <option value="">Select Weight</option>
-                                                    <option value="below 10kgs">below 10kgs</option>
-                                                    <option value="above 10kgs and below 20kgs">above 10kgs and below 20kgs</option>
-                                                    <option value="above 20kgs and below 30kgs">above 20kgs and below 30kgs</option>
-                                                    <option value="above 30kgs and below 40kgs">above 30kgs and below 40kgs</option>
+                                                    <option value="below 15kgs">below 15kgs</option>
+                                                    <option value="above 15kgs and below 40kgs">15-40kgs</option>
                                                     <option value="above 40kgs">above 40kgs</option>
                                                 </select>
                                             </div>

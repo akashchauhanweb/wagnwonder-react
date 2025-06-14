@@ -102,10 +102,8 @@ export default function AddPetModal({ onClose, onSaved }) {
               <label className="form-label">Weight</label>
               <select name="weight" value={formData.weight} onChange={handleChange} className="form-select" required>
                 <option value="">Select Weight</option>
-                <option value="below 10kgs">below 10kgs</option>
-                <option value="above 10kgs and below 20kgs">10-20kgs</option>
-                <option value="above 20kgs and below 30kgs">20-30kgs</option>
-                <option value="above 30kgs and below 40kgs">30-40kgs</option>
+                <option value="below 15kgs">below 15kgs</option>
+                <option value="above 15kgs and below 40kgs">15-40kgs</option>
                 <option value="above 40kgs">above 40kgs</option>
               </select>
             </div>

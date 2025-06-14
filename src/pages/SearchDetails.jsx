@@ -59,8 +59,8 @@ export default function SearchDetails() {
     };
 
     const getRoomPriceKey = (weight) => {
-        if (weight === "below 10kgs" || weight === "above 10kgs and below 20kgs") return "price_small";
-        if (weight === "above 20kgs and below 30kgs" || weight === "above 30kgs and below 40kgs") return "price_medium";
+        if (weight === "below 15kgs") return "price_small";
+        if (weight === "above 15kgs and below 40kgs") return "price_medium";
         if (weight === "above 40kgs") return "price_large";
         return null;
     };
