@@ -1,40 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
-import stateCityMap from '../js/stateCityMap';
 
 function Header() {
     const [shopOpen, setShopOpen] = useState(false);
-
-    useEffect(() => {
-        const fetchCityName = async (lat, lon) => {
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
-                const data = await res.json();
-                const city = data.address.city || data.address.town || data.address.village || data.address.state;
-                const allCities = Object.values(stateCityMap())
-                    .flatMap(stateCities => Object.keys(stateCities));
-
-                // only store if we recognize it
-                if (allCities.includes(city)) {
-                    localStorage.setItem("user_city", city);
-                } else {
-                    console.warn(`City "${city}" not in our list; skipping storage.`);
-                }
-            } catch (err) {
-                console.error("Failed to fetch city name:", err);
-            }
-        };
-
-        if (!localStorage.getItem("user_city")) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                localStorage.setItem("user_location", JSON.stringify({ lat: lat, lon: lon }));
-                fetchCityName(lat, lon);
-            });
-        }
-    }, []);
 
     // Inside your Header component:
     const navigate = useNavigate();

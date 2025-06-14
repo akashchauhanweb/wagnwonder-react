@@ -3,7 +3,7 @@ import shopIcon from '../assets/icons/shop.svg';
 import servicesIcon from '../assets/icons/services.svg';
 import healthIcon from '../assets/icons/health.svg';
 import stateCityMap from '../assets/js/stateCityMap';
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useNavigate } from "react-router-dom";
 
@@ -114,6 +114,37 @@ function HeroForm() {
             console.error("Search error:", err);
         }
     };
+
+    useEffect(() => {
+            const fetchCityName = async (lat, lon) => {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+                    const data = await res.json();
+                    const city = data.address.city || data.address.town || data.address.village || data.address.state;
+                    const allCities = Object.values(stateCityMap())
+                        .flatMap(stateCities => Object.keys(stateCities));
+    
+                    // only store if we recognize it
+                    if (allCities.includes(city)) {
+                        localStorage.setItem("user_city", city);
+                        setCityValue(city);
+                    } else {
+                        console.warn(`City "${city}" not in our list; skipping storage.`);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch city name:", err);
+                }
+            };
+    
+            if (!localStorage.getItem("user_city")) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    localStorage.setItem("user_location", JSON.stringify({ lat: lat, lon: lon }));
+                    fetchCityName(lat, lon);
+                });
+            }
+        }, []);
 
     return (
         <>
