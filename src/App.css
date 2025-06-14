@@ -97,3 +97,11 @@ body.modal-open {
     right: -60px;
   }
 }
+
+/* make gallery images smoothly scale on hover */
+.gallery-img {
+  transition: transform 0.3s ease;
+}
+.gallery-img:hover {
+  transform: scale(1.05);
+}

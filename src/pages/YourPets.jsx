@@ -220,7 +220,8 @@ const YourPets = () => {
     return (
         <div className="container my-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h2 className="mb-0">Your Pets</h2>
+                {/* <h2 className="mb-0">Your Pets</h2> */}
+                <h3 className="mb-4 fw-bold">Your Pets</h3>
                 <div className="position-relative">
                     <div className="psition-absolute top-0 end-0 pe-2 pt-1">
                         {showForm ? (
@@ -288,9 +289,9 @@ const YourPets = () => {
                             <select className="form-select" id="weight" name="weight" required>
                                 <option value="">Select Weight</option>
                                 <option value="below 10kgs">below 10kgs</option>
-                                <option value="above 10kgs and below 20kgs">above 10kgs and below 20kgs</option>
-                                <option value="above 20kgs and below 30kgs">above 20kgs and below 30kgs</option>
-                                <option value="above 30kgs and below 40kgs">above 30kgs and below 40kgs</option>
+                                <option value="above 10kgs and below 20kgs">10-20kgs</option>
+                                <option value="above 20kgs and below 30kgs">20-30kgs</option>
+                                <option value="above 30kgs and below 40kgs">30-40kgs</option>
                                 <option value="above 40kgs">above 40kgs</option>
                             </select>
                         </div>

@@ -8,7 +8,7 @@ function Footer() {
                     <div className="row gy-4">
 
                         {/* Column 1: Logo + Contact Info */}
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-6 col-xl-3">
                             <div className="mb-3">
                                 <img src={logo} alt="Wag N Wonder" style={{ height: "40px" }} />
                             </div>
@@ -17,7 +17,7 @@ function Footer() {
                             <p className="small">Phone: +91 93399 60164</p>
                         </div>
 
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-6 col-xl-3">
                             <h6 className="fw-bold mb-3">Quick Links</h6>
                             <ul className="list-unstyled small">
                                 <li><a href="#" className="text-decoration-none text-dark">Boarding</a></li>
@@ -28,7 +28,7 @@ function Footer() {
                         </div>
 
                         {/* Column 3: Useful Links */}
-                        <div className="col-md-3">
+                        <div className="col-12 col-md-6 col-xl-3">
                             <h6 className="fw-bold mb-3">Useful Links</h6>
                             <ul className="list-unstyled small">
                                 <li><a href="#" className="text-decoration-none text-dark">Privacy Policy</a></li>
@@ -39,7 +39,7 @@ function Footer() {
                         </div>
 
                         {/* Column 4: Social Media */}
-                        <div className="col-md-3">
+                        <div className="ccol-12 col-md-6 col-xl-3">
                             <h6 className="fw-bold mb-3">Our Social Media Handles</h6>
                             <ul className="list-unstyled small">
                                 <li><a href="#" className="text-decoration-none text-dark">Instagram</a></li>

@@ -312,7 +312,9 @@ const ManageKennels = () => {
     };
 
     const stateCityMapJson = stateCityMap();
-    const cityOptions = kennelForm.state ? stateCityMapJson[kennelForm.state] || [] : [];
+    const cityOptions = kennelForm.state
+        ? Object.keys(stateCityMapJson[kennelForm.state] || {})
+        : [];
 
     const fetchKennels = async () => {
         setLoadingKennels(true);
@@ -837,8 +839,10 @@ const ManageKennels = () => {
                                     }
                                 >
                                     <option value="">Select State</option>
-                                    {Object.keys(stateCityMapJson).map((state) => (
-                                        <option key={state} value={state}>{state}</option>
+                                    {Object.keys(stateCityMapJson).map(state => (
+                                        <option key={state} value={state}>
+                                            {state}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
