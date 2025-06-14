@@ -54,9 +54,28 @@ function HeroForm() {
         setLoadingSearch(true);
         // before building your payload
         const rawLocation = localStorage.getItem("user_location");
-        const location = rawLocation
-            ? JSON.parse(rawLocation)    // valid JSON → parse it
-            : null;                      // missing or empty → keep null
+        let location;
+        if (rawLocation) {
+            // already stored from header or previous search
+            location = JSON.parse(rawLocation);
+
+        } else if (cityValue) {
+            // no geo, but user has picked a city → grab its coords
+            const map = stateCityMap();
+            for (const st in map) {
+                if (map[st][cityValue]) {
+                    const { latitude: lat, longitude: lon } = map[st][cityValue];
+                    location = { lat, lon };
+                    // cache for next time
+                    localStorage.setItem("user_location", JSON.stringify(location));
+                    break;
+                }
+            }
+
+        } else {
+            // still nothing
+            location = null;
+        }                    // missing or empty → keep null
 
         const payload = {
             action: "SEARCH_AVAILABILITY",
