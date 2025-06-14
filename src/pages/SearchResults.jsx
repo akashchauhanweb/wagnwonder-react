@@ -100,10 +100,14 @@ export default function SearchResults() {
                         <>
                             <div className="text-center my-5">
                                 <h2 className="fw-bold" style={{ color: "#471915" }}>
-                                    Oops! No availability in your city.
+                                    {availableKennels.length > 0
+                                        ? "Checkout in Nearby Cities"
+                                        : "Oops! No availability in your city."}
                                 </h2>
                                 <p className="lead text-muted">
-                                    But we’ve found these kennels near you:
+                                    {availableKennels.length > 0
+                                        ? "Here are some kennels just outside your city:"
+                                        : "But we’ve found these kennels near you:"}
                                 </p>
                             </div>
 

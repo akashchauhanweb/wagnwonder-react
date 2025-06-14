@@ -9,6 +9,7 @@ function Login() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const { setLoading } = useLoading();
 
     async function handleSubmit(e) {
@@ -61,18 +62,32 @@ function Login() {
                                 onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
-                        <div className="mb-3">
+                        <div className="mb-3 position-relative">
                             <label className="form-label fw-semibold">Password</label>
                             <input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 className="form-control"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={e => setPassword(e.target.value)}
+                            />
+                            <i
+                                className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} position-absolute`}
+                                style={{
+                                    top: "50%",
+                                    right: "1rem",
+                                    transform: "translateY(-50%)",
+                                    cursor: "pointer",
+                                    color: "#000"
+                                }}
+                                onClick={() => setShowPassword(v => !v)}
                             />
                             <div className="text-end mt-1">
-                                <a href="#" style={{ color: "#E94E1B", fontSize: "0.9rem" }}>Forgot password</a>
+                                <a href="#" style={{ color: "#E94E1B", fontSize: "0.9rem" }}>
+                                    Forgot password
+                                </a>
                             </div>
                         </div>
+
                         <button
                             type="submit"
                             className="btn w-100 fw-bold"

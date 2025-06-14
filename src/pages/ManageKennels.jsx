@@ -588,7 +588,10 @@ const ManageKennels = () => {
                                                         <td>{k.state}</td>
                                                         <td>{k.pin_code}</td>
                                                         <td>{k.markup}%</td>
-                                                        <td className="text-end">
+                                                        <td 
+                                                            className="text-end"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
                                                             <button
                                                                 className="btn btn-sm btn-outline-danger"
                                                                 onClick={() => handleDeleteKennel(k.id)}

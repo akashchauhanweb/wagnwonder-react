@@ -13,12 +13,13 @@ const YourPets = () => {
     const [editFormData, setEditFormData] = useState({});
     const [fetchingPets, setFetchingPets] = useState(true);
 
+    const breeds = {
+        dog: ["Labrador", "German Shepherd", "Golden Retriever", "Poodle", "Bulldog", "Beagle"],
+        cat: ["Indian", "Persian", "Siamese", "Maine Coon", "Ragdoll", "Bengal", "Sphynx", "British Shorthair", "Scottish Fold", "Abyssinian", "Norwegian Forest Cat", "American Shorthair", "Russian Blue", "Devon Rex"]
+    };
+
     const handleTypeChange = (e) => {
         const type = e.target.value;
-        const breeds = {
-            dog: ["Labrador", "German Shepherd", "Golden Retriever", "Poodle", "Bulldog", "Beagle"],
-            cat: ["Indian", "Persian", "Siamese", "Maine Coon", "Ragdoll", "Bengal", "Sphynx", "British Shorthair", "Scottish Fold", "Abyssinian", "Norwegian Forest Cat", "American Shorthair", "Russian Blue", "Devon Rex"]
-        };
         setBreedOptions(breeds[type] || []);
     };
 
@@ -298,8 +299,8 @@ const YourPets = () => {
                             <label htmlFor="gender" className="form-label">Gender</label>
                             <select className="form-select" id="gender" name="gender" required>
                                 <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
                             </select>
                         </div>
 
@@ -307,9 +308,9 @@ const YourPets = () => {
                             <label htmlFor="aggression" className="form-label">Aggression Level</label>
                             <select className="form-select" id="aggression" name="aggression" required>
                                 <option value="">Select Level</option>
-                                <option value="Low">Low</option>
-                                <option value="Moderate">Moderate</option>
-                                <option value="High">High</option>
+                                <option value="low">Low</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="high">High</option>
                             </select>
                         </div>
 
@@ -332,8 +333,6 @@ const YourPets = () => {
                         >
                             Add Pet
                         </button>
-
-
                     </div>
                 </form>
 
@@ -348,13 +347,12 @@ const YourPets = () => {
                 <div className="alert alert-info">You have not added any pets yet.</div>
             ) : (
                 <div className="row g-4">
-                    {pets.map((pet, index) => (
-                        <div className="col-lg-6" key={index}>
+                    {pets.map((pet) => (
+                        <div className="col-lg-6" key={pet.id}>
                             <div
-                                className={`card shadow-sm position-relative p-4 ${editPetId === pet.pet_id ? "border-primary" : ""}`}
+                                className={`card shadow-sm position-relative p-4`}
                                 style={editPetId === pet.pet_id ? { minHeight: "auto", paddingBottom: "2rem" } : {}}
                             >
-
                                 {/* Name + Icons */}
                                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
 
@@ -385,6 +383,7 @@ const YourPets = () => {
                                                 title="Edit"
                                                 onClick={() => {
                                                     setEditPetId(pet.id);
+                                                    setBreedOptions(breeds[pet.type]);
                                                     setEditFormData({
                                                         ...pet,
                                                         vaccine_card_path: pet.vaccine_card_path || "",
@@ -499,8 +498,8 @@ const YourPets = () => {
                                                     onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
                                                 >
                                                     <option value="">Select Gender</option>
-                                                    <option value="Male">Male</option>
-                                                    <option value="Female">Female</option>
+                                                    <option value="male">Male</option>
+                                                    <option value="female">Female</option>
                                                 </select>
                                             </div>
 
@@ -512,9 +511,9 @@ const YourPets = () => {
                                                     onChange={(e) => setEditFormData({ ...editFormData, aggression: e.target.value })}
                                                 >
                                                     <option value="">Select Level</option>
-                                                    <option value="Low">Low</option>
-                                                    <option value="Moderate">Moderate</option>
-                                                    <option value="High">High</option>
+                                                    <option value="low">Low</option>
+                                                    <option value="moderate">Moderate</option>
+                                                    <option value="high">High</option>
                                                 </select>
                                             </div>
 
