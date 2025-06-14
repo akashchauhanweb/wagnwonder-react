@@ -19,21 +19,19 @@ function HeroForm() {
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);
     const formatDate = (date) => date.toISOString().split('T')[0];
-    // get state→city mapping, flatten into one array, dedupe & sort
     const cityMap = stateCityMap();
     const allCities = Object.values(cityMap)
         .flatMap(stateCities => Object.keys(stateCities))
-
-    // 3. Dedupe & sort
     const cities = Array.from(new Set(allCities)).sort()
     const storedCity = localStorage.getItem("user_city");
     const defaultCity = storedCity && cities.includes(storedCity)
         ? storedCity
         : "";
 
+    const [cityValue, setCityValue] = useState(defaultCity);
+
     const navigate = useNavigate();
     const [petCount, setPetCount] = useState("");
-    const [cityValue, setCityValue] = useState(defaultCity);
     const [checkInValue, setCheckInValue] = useState(formatDate(today));
     const [checkOutValue, setCheckOutValue] = useState(formatDate(tomorrow));
     const [loadingSearch, setLoadingSearch] = useState(false);
@@ -53,13 +51,8 @@ function HeroForm() {
         e.preventDefault();
         setLoadingSearch(true);
         // before building your payload
-        const rawLocation = localStorage.getItem("user_location");
         let location;
-        if (rawLocation) {
-            // already stored from header or previous search
-            location = JSON.parse(rawLocation);
-
-        } else if (cityValue) {
+        if (cityValue) {
             // no geo, but user has picked a city → grab its coords
             const map = stateCityMap();
             for (const st in map) {
@@ -71,7 +64,6 @@ function HeroForm() {
                     break;
                 }
             }
-
         } else {
             // still nothing
             location = null;

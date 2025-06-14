@@ -10,9 +10,11 @@ export default function SearchResults() {
     const navigate = useNavigate();
     const [loadingId, setLoadingId] = useState(null);
     // pull kennels array from the router state
-    const kennels = state?.results.kennels || [];
-    const availableKennels = kennels.filter(k => !k.is_sold_out);
-    const soldOutKennels = kennels.filter(k => k.is_sold_out);
+    const {
+        available: availableKennels = [],
+        nearby_cities: nearbyKennels = [],
+        sold_out: soldOutKennels = []
+    } = state?.results?.kennels || {};
     const { petCount, check_in, check_out } = state || {};
 
     const handleBooking = async (kennel_id) => {
@@ -55,17 +57,18 @@ export default function SearchResults() {
 
     return (
         <section className="container py-5">
-            <button
-                className="btn mb-4"
-                onClick={() => navigate(-1)}
-            >
+            <button className="btn mb-4" onClick={() => navigate(-1)}>
                 {"<"} Back to Search
             </button>
 
-            {availableKennels.length === 0 ? (
-                <div>
-                    <p className="text-muted">Oops, no kennels found nearby.</p>
-                    <p className="text-muted">We'll be soon expanding to your city. Stay Tuned.</p>
+            {availableKennels.length + nearbyKennels.length + soldOutKennels.length === 0 ? (
+                <div className="text-center my-5">
+                    <h2 className="fw-bold" style={{ color: "#471915" }}>
+                        Oops! No kennels found nearby.
+                    </h2>
+                    <p className="lead text-muted">
+                        We’re expanding our network soon. Stay tuned!
+                    </p>
                     <button
                         className="btn btn-secondary mt-3"
                         onClick={() => navigate(-1)}
@@ -75,41 +78,69 @@ export default function SearchResults() {
                 </div>
             ) : (
                 <>
-                    <h2 className="fw-bold mb-4">Available Kennels</h2>
-                    <div className="row g-4">
-                        {availableKennels.map((k) => (
-                            <div key={k.kennel_id} className="col-md-6">
-                                <KennelCard
-                                    kennel={k}
-                                    onBook={() => handleBooking(k.kennel_id)}
-                                    bookLabel="Book Now"
-                                    isLoading={loadingId === k.kennel_id}
-                                />
+                    {availableKennels.length > 0 && (
+                        <>
+                            <h2 className="fw-bold mb-4">Available Kennels</h2>
+                            <div className="row g-4">
+                                {availableKennels.map(k => (
+                                    <div key={k.kennel_id} className="col-md-6">
+                                        <KennelCard
+                                            kennel={k}
+                                            onBook={() => handleBooking(k.kennel_id)}
+                                            bookLabel="Book Now"
+                                            isLoading={loadingId === k.kennel_id}
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </>
-            )}
-            {soldOutKennels.length > 0 && (
-                <>
-                    <h2 className="fw-bold mt-5 mb-4">Sold Out</h2>
-                    <div className="row g-4">
-                        {soldOutKennels.map((k) => (
-                            <div
-                                key={k.kennel_id}
-                                className="col-md-6"
-                                style={{ opacity: 0.6, position: "relative" }}
-                            >
-                                <KennelCard
-                                    kennel={k}
-                                    bookLabel="Sold Out"
-                                    isLoading={false}
-                                />
+                        </>
+                    )}
+
+                    {nearbyKennels.length > 0 && (
+                        <>
+                            <div className="text-center my-5">
+                                <h2 className="fw-bold" style={{ color: "#471915" }}>
+                                    Oops! No availability in your city.
+                                </h2>
+                                <p className="lead text-muted">
+                                    But we’ve found these kennels near you:
+                                </p>
                             </div>
-                        ))}
-                    </div>
+
+                            <div className="row g-4">
+                                {nearbyKennels.map(k => (
+                                    <div key={k.kennel_id} className="col-md-6">
+                                        <KennelCard
+                                            kennel={k}
+                                            onBook={() => handleBooking(k.kennel_id)}
+                                            bookLabel="Book Now"
+                                            isLoading={loadingId === k.kennel_id}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {soldOutKennels.length > 0 && (
+                        <>
+                            <h2 className="fw-bold mt-5 mb-4">Sold Out</h2>
+                            <div className="row g-4">
+                                {soldOutKennels.map(k => (
+                                    <div key={k.kennel_id} className="col-md-6" style={{ opacity: 0.6 }}>
+                                        <KennelCard
+                                            kennel={k}
+                                            bookLabel="Sold Out"
+                                            isLoading={false}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </>
             )}
         </section>
+
     );
 }

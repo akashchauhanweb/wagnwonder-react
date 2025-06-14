@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
+import stateCityMap from '../js/stateCityMap';
 
 function Header() {
     const [shopOpen, setShopOpen] = useState(false);
-    const [location, setLocation] = useState(null);
 
     useEffect(() => {
         const fetchCityName = async (lat, lon) => {
@@ -12,12 +12,18 @@ function Header() {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
                 const data = await res.json();
                 const city = data.address.city || data.address.town || data.address.village || data.address.state;
-                localStorage.setItem("user_city", city);
-                setLocation(city);
+                const allCities = Object.values(stateCityMap())
+                    .flatMap(stateCities => Object.keys(stateCities));
+
+                // only store if we recognize it
+                if (allCities.includes(city)) {
+                    localStorage.setItem("user_city", city);
+                } else {
+                    console.warn(`City "${city}" not in our list; skipping storage.`);
+                }
             } catch (err) {
                 console.error("Failed to fetch city name:", err);
             }
-            localStorage.setItem("user_location", JSON.stringify({ lat: lat, lon: lon }));
         };
 
         if (!localStorage.getItem("user_city")) {
@@ -27,8 +33,6 @@ function Header() {
                 localStorage.setItem("user_location", JSON.stringify({ lat: lat, lon: lon }));
                 fetchCityName(lat, lon);
             });
-        } else {
-            setLocation(localStorage.getItem("user_city"));
         }
     }, []);
 
@@ -45,11 +49,6 @@ function Header() {
                 {/* Logo Section */}
                 <div className="d-flex align-items-center gap-2" onClick={() => navigate("/")}>
                     <img src={logo} alt="logo" style={{ height: "40px" }} />
-                    {location && (
-                        <div className="fw-semibold fs-6 text-dark ms-2">
-                            📍 {location}
-                        </div>
-                    )}
                 </div>
 
                 {/* Navigation Links */}
