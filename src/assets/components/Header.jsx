@@ -1,44 +1,88 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
 
-function Header() {
-    const [shopOpen, setShopOpen] = useState(false);
+const NAV_LINKS = [
+    { label: 'Boarding', path: '/' },
+    { label: 'Shop', path: '/shop' },
+    { label: 'Services', path: '/services' },
+    { label: 'Health', path: '/health' },
+];
 
-    // Inside your Header component:
+function Header() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    const isLoggedIn = !!localStorage.getItem("session_id");
 
     const handleUserClick = () => {
-        const isLoggedIn = !!localStorage.getItem("session_id");
         navigate(isLoggedIn ? "/account" : "/login");
     };
+
     return (
-        <>
-            <div className="d-flex justify-content-between align-items-center px-4 py-2 border-bottom" style={{ backgroundColor: '#fff' }}>
-                {/* Logo Section */}
-                <div className="d-flex align-items-center gap-2" onClick={() => navigate("/")}>
-                    <img src={logo} alt="logo" style={{ height: "40px" }} />
+        <header className="header">
+            <div className="header-container">
+                {/* Logo */}
+                <div className="header-logo" onClick={() => navigate("/")}>
+                    <img src={logo} alt="Wag n Wonder" />
                 </div>
 
-                {/* Navigation Links */}
-                <div className="d-flex align-items-center gap-4">
-                    <div className="d-none d-md-flex gap-4 align-items-center">
-                        <span className="fw-normal">Boarding</span>
-                        <span className="fw-normal" onClick={() => setShopOpen(!shopOpen)}>Shop<i className={`bi ms-1 ${shopOpen ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i></span>
-                        <span className="fw-normal">Health</span>
-                    </div>
+                {/* Desktop Navigation */}
+                <nav className="header-nav">
+                    {NAV_LINKS.map((link) => (
+                        <span
+                            key={link.label}
+                            className={`header-nav-link ${location.pathname === link.path ? 'active' : ''}`}
+                            onClick={() => navigate(link.path)}
+                        >
+                            {link.label}
+                        </span>
+                    ))}
+                </nav>
 
-                    {/* User Icon Section */}
+                {/* Right Section */}
+                <div className="header-actions">
+                    {/* User Button */}
+                    <button 
+                        className="header-user-btn"
+                        onClick={handleUserClick}
+                        aria-label="User account"
+                    >
+                        <i className="bi bi-person-fill"></i>
+                        <span>{isLoggedIn ? 'Account' : 'Login'}</span>
+                    </button>
 
-                    <div className="d-flex align-items-center">
-                        <div onClick={handleUserClick} style={{ cursor: "pointer" }}>
-                            <i className="bi bi-person-circle fs-2" style={{ color: "#471915" }}></i>
-                        </div>
-                    </div>
+                    {/* Mobile Menu Toggle */}
+                    <button 
+                        className="header-mobile-toggle"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        aria-label="Toggle menu"
+                    >
+                        <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`}></i>
+                    </button>
                 </div>
             </div>
-        </>
-    )
+
+            {/* Mobile Menu */}
+            {mobileMenuOpen && (
+                <div className="header-mobile-menu">
+                    {NAV_LINKS.map((link) => (
+                        <span
+                            key={link.label}
+                            className={`header-mobile-link ${location.pathname === link.path ? 'active' : ''}`}
+                            onClick={() => {
+                                navigate(link.path);
+                                setMobileMenuOpen(false);
+                            }}
+                        >
+                            {link.label}
+                        </span>
+                    ))}
+                </div>
+            )}
+        </header>
+    );
 }
 
 export default Header;
