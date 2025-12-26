@@ -1844,3 +1844,179 @@ input[type="date"].hero-input:invalid {
   }
 }
 
+/* Terms Checkbox */
+.terms-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.terms-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #D84A39;
+  cursor: pointer;
+}
+
+.terms-checkbox label {
+  font-size: 0.9rem;
+  color: #4a5568;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.terms-checkbox a {
+  color: #D84A39;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.terms-checkbox a:hover {
+  color: #471915;
+  text-decoration: underline;
+}
+
+/* ==================== POLICY PAGES ==================== */
+.policy-page {
+  min-height: calc(100vh - 62px);
+  background-color: #fafafa;
+  padding: 60px 20px;
+}
+
+.policy-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.policy-header {
+  background: linear-gradient(135deg, #D84A39 0%, #B33D2E 50%, #471915 100%);
+  padding: 48px 40px;
+  text-align: center;
+}
+
+.policy-header h1 {
+  color: white;
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.policy-meta {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.policy-content {
+  padding: 48px 40px;
+}
+
+.policy-intro {
+  font-size: 1.1rem;
+  color: #4a5568;
+  line-height: 1.7;
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.policy-section {
+  margin-bottom: 32px;
+}
+
+.policy-section h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #D84A39;
+  display: inline-block;
+}
+
+.policy-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #471915;
+  margin: 20px 0 12px;
+}
+
+.policy-section p {
+  font-size: 1rem;
+  color: #4a5568;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.policy-section ul,
+.policy-section ol {
+  margin: 0 0 16px;
+  padding-left: 24px;
+  color: #4a5568;
+}
+
+.policy-section li {
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.policy-section li strong {
+  color: #1a1a1a;
+}
+
+.policy-note {
+  background-color: #fef2f0;
+  border-left: 4px solid #D84A39;
+  padding: 16px 20px;
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+}
+
+.policy-contact-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 16px 0;
+}
+
+.policy-contact-box p {
+  margin: 0 0 8px;
+  color: #4a5568;
+}
+
+.policy-contact-box p:last-child {
+  margin-bottom: 0;
+}
+
+.policy-contact-box strong {
+  color: #1a1a1a;
+}
+
+@media (max-width: 768px) {
+  .policy-page {
+    padding: 24px 16px;
+  }
+
+  .policy-header {
+    padding: 32px 24px;
+  }
+
+  .policy-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .policy-content {
+    padding: 32px 24px;
+  }
+
+  .policy-section h2 {
+    font-size: 1.2rem;
+  }
+}
