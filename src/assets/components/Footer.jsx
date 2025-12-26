@@ -31,7 +31,7 @@ function Footer() {
                 <div className="footer-grid">
                     {/* Brand Column */}
                     <div className="footer-brand">
-                        <img src={logo} alt="Wag n Wonder" className="footer-logo" />
+                        <img src={logo} alt="Wag N Wonder" className="footer-logo" />
                         <p className="footer-tagline">
                             Premium care for your furry family. Find trusted pet services near you.
                         </p>
@@ -97,7 +97,7 @@ function Footer() {
 
                 {/* Bottom Bar */}
                 <div className="footer-bottom">
-                    <p>© {currentYear} Wag n Wonder. All rights reserved.</p>
+                    <p>© {currentYear} Wag N Wonder. All rights reserved.</p>
                     <p>Made with <i className="bi bi-heart-fill"></i> for pets</p>
                 </div>
             </div>

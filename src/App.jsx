@@ -4,6 +4,7 @@ import Header from './assets/components/Header.jsx';
 import Hero from './pages/Hero.jsx';
 import Footer from './assets/components/Footer.jsx';
 import Login from "./pages/Login";
+import Signup from './pages/Signup.jsx';
 import Account from './pages/Account.jsx';
 import AccountInfo from './pages/AccountInfo.jsx';
 import YourPets from "./pages/YourPets";
@@ -35,6 +36,7 @@ function App() {
           <Route path="/booking-review" element={<BookingReview />} />
           <Route path="/payment-status" element={<PaymentStatus />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/account" element={<Account />}>
             <Route path="info" element={<AccountInfo />} />
             <Route path="pets" element={<YourPets />} />

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import meetaSharmaPhoto from "../assets/images/reviews/meeta-sharma.png";
 import jayeetaMitraPhoto from "../assets/images/reviews/jayeeta-mitra.png";
 
@@ -19,6 +20,7 @@ const REVIEWS = [
 ];
 
 function HeroReviews() {
+    const navigate = useNavigate();
     return (
         <section className="reviews-section">
             <div className="info-container">
@@ -26,7 +28,7 @@ function HeroReviews() {
                     <span className="info-badge">Testimonials</span>
                     <h2 className="info-title">What Pet Parents Say</h2>
                     <p className="info-subtitle">
-                        Hear from our happy customers who've experienced the Wag n Wonder difference.
+                        Hear from our happy customers who've experienced the Wag N Wonder difference.
                     </p>
                 </div>
 
@@ -52,7 +54,7 @@ function HeroReviews() {
 
                 <div className="reviews-cta">
                     <p>Your pet's comfort is our biggest reward.</p>
-                    <button className="cta-button">
+                    <button className="cta-button" onClick={() => navigate('/signup')}>
                         Join the Family
                         <i className="bi bi-arrow-right"></i>
                     </button>

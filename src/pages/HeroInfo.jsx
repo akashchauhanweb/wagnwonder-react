@@ -2,7 +2,7 @@ const FEATURES = [
     {
         icon: "bi-patch-check-fill",
         title: "Verified & Trusted",
-        description: "We partner only with carefully vetted service providers—from crèches and boardings to groomers and trainers.",
+        description: "We partner only with carefully vetted service providers - from crèches and boardings to groomers and trainers.",
     },
     {
         icon: "bi-camera-video-fill",
@@ -93,8 +93,7 @@ function HeroInfo() {
             <section className="gallery-section">
                 <div className="info-container">
                     <div className="info-header">
-                        <span className="info-badge">Gallery</span>
-                        <h2 className="info-title">Happy Moments</h2>
+                        <h2 className="info-title gallery-title">Happy Moments</h2>
                         <p className="info-subtitle">
                             See our furry guests enjoying their stay at our partner facilities.
                         </p>
