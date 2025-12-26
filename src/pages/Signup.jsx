@@ -22,7 +22,7 @@ function Signup() {
     const [generatedCode, setGeneratedCode] = useState("");
     const [codeInputs, setCodeInputs] = useState(["", "", "", "", "", ""]);
     const [resendTimer, setResendTimer] = useState(0);
-
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -367,8 +367,18 @@ function Signup() {
                                         <span className="input-hint success">Passwords match</span>
                                     )}
                                 </div>
-
-                                <button type="submit" className="login-submit-btn" disabled={isSubmitting}>
+                                <div className="terms-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        id="agreeTerms"
+                                        checked={agreedToTerms}
+                                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                    />
+                                    <label htmlFor="agreeTerms">
+                                        I have read and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>
+                                    </label>
+                                </div>
+                                <button type="submit" className="login-submit-btn" disabled={isSubmitting || !agreedToTerms}>
                                     {isSubmitting && (
                                         <span className="spinner-border spinner-border-sm" role="status" />
                                     )}

@@ -11,7 +11,7 @@ const QUICK_LINKS = [
 const USEFUL_LINKS = [
     { label: 'Privacy Policy', path: '/privacy' },
     { label: 'Terms & Conditions', path: '/terms' },
-    { label: 'Returns', path: '/returns' },
+    { label: 'Refund Policy', path: '/refund' },
     { label: 'Contact Us', path: '/contact' },
 ];
 
