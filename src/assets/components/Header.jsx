@@ -4,9 +4,9 @@ import logo from '../images/horizontal-compressed.png';
 
 const NAV_LINKS = [
     { label: 'Boarding', path: '/' },
-    { label: 'Shop', path: '/shop' },
-    { label: 'Services', path: '/services' },
-    { label: 'Health', path: '/health' },
+    { label: 'Shop', path: '/shop', comingSoon: true },
+    { label: 'Services', path: '/services', comingSoon: true },
+    { label: 'Health', path: '/health', comingSoon: true },
 ];
 
 function Header() {
@@ -19,13 +19,14 @@ function Header() {
     const handleUserClick = () => {
         navigate(isLoggedIn ? "/account" : "/login");
     };
+    const [toastMessage, setToastMessage] = useState("");
 
     return (
         <header className="header">
             <div className="header-container">
                 {/* Logo */}
                 <div className="header-logo" onClick={() => navigate("/")}>
-                    <img src={logo} alt="Wag n Wonder" />
+                    <img src={logo} alt="Wag N Wonder" />
                 </div>
 
                 {/* Desktop Navigation */}
@@ -33,8 +34,15 @@ function Header() {
                     {NAV_LINKS.map((link) => (
                         <span
                             key={link.label}
-                            className={`header-nav-link ${location.pathname === link.path ? 'active' : ''}`}
-                            onClick={() => navigate(link.path)}
+                            className={`header-nav-link ${location.pathname === link.path ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
+                            onClick={() => {
+                                if (link.comingSoon) {
+                                    setToastMessage(`${link.label} is launching soon! 🐾`);
+                                    setTimeout(() => setToastMessage(""), 3000);
+                                } else {
+                                    navigate(link.path);
+                                }
+                            }}
                         >
                             {link.label}
                         </span>
@@ -70,15 +78,28 @@ function Header() {
                     {NAV_LINKS.map((link) => (
                         <span
                             key={link.label}
-                            className={`header-mobile-link ${location.pathname === link.path ? 'active' : ''}`}
+                            className={`header-mobile-link ${location.pathname === link.path ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
                             onClick={() => {
-                                navigate(link.path);
+                                if (link.comingSoon) {
+                                    setToastMessage(`${link.label} is launching soon! 🐾`);
+                                    setTimeout(() => setToastMessage(""), 3000);
+                                } else {
+                                    navigate(link.path);
+                                }
                                 setMobileMenuOpen(false);
                             }}
                         >
                             {link.label}
                         </span>
                     ))}
+                </div>
+            )}
+
+            {/* Toast Message */}
+            {toastMessage && (
+                <div className="header-toast">
+                    <i className="bi bi-info-circle"></i>
+                    {toastMessage}
                 </div>
             )}
         </header>
