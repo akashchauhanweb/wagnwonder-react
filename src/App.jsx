@@ -22,6 +22,7 @@ import ManageBookings from './pages/ManageBookings.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
+import ContactUs from './pages/ContactUs.jsx';
 import { useLoading } from "./contexts/LoadingContext";
 
 
@@ -44,6 +45,7 @@ function App() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsConditions />} />
           <Route path="/refund" element={<RefundPolicy />} />
+          <Route path="/contact" element={<ContactUs />} />
           <Route path="/account" element={<Account />}>
             <Route path="info" element={<AccountInfo />} />
             <Route path="pets" element={<YourPets />} />
