@@ -1,30 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
+import boardingIcon from '../icons/boarding.png';
+import shopIcon from '../icons/shop.png';
+import servicesIcon from '../icons/services.png';
+import healthIcon from '../icons/health.png';
 
 const NAV_LINKS = [
-    { label: 'Boarding', path: '/' },
-    { label: 'Shop', path: '/shop', comingSoon: true },
-    { label: 'Services', path: '/services', comingSoon: true },
-    { label: 'Health', path: '/health', comingSoon: true },
+    { label: 'Boarding', path: '/', icon: boardingIcon, activePaths: ['/', '/search-results', '/booking-review', '/payment-status'] },
+    { label: 'Shop', path: '/shop', icon: shopIcon, comingSoon: true },
+    { label: 'Services', path: '/services', icon: servicesIcon, comingSoon: true },
+    { label: 'Health', path: '/health', icon: healthIcon, comingSoon: true },
 ];
 
 function Header() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const headerRef = useRef(null);
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (mobileMenuOpen && headerRef.current && !headerRef.current.contains(e.target)) {
-                setMobileMenuOpen(false);
-            }
-        };
-
-        document.addEventListener("click", handleClickOutside);
-        return () => document.removeEventListener("click", handleClickOutside);
-    }, [mobileMenuOpen]);
     const isLoggedIn = !!localStorage.getItem("session_id");
 
     const handleUserClick = () => {
@@ -33,7 +24,7 @@ function Header() {
     const [toastMessage, setToastMessage] = useState("");
 
     return (
-        <header className="header" ref={headerRef}>
+        <header className="header">
             <div className="header-container">
                 {/* Logo */}
                 <div className="header-logo" onClick={() => { navigate("/"); window.scrollTo(0, 0); }}>
@@ -45,10 +36,10 @@ function Header() {
                     {NAV_LINKS.map((link) => (
                         <span
                             key={link.label}
-                            className={`header-nav-link ${location.pathname === link.path ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
+                            className={`header-nav-link ${link.activePaths ? link.activePaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) : location.pathname === link.path ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
                             onClick={() => {
                                 if (link.comingSoon) {
-                                    setToastMessage(`${link.label} is launching soon! 🐾`);
+                                    setToastMessage(`${link.label} is launching soon!`);
                                     setTimeout(() => setToastMessage(""), 3000);
                                 } else {
                                     navigate(link.path);
@@ -71,40 +62,8 @@ function Header() {
                         <i className="bi bi-person-fill"></i>
                         <span>{isLoggedIn ? 'Account' : 'Login'}</span>
                     </button>
-
-                    {/* Mobile Menu Toggle */}
-                    <button 
-                        className="header-mobile-toggle"
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        aria-label="Toggle menu"
-                    >
-                        <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`}></i>
-                    </button>
                 </div>
             </div>
-
-            {/* Mobile Menu */}
-            {mobileMenuOpen && (
-                <div className="header-mobile-menu">
-                    {NAV_LINKS.map((link) => (
-                        <span
-                            key={link.label}
-                            className={`header-mobile-link ${location.pathname === link.path ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
-                            onClick={() => {
-                                if (link.comingSoon) {
-                                    setToastMessage(`${link.label} is launching soon! 🐾`);
-                                    setTimeout(() => setToastMessage(""), 3000);
-                                } else {
-                                    navigate(link.path);
-                                }
-                                setMobileMenuOpen(false);
-                            }}
-                        >
-                            {link.label}
-                        </span>
-                    ))}
-                </div>
-            )}
 
             {/* Toast Message */}
             {toastMessage && (
@@ -113,6 +72,26 @@ function Header() {
                     {toastMessage}
                 </div>
             )}
+            {/* Mobile Bottom Navbar */}
+            <nav className="mobile-bottom-nav">
+                {NAV_LINKS.map((link) => (
+                    <div
+                        key={link.label}
+                        className={`mobile-nav-item ${(link.activePaths ? link.activePaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) : location.pathname === link.path) ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
+                        onClick={() => {
+                            if (link.comingSoon) {
+                                setToastMessage(`${link.label} is launching soon!`);
+                                setTimeout(() => setToastMessage(""), 3000);
+                            } else {
+                                navigate(link.path);
+                                window.scrollTo(0, 0);
+                            }
+                        }}
+                    >
+                        <img src={link.icon} alt={link.label} className="mobile-nav-icon" />
+                    </div>
+                ))}
+            </nav>
         </header>
     );
 }
