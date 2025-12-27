@@ -2267,10 +2267,6 @@ input[type="date"].hero-input:invalid {
     font-size: 1rem;
   }
 
-  .search-results-header p {
-    font-size: 1rem;
-  }
-
   .search-results-container {
     padding: 20px 16px;
   }
