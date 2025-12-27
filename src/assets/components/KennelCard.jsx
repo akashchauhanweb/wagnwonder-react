@@ -23,88 +23,91 @@ export default function KennelCard({
     };
 
     return (
-        <div
-            className="card h-100 shadow-sm"
-            style={{ cursor: "pointer" }}
-            onClick={handleClick}
-        >
-            {images.length > 0 ? (
-                <div
-                    id={carouselId}
-                    className="carousel slide"
-                    data-bs-ride="carousel"
-                    data-bs-interval="3000"
-                >
-                    {/* Dots Indicators */}
-                    <div className="carousel-indicators">
-                        {images.map((_, idx) => (
-                            <button
-                                key={idx}
-                                type="button"
-                                data-bs-target={`#${carouselId}`}
-                                data-bs-slide-to={idx}
-                                className={idx === 0 ? "active" : ""}
-                                aria-current={idx === 0 ? "true" : undefined}
-                                aria-label={`Slide ${idx + 1}`}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        ))}
-                    </div>
-
-                    <div className="carousel-inner">
-                        {images.map((img, idx) => (
-                            <div
-                                key={idx}
-                                className={`carousel-item${idx === 0 ? " active" : ""}`}
-                            >
-                                <img
-                                    src={img}
-                                    className="d-block w-100"
-                                    alt={`${kennel_name} image ${idx + 1}`}
-                                    style={{ height: "200px", objectFit: "cover" }}
+        <div className="kennel-card" onClick={handleClick}>
+            {/* Image Section */}
+            <div className="kennel-card-image" onClick={(e) => e.stopPropagation()}>
+                {images.length > 0 ? (
+                    <div
+                        id={carouselId}
+                        className="carousel slide"
+                        data-bs-ride="carousel"
+                        data-bs-interval="3000"
+                        data-bs-touch="true"
+                    >
+                        <div className="carousel-indicators">
+                            {images.map((_, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    data-bs-target={`#${carouselId}`}
+                                    data-bs-slide-to={idx}
+                                    className={idx === 0 ? "active" : ""}
+                                    aria-current={idx === 0 ? "true" : undefined}
+                                    aria-label={`Slide ${idx + 1}`}
+                                    onClick={(e) => e.stopPropagation()}
                                 />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <img
-                    src="https://via.placeholder.com/400x200?text=No+Image"
-                    className="card-img-top"
-                    alt="No Image"
-                    style={{ height: "200px", objectFit: "cover" }}
-                />
-            )}
+                            ))}
+                        </div>
 
-            <div className="card-body d-flex flex-column">
-                <h5 className="card-title">{kennel_name}</h5>
-                {typeof distance_km === "number" && !isNaN(distance_km) && (
-                    <p className="card-text text-muted mb-1">
-                        {distance_km.toFixed(2)} km away
-                    </p>
+                        <div className="carousel-inner">
+                            {images.map((img, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`carousel-item${idx === 0 ? " active" : ""}`}
+                                >
+                                    <img
+                                        src={img}
+                                        alt={`${kennel_name} image ${idx + 1}`}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="kennel-card-no-image">
+                        <i className="bi bi-image"></i>
+                        <span>No Image</span>
+                    </div>
                 )}
-                <p className="card-text fw-bold mb-3">
-                    Starting from ₹{starting_price} per day.
-                </p>
+
+                {/* Distance Badge */}
+                {typeof distance_km === "number" && !isNaN(distance_km) && (
+                    <div className="kennel-card-badge">
+                        <i className="bi bi-geo-alt-fill"></i>
+                        {distance_km.toFixed(1)} km
+                    </div>
+                )}
+            </div>
+
+            {/* Content Section */}
+            <div className="kennel-card-content">
+                <h3 className="kennel-card-title">{kennel_name}</h3>
+                
+                <div className="kennel-card-price">
+                    <span className="kennel-card-price-label">Starting from</span>
+                    <span className="kennel-card-price-value">₹{starting_price}</span>
+                    <span className="kennel-card-price-unit">/ day</span>
+                </div>
+
                 <button
-                    className="mt-auto btn py-2"
-                    style={{ backgroundColor: "#471915", color: "#fff" }}
-                    disabled={isLoading}
+                    className={`kennel-card-btn ${bookLabel === "Sold Out" ? "sold-out" : ""}`}
+                    disabled={isLoading || bookLabel === "Sold Out"}
                     onClick={(e) => {
                         e.stopPropagation();
-                        onBook();
+                        if (onBook) onBook();
                     }}
                 >
                     {isLoading ? (
-                        <>
-                            <span
-                                className="spinner-border spinner-border-sm me-2"
-                                role="status"
-                                aria-hidden="true"
-                            />
-                        </>
+                        <span className="spinner-border spinner-border-sm" role="status" />
                     ) : (
-                        bookLabel
+                        <>
+                            {bookLabel === "Sold Out" ? (
+                                <i className="bi bi-calendar-x"></i>
+                            ) : (
+                                <i className="bi bi-calendar-check"></i>
+                            )}
+                            {bookLabel}
+                        </>
                     )}
                 </button>
             </div>
