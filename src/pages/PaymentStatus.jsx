@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 
@@ -8,6 +8,9 @@ export default function PaymentStatus() {
     const [status, setStatus] = useState("loading"); // "loading" | "paid" | "failed"
     const [message, setMessage] = useState("");
     const [transactionId, setTransactionId] = useState("");
+    const [retryCount, setRetryCount] = useState(0);
+    const maxRetries = 3;
+    const retryTimeoutRef = useRef(null);
 
     const params = new URLSearchParams(location.search);
     const orderId = params.get("orderId") || params.get("order_id");
@@ -27,63 +30,81 @@ export default function PaymentStatus() {
         }
     };
 
-    useEffect(() => {
-        window.scrollTo(0, 0);
-        async function verifyPayment() {
-            try {
-                let payload = {
-                    action: "VERIFY_PAYMENT",
-                    session_id: localStorage.getItem("session_id"),
-                    order_id: orderId
+    const verifyPayment = async (currentRetry) => {
+        try {
+            let payload = {
+                action: "VERIFY_PAYMENT",
+                session_id: localStorage.getItem("session_id"),
+                order_id: orderId
+            }
+            const data = await callServicesApi(payload);
+            
+            if (data.status === "PAID") {
+                setStatus("paid");
+                setMessage(data.message || "Your booking has been confirmed!");
+                setTransactionId(data.cf_order_id);
+
+                try {
+                    const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
+                    const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+
+                    const bookingPayload = {
+                        user_id: user.id,
+                        action: "CREATE_BOOKING_ENTRY",
+                        session_id: localStorage.getItem("session_id"),
+                        kennel_id: saved.kennel.kennel_id,
+                        room_type_id: saved.room_type_id,
+                        check_in_date: saved.checkin,
+                        check_out_date: saved.checkout,
+                        days: saved.days,
+                        total_price: saved.total,
+                        mode: "online",
+                        order_id: orderId,
+                        cf_order_id: data.cf_order_id,
+                        pets: saved.breakdown.map((p) => ({
+                            pet_id: p.id,
+                            price_per_day: p.perDay,
+                            days: p.days,
+                            total_price: p.total,
+                        })),
+                    };
+
+                    const res = await callServicesApi(bookingPayload);
+                    console.log(res);
+                    localStorage.removeItem("pending_booking");
+                } catch (e) {
+                    console.error("Failed to create booking entry:", e);
                 }
-                const data = await callServicesApi(payload);
-                if (data.status === "PAID") {
-                    setStatus("paid");
-                    setMessage(data.message || "Your booking has been confirmed!");
-                    setTransactionId(data.cf_order_id);
-
-                    try {
-                        const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
-                        const user = JSON.parse(localStorage.getItem("user_data") || "{}");
-
-                        const bookingPayload = {
-                            user_id: user.id,
-                            action: "CREATE_BOOKING_ENTRY",
-                            session_id: localStorage.getItem("session_id"),
-                            kennel_id: saved.kennel.kennel_id,
-                            room_type_id: saved.room_type_id,
-                            check_in_date: saved.checkin,
-                            check_out_date: saved.checkout,
-                            days: saved.days,
-                            total_price: saved.total,
-                            mode: "online",
-                            order_id: orderId,
-                            cf_order_id: data.cf_order_id,
-                            pets: saved.breakdown.map((p) => ({
-                                pet_id: p.id,
-                                price_per_day: p.perDay,
-                                days: p.days,
-                                total_price: p.total,
-                            })),
-                        };
-
-                        const res = await callServicesApi(bookingPayload);
-                        console.log(res);
-                        localStorage.removeItem("pending_booking");
-                    } catch (e) {
-                        console.error("Failed to create booking entry:", e);
-                    }
+            } else if (data.status === "PENDING") {
+                if (currentRetry < maxRetries) {
+                    setRetryCount(currentRetry + 1);
+                    retryTimeoutRef.current = setTimeout(() => {
+                        verifyPayment(currentRetry + 1);
+                    }, 10000);
                 } else {
                     setStatus("failed");
-                    setMessage(data.message || "Payment could not be completed.");
+                    setMessage("Payment verification timed out. If amount was deducted, it will be refunded within 5-7 business days.");
                 }
-            } catch (e) {
+            } else {
                 setStatus("failed");
-                console.log(e);
-                setMessage("Error verifying payment. Please contact support.");
+                setMessage(data.message || "Payment could not be completed.");
             }
+        } catch (e) {
+            setStatus("failed");
+            console.log(e);
+            setMessage("Error verifying payment. Please contact support.");
         }
-        verifyPayment();
+    };
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+        verifyPayment(0);
+
+        return () => {
+            if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+            }
+        };
     }, [orderId]);
 
     return (
@@ -97,13 +118,20 @@ export default function PaymentStatus() {
                             </div>
                             <h2>Verifying Payment</h2>
                             <p>Please wait while we confirm your payment...</p>
+                            
+                            {retryCount > 0 && (
+                                <div className="payment-status-retry-info">
+                                    <span>Attempt {retryCount + 1} of {maxRetries + 1}</span>
+                                </div>
+                            )}
+
                             <div className="payment-status-steps">
-                                <div className="payment-status-step active">
+                                <div className={`payment-status-step ${retryCount >= 0 ? 'active' : ''}`}>
                                     <i className="bi bi-credit-card"></i>
                                     <span>Payment Received</span>
                                 </div>
                                 <div className="payment-status-step-line"></div>
-                                <div className="payment-status-step">
+                                <div className={`payment-status-step ${retryCount >= 0 ? 'active' : ''}`}>
                                     <i className="bi bi-shield-check"></i>
                                     <span>Verifying</span>
                                 </div>

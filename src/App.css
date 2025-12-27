@@ -3711,6 +3711,17 @@ input[type="date"].hero-input:invalid {
   margin: 0 0 32px 0;
 }
 
+.payment-status-retry-info {
+  background: #fef3c7;
+  color: #b45309;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  display: inline-block;
+}
+
 .payment-status-steps {
   display: flex;
   align-items: center;
