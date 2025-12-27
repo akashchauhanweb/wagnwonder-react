@@ -4,7 +4,8 @@ export async function imageCompressor(file, maxSizeKB = 150) {
   if (!file || !file.type.startsWith("image/")) {
     throw new Error("Provided file is not a valid image.");
   }
-  // ✅ Convert HEIC to JPEG
+
+  // ✅ Convert HEIC to JPEG (common on iPhones)
   if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
     const jpegBlob = await heic2any({
       blob: file,
@@ -12,11 +13,12 @@ export async function imageCompressor(file, maxSizeKB = 150) {
       quality: 0.9,
     });
 
-    file = new File([jpegBlob], file.name.replace(/\.heic$/, ".jpg"), {
+    file = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg"), {
       type: "image/jpeg",
       lastModified: Date.now(),
     });
   }
+
   // 📥 Read file as Data URL
   const dataURL = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -40,20 +42,39 @@ export async function imageCompressor(file, maxSizeKB = 150) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0);
 
-  // 🔁 Try compressing to WebP under maxSizeKB
-  for (let q = 0.9; q >= 0.1; q -= 0.5) {
+  // 🔍 Check if browser supports WebP encoding
+  const supportsWebP = await checkWebPSupport(canvas);
+
+  // 🔁 Try compressing
+  const outputType = supportsWebP ? "image/webp" : "image/jpeg";
+  const outputExt = supportsWebP ? ".webp" : ".jpg";
+
+  for (let q = 0.9; q >= 0.1; q -= 0.1) {
     await new Promise(requestAnimationFrame);
     const blob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, "image/webp", q);
+      canvas.toBlob(resolve, outputType, q);
     });
 
     if (blob) {
-      return new File([blob], file.name.replace(/\.\w+$/, ".webp"), {
-        type: "image/webp",
+      return new File([blob], file.name.replace(/\.\w+$/, outputExt), {
+        type: outputType,
         lastModified: Date.now(),
       });
     }
   }
 
   throw new Error("Could not compress image below " + maxSizeKB + "KB.");
+}
+
+// 🧪 Check if browser supports WebP encoding
+async function checkWebPSupport(canvas) {
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        resolve(blob !== null && blob.type === "image/webp");
+      },
+      "image/webp",
+      0.5
+    );
+  });
 }
