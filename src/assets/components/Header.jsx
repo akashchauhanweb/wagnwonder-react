@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
 import boardingIcon from '../icons/boarding.png';
 import shopIcon from '../icons/shop.png';
@@ -7,7 +7,7 @@ import servicesIcon from '../icons/services.png';
 import healthIcon from '../icons/health.png';
 
 const NAV_LINKS = [
-    { label: 'Boarding', path: '/', icon: boardingIcon, activePaths: ['/', '/search-results', '/booking-review', '/payment-status'] },
+    { label: 'Boarding', path: '/', icon: boardingIcon },
     { label: 'Shop', path: '/shop', icon: shopIcon, comingSoon: true },
     { label: 'Services', path: '/services', icon: servicesIcon, comingSoon: true },
     { label: 'Health', path: '/health', icon: healthIcon, comingSoon: true },
@@ -15,13 +15,26 @@ const NAV_LINKS = [
 
 function Header() {
     const navigate = useNavigate();
-    const location = useLocation();
     const isLoggedIn = !!localStorage.getItem("session_id");
+    const [activeNav, setActiveNav] = useState(() => {
+        return localStorage.getItem("activeNav") || "Boarding";
+    });
 
     const handleUserClick = () => {
         navigate(isLoggedIn ? "/account" : "/login");
     };
     const [toastMessage, setToastMessage] = useState("");
+
+    const handleNavClick = (link) => {
+        if (link.comingSoon) {
+            setToastMessage(`${link.label} is launching soon! 🐾`);
+            setTimeout(() => setToastMessage(""), 3000);
+        } else {
+            setActiveNav(link.label);
+            localStorage.setItem("activeNav", link.label);
+            navigate(link.path);
+        }
+    };
 
     return (
         <header className="header">
@@ -36,15 +49,8 @@ function Header() {
                     {NAV_LINKS.map((link) => (
                         <span
                             key={link.label}
-                            className={`header-nav-link ${link.activePaths ? link.activePaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) : location.pathname === link.path ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
-                            onClick={() => {
-                                if (link.comingSoon) {
-                                    setToastMessage(`${link.label} is launching soon!`);
-                                    setTimeout(() => setToastMessage(""), 3000);
-                                } else {
-                                    navigate(link.path);
-                                }
-                            }}
+                            className={`header-nav-link ${activeNav === link.label ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
+                            onClick={() => handleNavClick(link)}
                         >
                             {link.label}
                         </span>
@@ -77,13 +83,10 @@ function Header() {
                 {NAV_LINKS.map((link) => (
                     <div
                         key={link.label}
-                        className={`mobile-nav-item ${(link.activePaths ? link.activePaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) : location.pathname === link.path) ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
+                        className={`mobile-nav-item ${activeNav === link.label ? 'active' : ''} ${link.comingSoon ? 'coming-soon' : ''}`}
                         onClick={() => {
-                            if (link.comingSoon) {
-                                setToastMessage(`${link.label} is launching soon!`);
-                                setTimeout(() => setToastMessage(""), 3000);
-                            } else {
-                                navigate(link.path);
+                            handleNavClick(link);
+                            if (!link.comingSoon) {
                                 window.scrollTo(0, 0);
                             }
                         }}
