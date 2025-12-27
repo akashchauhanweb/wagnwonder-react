@@ -211,10 +211,15 @@ export default function SearchDetails() {
                         <div className="search-details-no-pets">
                             <i className="bi bi-emoji-frown"></i>
                             <p>You haven't added any pets yet.</p>
-                            <button onClick={() => setShowAddModal(true)}>
-                                <i className="bi bi-plus-circle"></i>
-                                Add Your First Pet
-                            </button>
+                            <div className="search-details-add-wrapper">
+                                <button
+                                    className="search-details-pet-add"
+                                    onClick={() => setShowAddModal(true)}
+                                >
+                                    <i className="bi bi-plus"></i>
+                                </button>
+                                <span>Add a Pet</span>
+                            </div>
                         </div>
                     ) : (
                         <div className="search-details-pets">

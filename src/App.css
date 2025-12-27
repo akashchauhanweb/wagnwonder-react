@@ -2680,9 +2680,12 @@ input[type="date"].hero-input:invalid {
 .search-details-no-pets {
   text-align: center;
   padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.search-details-no-pets i {
+.search-details-no-pets > i {
   font-size: 2.5rem;
   color: #94a3b8;
   margin-bottom: 12px;
@@ -2693,23 +2696,17 @@ input[type="date"].hero-input:invalid {
   margin-bottom: 16px;
 }
 
-.search-details-no-pets button {
-  background: transparent;
-  color: #D84A39;
-  border: 2px solid #D84A39;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
+.search-details-add-wrapper {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
+  justify-content: center;
+  gap: 12px;
 }
 
-.search-details-no-pets button:hover {
-  background: #D84A39;
-  color: white;
+.search-details-add-wrapper span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #D84A39;
 }
 
 .search-details-pets {
@@ -2751,7 +2748,6 @@ input[type="date"].hero-input:invalid {
   border-radius: 50%;
   border: 2px dashed #D84A39;
   background: transparent;
-  color: #D84A39;
   font-size: 1.5rem;
   cursor: pointer;
   display: flex;
@@ -2760,10 +2756,18 @@ input[type="date"].hero-input:invalid {
   transition: all 0.2s ease;
 }
 
+.search-details-pet-add i {
+  color: #D84A39;
+  transition: all 0.2s ease;
+}
+
 .search-details-pet-add:hover {
-  background: #D84A39;
-  border-style: solid;
-  color: white;
+  background: #D84A39 !important;
+  border-style: solid !important;
+}
+
+.search-details-pet-add:hover i {
+  color: white !important;
 }
 
 /* Room Cards */
@@ -3310,5 +3314,631 @@ input[type="date"].hero-input:invalid {
 
   .contact-header p {
     font-size: 1rem;
+  }
+}
+
+/* ==================== BOOKING REVIEW PAGE ==================== */
+.booking-review-page {
+  min-height: calc(100vh - 62px);
+  background-color: #fafafa;
+  padding-bottom: 40px;
+}
+
+.booking-review-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+/* Empty/Error States */
+.booking-review-empty {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.booking-review-empty i {
+  font-size: 3rem;
+  color: #D84A39;
+  margin-bottom: 16px;
+}
+
+.booking-review-empty p {
+  color: #64748b;
+  margin-bottom: 20px;
+}
+
+.booking-review-empty button {
+  background: linear-gradient(135deg, #D84A39, #471915);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.booking-review-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+/* Cards */
+.booking-review-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.booking-review-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.booking-review-card-header i {
+  font-size: 1.1rem;
+  color: #D84A39;
+}
+
+.booking-review-card-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* Kennel */
+.booking-review-kennel h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* Dates */
+.booking-review-dates {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.booking-review-date-item {
+  flex: 1;
+  text-align: center;
+}
+
+.booking-review-date-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.booking-review-date-value {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.booking-review-date-divider {
+  color: #D84A39;
+  font-size: 1.25rem;
+}
+
+.booking-review-duration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.booking-review-duration i {
+  color: #D84A39;
+}
+
+/* Pets */
+.booking-review-pets {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booking-review-pet-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 12px;
+}
+
+.booking-review-pet-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.booking-review-pet-avatar {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #D84A39, #471915);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.booking-review-pet-avatar i {
+  color: white;
+  font-size: 1.25rem;
+}
+
+.booking-review-pet-details h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.booking-review-pet-meta {
+  display: flex;
+  gap: 8px;
+}
+
+.booking-review-pet-breed {
+  font-size: 0.75rem;
+  background: #e2e8f0;
+  color: #64748b;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.booking-review-pet-weight {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.booking-review-pet-pricing {
+  text-align: right;
+}
+
+.booking-review-pet-rate {
+  display: block;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.booking-review-pet-total {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* Total Card */
+.booking-review-total-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 2px solid #D84A39;
+}
+
+.booking-review-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.booking-review-total-row.total {
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 8px;
+  padding-top: 16px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.booking-review-total-row.total span:last-child {
+  color: #D84A39;
+  font-size: 1.35rem;
+}
+
+.booking-review-pay-btn {
+  width: 100%;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg, #D84A39, #471915);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+}
+
+.booking-review-pay-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(216, 74, 57, 0.4);
+}
+
+.booking-review-pay-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.booking-review-secure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.booking-review-secure i {
+  color: #22c55e;
+}
+
+@media (max-width: 768px) {
+  .booking-review-container {
+    padding: 20px 16px;
+  }
+
+  .booking-review-dates {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .booking-review-date-divider {
+    transform: rotate(90deg);
+  }
+
+  .booking-review-pet-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .booking-review-pet-pricing {
+    text-align: left;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+  }
+}
+
+@media (max-width: 576px) {
+  .booking-review-page {
+    padding-bottom: 20px;
+  }
+}
+
+/* ==================== PAYMENT STATUS PAGE ==================== */
+.payment-status-page {
+  min-height: calc(100vh - 62px);
+  background: linear-gradient(135deg, #fafafa 0%, #f1f5f9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.payment-status-container {
+  width: 100%;
+  max-width: 480px;
+}
+
+.payment-status-card {
+  background: white;
+  border-radius: 24px;
+  padding: 48px 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.payment-status-card.success {
+  border-top: 4px solid #22c55e;
+}
+
+.payment-status-card.failed {
+  border-top: 4px solid #ef4444;
+}
+
+/* Loading State */
+.payment-status-loading {
+  padding: 20px 0;
+}
+
+.payment-status-spinner {
+  margin-bottom: 24px;
+}
+
+.payment-status-spinner .spinner-border {
+  width: 56px;
+  height: 56px;
+  color: #D84A39;
+  border-width: 4px;
+}
+
+.payment-status-loading h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.payment-status-loading p {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin: 0 0 32px 0;
+}
+
+.payment-status-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.payment-status-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+}
+
+.payment-status-step.active {
+  opacity: 1;
+}
+
+.payment-status-step i {
+  font-size: 1.5rem;
+  color: #D84A39;
+}
+
+.payment-status-step span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.payment-status-step-line {
+  width: 32px;
+  height: 2px;
+  background: #e2e8f0;
+  margin-bottom: 24px;
+}
+
+/* Status Icon */
+.payment-status-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.payment-status-icon.success {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.payment-status-icon.failed {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.payment-status-icon i {
+  font-size: 2.5rem;
+  color: white;
+}
+
+.payment-status-card h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.payment-status-card p {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0 0 24px 0;
+}
+
+/* Details */
+.payment-status-details {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.payment-status-detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.payment-status-detail-item:not(:last-child) {
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.payment-status-detail-item .label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.payment-status-detail-item .value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: monospace;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* Actions */
+.payment-status-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.payment-status-btn {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.payment-status-btn.primary {
+  background: linear-gradient(135deg, #D84A39, #471915);
+  color: white;
+  border: none;
+}
+
+.payment-status-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(216, 74, 57, 0.35);
+}
+
+.payment-status-btn.secondary {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.payment-status-btn.secondary:hover {
+  border-color: #D84A39;
+  color: #D84A39;
+}
+
+/* Confirmation Message */
+.payment-status-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #16a34a;
+}
+
+.payment-status-confirmation i {
+  font-size: 1rem;
+}
+
+/* Help Section */
+.payment-status-help {
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.payment-status-help p {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0 0 8px 0;
+}
+
+.payment-status-help a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #D84A39;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.payment-status-help a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 576px) {
+  .payment-status-page {
+    padding: 20px 16px 100px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  .payment-status-card {
+    padding: 32px 24px;
+  }
+
+  .payment-status-card h2 {
+    font-size: 1.5rem;
+  }
+
+  .payment-status-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .payment-status-icon i {
+    font-size: 2rem;
+  }
+
+  .payment-status-steps {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .payment-status-step-line {
+    width: 20px;
+  }
+
+  .payment-status-detail-item .value {
+    font-size: 0.8rem;
   }
 }
