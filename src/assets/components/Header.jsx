@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
 
@@ -13,7 +13,18 @@ function Header() {
     const navigate = useNavigate();
     const location = useLocation();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const headerRef = useRef(null);
 
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (mobileMenuOpen && headerRef.current && !headerRef.current.contains(e.target)) {
+                setMobileMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("click", handleClickOutside);
+        return () => document.removeEventListener("click", handleClickOutside);
+    }, [mobileMenuOpen]);
     const isLoggedIn = !!localStorage.getItem("session_id");
 
     const handleUserClick = () => {
@@ -22,10 +33,10 @@ function Header() {
     const [toastMessage, setToastMessage] = useState("");
 
     return (
-        <header className="header">
+        <header className="header" ref={headerRef}>
             <div className="header-container">
                 {/* Logo */}
-                <div className="header-logo" onClick={() => navigate("/")}>
+                <div className="header-logo" onClick={() => { navigate("/"); window.scrollTo(0, 0); }}>
                     <img src={logo} alt="Wag N Wonder" />
                 </div>
 

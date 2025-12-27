@@ -1,9 +1,10 @@
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import boardingIcon from '../assets/icons/boarding.svg';
-import shopIcon from '../assets/icons/shop.svg';
-import servicesIcon from '../assets/icons/services.svg';
-import healthIcon from '../assets/icons/health.svg';
+import boardingIcon from '../assets/icons/boarding.png';
+import shopIcon from '../assets/icons/shop.png';
+import servicesIcon from '../assets/icons/services.png';
+import healthIcon from '../assets/icons/health.png';
+import { getTokenFromApi } from "../assets/js/getToken";
 import { useState, useEffect } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useNavigate } from "react-router-dom";
@@ -64,8 +65,19 @@ function HeroForm() {
                 return;
             }
 
+            const payload = { action: "GET_CITY_LIST" };
+
             try {
-                const res = await callServicesApi({ action: "GET_CITY_LIST" });
+                const token = await getTokenFromApi(payload);
+                if (!token) {
+                    console.error("Failed to generate token for city list");
+                    return;
+                }
+
+                const res = await callServicesApi({
+                    ...payload,
+                    token: token
+                });
                 if (res?.success && res.cities) {
                     localStorage.setItem("city_data", JSON.stringify(res.cities));
                     setCityMap(res.cities);

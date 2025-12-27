@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
+import { getTokenFromApi } from "../assets/js/getToken";
 import { getVerificationEmailHtml } from "../assets/js/verificationEmail";
 
 function Signup() {
@@ -52,15 +53,27 @@ function Signup() {
     const sendVerificationEmail = async (code) => {
         const htmlContent = getVerificationEmailHtml(formData.firstName, code);
         
+        const payload = {
+            action: "SEND_VERIFICATION_EMAIL",
+            email: formData.email,
+            code: code,
+            name: formData.firstName,
+            html: htmlContent
+        };
+
         try {
+            // Generate JWT token
+            const token = await getTokenFromApi(payload);
+            if (!token) {
+                console.error("Failed to generate token");
+                return false;
+            }
+
+            // Call API with token
             const response = await callServicesApi({
-                action: "SEND_VERIFICATION_EMAIL",
-                email: formData.email,
-                code: code,
-                name: formData.firstName,
-                html: htmlContent
+                ...payload,
+                token: token
             });
-            console.log(response);
             return response?.success;
         } catch (err) {
             console.error("Failed to send email:", err);
@@ -183,7 +196,7 @@ function Signup() {
         setError("");
 
         try {
-            const response = await callServicesApi({
+            const payload = {
                 action: "ADD_USER",
                 first_name: formData.firstName,
                 last_name: formData.lastName,
@@ -191,8 +204,20 @@ function Signup() {
                 email: formData.email,
                 user_type: "client",
                 password_hashed: formData.password
-            });
+            };
 
+            const token = await getTokenFromApi(payload);
+            if (!token) {
+                setError("Authentication failed. Please try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            const response = await callServicesApi({
+                ...payload,
+                token: token
+            });
+            console.log(response);
             if (response?.success) {
                 navigate("/login", { 
                     state: { message: "Account created successfully! Please sign in." } 
