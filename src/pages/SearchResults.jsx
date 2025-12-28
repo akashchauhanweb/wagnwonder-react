@@ -1,12 +1,16 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import KennelCard from "../assets/components/KennelCard";
 import { callServicesApi } from "../assets/js/servicesApi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SearchResults() {
     const { state } = useLocation();
     const navigate = useNavigate();
     const [loadingId, setLoadingId] = useState(null);
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const {
         available: availableKennels = [],
