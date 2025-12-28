@@ -139,7 +139,7 @@ function Login() {
                                     ></i>
                                 </div>
                                 <div className="login-forgot">
-                                    <a href="#">Forgot password?</a>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }}>Forgot password?</a>
                                 </div>
                             </div>
 
