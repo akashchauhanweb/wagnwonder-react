@@ -129,6 +129,7 @@ export default function SearchResults() {
                                                 onBook={() => handleBooking(k.kennel_id)}
                                                 bookLabel="Book Now"
                                                 isLoading={loadingId === k.kennel_id}
+                                                showCity={true}
                                             />
                                         </div>
                                     ))}

@@ -27,7 +27,7 @@ function Header() {
 
     const handleNavClick = (link) => {
         if (link.comingSoon) {
-            setToastMessage(`${link.label} is launching soon! 🐾`);
+            setToastMessage(`${link.label} is launching soon!`);
             setTimeout(() => setToastMessage(""), 3000);
         } else {
             setActiveNav(link.label);

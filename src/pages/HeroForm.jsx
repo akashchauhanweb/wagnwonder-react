@@ -297,6 +297,16 @@ function HeroForm() {
                                 </button>
                             </form>
                         </div>
+
+                        <div className="hero-partner-cta">
+                            <span>Own a pet crèche? </span>
+                            <span 
+                                className="hero-partner-link"
+                                onClick={() => navigate("/contact", { state: { subject: "partnership" } })}
+                            >
+                                Partner with us
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

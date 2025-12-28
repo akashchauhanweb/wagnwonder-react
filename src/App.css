@@ -388,7 +388,7 @@ body.modal-open {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 20px 20px;
 }
 
 .hero-title {
@@ -862,6 +862,27 @@ input[type="date"].hero-input:invalid {
 /* Triangle pointer */
 .hero-calendar .react-datepicker__triangle {
   display: none;
+}
+
+.hero-partner-cta {
+  margin-top: 16px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+}
+
+.hero-partner-link {
+  color: white;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .hero-partner-cta {
+    text-align: center;
+  }
 }
 
 /* ==================== INFO SECTIONS ==================== */
@@ -2367,10 +2388,15 @@ input[type="date"].hero-input:invalid {
 }
 
 /* Distance Badge */
-.kennel-card-badge {
+.kennel-card-badges {
   position: absolute;
   top: 12px;
   left: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.kennel-card-badge {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
   padding: 6px 12px;
@@ -3266,6 +3292,17 @@ input[type="date"].hero-input:invalid {
   color: white;
 }
 
+.contact-error {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 @media (max-width: 992px) {
   .contact-info-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -3301,7 +3338,7 @@ input[type="date"].hero-input:invalid {
 
 @media (max-width: 576px) {
   .contact-page {
-    padding: 20px 12px 100px 12px;
+    padding: 20px 12px 20px 12px;
   }
 
   .contact-info-grid {
