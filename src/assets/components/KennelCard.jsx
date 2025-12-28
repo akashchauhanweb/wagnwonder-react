@@ -6,6 +6,7 @@ export default function KennelCard({
     onBook,
     bookLabel = "View Details",
     isLoading = false,
+    showCity = false,
 }) {
     const navigate = useNavigate();
     const {
@@ -14,6 +15,7 @@ export default function KennelCard({
         starting_price,
         distance_km,
         images = [],
+        kennel_city,
     } = kennel;
 
     const carouselId = `carousel-${kennel_id}`;
@@ -70,13 +72,21 @@ export default function KennelCard({
                     </div>
                 )}
 
-                {/* Distance Badge */}
-                {typeof distance_km === "number" && !isNaN(distance_km) && (
-                    <div className="kennel-card-badge">
-                        <i className="bi bi-geo-alt-fill"></i>
-                        {distance_km.toFixed(1)} km
-                    </div>
-                )}
+                {/* Badges */}
+                <div className="kennel-card-badges">
+                    {typeof distance_km === "number" && !isNaN(distance_km) && (
+                        <div className="kennel-card-badge">
+                            <i className="bi bi-geo-alt-fill"></i>
+                            {distance_km.toFixed(1)} km
+                        </div>
+                    )}
+                    {showCity && kennel_city && (
+                        <div className="kennel-card-badge">
+                            <i className="bi bi-building"></i>
+                            {kennel_city}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Content Section */}

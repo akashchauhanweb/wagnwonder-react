@@ -1,34 +1,89 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import { getTokenFromApi } from "../assets/js/getToken";
+import { callServicesApi } from "../assets/js/servicesApi";
 
 function ContactUs() {
+    const location = useLocation();
+    const prefilledSubject = location.state?.subject || "";
+    const formRef = useRef(null);
+
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         phone: "",
-        subject: "",
+        subject: prefilledSubject,
         message: ""
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
+        if (prefilledSubject && formRef.current) {
+            formRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+            window.scrollTo(0, 0);
+        }
+    }, [prefilledSubject]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError("");
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
-        // Simulate form submission - replace with your actual API call
-        setTimeout(() => {
+        setError("");
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setError("Please enter a valid email address.");
             setIsSubmitting(false);
-            setSubmitted(true);
-            setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-        }, 1500);
+            return;
+        }
+        if (formData.phone && formData.phone.length !== 10) {
+            setError("Phone number must be 10 digits.");
+            setIsSubmitting(false);
+            return;
+        }
+        try {
+            const payload = {
+                action: "SEND_ENQUIRY",
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                subject: formData.subject,
+                message: formData.message
+            };
+
+            const sessionId = localStorage.getItem("session_id");
+            if (sessionId) {
+                payload.session_id = sessionId;
+            } else {
+                const token = await getTokenFromApi(payload);
+                if (!token) {
+                    setError("Unable to process request. Please try again.");
+                    setIsSubmitting(false);
+                    return;
+                }
+                payload.token = token;
+            }
+
+            const response = await callServicesApi(payload);
+
+            if (response?.success) {
+                setSubmitted(true);
+                setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+            } else {
+                setError(response?.message || "Something went wrong. Please try again.");
+            }
+        } catch (err) {
+            console.error("Contact form error:", err);
+            setError("Unable to send message. Please try again later.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -81,7 +136,7 @@ function ContactUs() {
                     </div>
 
                     {/* Contact Form */}
-                    <div className="contact-form-section">
+                    <div className="contact-form-section" ref={formRef}>
                         <div className="contact-form-header">
                             <h2>Send us a Message</h2>
                             <p>Fill out the form below and we'll get back to you as soon as possible.</p>
@@ -93,13 +148,19 @@ function ContactUs() {
                                     <i className="bi bi-check-circle-fill"></i>
                                 </div>
                                 <h3>Thank You!</h3>
-                                <p>Your message has been sent successfully. We'll get back to you within 24 hours.</p>
+                                <p>Your message has been sent successfully. We'll get back as soon as possible.</p>
                                 <button onClick={() => setSubmitted(false)}>
                                     Send Another Message
                                 </button>
                             </div>
                         ) : (
                             <form className="contact-form" onSubmit={handleSubmit}>
+                                {error && (
+                                    <div className="contact-error">
+                                        <i className="bi bi-exclamation-circle"></i>
+                                        {error}
+                                    </div>
+                                )}
                                 <div className="contact-form-row">
                                     <div className="contact-input-group">
                                         <label>Your Name *</label>
@@ -121,7 +182,7 @@ function ContactUs() {
                                         <div className="contact-input-wrapper">
                                             <i className="bi bi-envelope"></i>
                                             <input
-                                                type="email"
+                                                type="text"
                                                 name="email"
                                                 placeholder="Enter your email"
                                                 value={formData.email}
@@ -134,7 +195,7 @@ function ContactUs() {
 
                                 <div className="contact-form-row">
                                     <div className="contact-input-group">
-                                        <label>Phone Number</label>
+                                        <label>Phone Number *</label>
                                         <div className="contact-input-wrapper">
                                             <i className="bi bi-phone"></i>
                                             <input
@@ -143,6 +204,7 @@ function ContactUs() {
                                                 placeholder="Enter your phone number"
                                                 value={formData.phone}
                                                 onChange={handleChange}
+                                                required
                                             />
                                         </div>
                                     </div>
