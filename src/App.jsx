@@ -8,7 +8,6 @@ import Signup from './pages/Signup.jsx';
 import Account from './pages/Account.jsx';
 import AccountInfo from './pages/AccountInfo.jsx';
 import YourPets from "./pages/YourPets";
-import TopPageLoader from "./assets/components/TopPageLoader";
 import AdminPage from './pages/AdminPage';
 import ManageProducts from './pages/ManageProducts';
 import ManageUsers from './pages/ManageUsers.jsx';
@@ -23,15 +22,12 @@ import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
 import ContactUs from './pages/ContactUs.jsx';
-import { useLoading } from "./contexts/LoadingContext";
 
 
 function App() {
-  const { loading } = useLoading();
   return (
     <>
       <Router>
-        <TopPageLoader active={loading} />
         <Header />
         <Routes>
           <Route path="" element={<Hero />} />
