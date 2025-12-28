@@ -15,6 +15,10 @@ export default function SearchDetails() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [isFetchingPets, setIsFetchingPets] = useState(true);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     const loadPets = async () => {
         setIsFetchingPets(true);
         try {
