@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { getTokenFromApi } from "../assets/js/getToken";
 import { getVerificationEmailHtml } from "../assets/js/verificationEmail";
+import ChangePasswordModal from "../assets/components/ChangePasswordModal";
 
 function AccountInfo() {
     const [user, setUser] = useState(null);
@@ -19,17 +20,6 @@ function AccountInfo() {
     const [originalEmail, setOriginalEmail] = useState("");
 
     const [showPasswordForm, setShowPasswordForm] = useState(false);
-    const [passwordData, setPasswordData] = useState({
-        current_password: "",
-        new_password: "",
-        confirm_password: ""
-    });
-    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-    const [showNewPassword, setShowNewPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [passwordError, setPasswordError] = useState("");
-    const [passwordSuccess, setPasswordSuccess] = useState("");
-    const [savingPassword, setSavingPassword] = useState(false);
 
     // Email verification states
     const [generatedCode, setGeneratedCode] = useState("");
@@ -287,57 +277,6 @@ function AccountInfo() {
         );
     }
 
-    const handlePasswordChange = async (e) => {
-        e.preventDefault();
-        setPasswordError("");
-        setPasswordSuccess("");
-
-        if (!passwordData.current_password) {
-            setPasswordError("Current password is required.");
-            return;
-        }
-
-        if (passwordData.new_password.length < 6) {
-            setPasswordError("New password must be at least 6 characters.");
-            return;
-        }
-
-        if (passwordData.new_password !== passwordData.confirm_password) {
-            setPasswordError("Passwords do not match.");
-            return;
-        }
-
-        setSavingPassword(true);
-
-        try {
-            const payload = {
-                action: "CHANGE_PASSWORD",
-                session_id: localStorage.getItem("session_id"),
-                user_id: user.id,
-                current_password: passwordData.current_password,
-                new_password: passwordData.new_password
-            };
-
-            const response = await callServicesApi(payload);
-
-            if (response?.success) {
-                setPasswordSuccess("Password changed successfully!");
-                setPasswordData({ current_password: "", new_password: "", confirm_password: "" });
-                setTimeout(() => {
-                    setShowPasswordForm(false);
-                    setPasswordSuccess("");
-                }, 2000);
-            } else {
-                setPasswordError(response?.message || "Failed to change password.");
-            }
-        } catch (err) {
-            console.log(err);
-            setPasswordError("Something went wrong. Please try again.");
-        }
-
-        setSavingPassword(false);
-    };
-
     return (
         <div className="account-info">
             <div className="account-info-header">
@@ -444,101 +383,23 @@ function AccountInfo() {
                             <span className="value">{user.phone_number || "Not provided"}</span>
                         </div>
                     </div>
-                    {/* Change Password Section */}
-                    <div className="account-password-section">
-                        <div className="account-password-header" onClick={() => setShowPasswordForm(!showPasswordForm)}>
-                            <div className="account-password-title">
-                                <i className="bi bi-shield-lock-fill"></i>
-                                <span>Change Password</span>
-                            </div>
-                            <i className={`bi bi-chevron-${showPasswordForm ? 'up' : 'down'}`}></i>
-                        </div>
-
-                        {showPasswordForm && (
-                            <form className="account-password-form" onSubmit={handlePasswordChange}>
-                                {passwordError && (
-                                    <div className="account-info-error">
-                                        <i className="bi bi-exclamation-circle"></i>
-                                        {passwordError}
-                                    </div>
-                                )}
-
-                                {passwordSuccess && (
-                                    <div className="account-info-success">
-                                        <i className="bi bi-check-circle"></i>
-                                        {passwordSuccess}
-                                    </div>
-                                )}
-
-                                <div className="account-info-field">
-                                    <label>Current Password</label>
-                                    <div className="password-input-wrapper">
-                                        <input
-                                            type={showCurrentPassword ? "text" : "password"}
-                                            value={passwordData.current_password}
-                                            onChange={(e) => setPasswordData({ ...passwordData, current_password: e.target.value })}
-                                            placeholder="Enter current password"
-                                        />
-                                        <i
-                                            className={`bi ${showCurrentPassword ? "bi-eye-slash" : "bi-eye"}`}
-                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                        ></i>
-                                    </div>
-                                </div>
-
-                                <div className="account-info-field">
-                                    <label>New Password</label>
-                                    <div className="password-input-wrapper">
-                                        <input
-                                            type={showNewPassword ? "text" : "password"}
-                                            value={passwordData.new_password}
-                                            onChange={(e) => setPasswordData({ ...passwordData, new_password: e.target.value })}
-                                            placeholder="Enter new password"
-                                        />
-                                        <i
-                                            className={`bi ${showNewPassword ? "bi-eye-slash" : "bi-eye"}`}
-                                            onClick={() => setShowNewPassword(!showNewPassword)}
-                                        ></i>
-                                    </div>
-                                </div>
-
-                                <div className="account-info-field">
-                                    <label>Confirm New Password</label>
-                                    <div className="password-input-wrapper">
-                                        <input
-                                            type={showConfirmPassword ? "text" : "password"}
-                                            value={passwordData.confirm_password}
-                                            onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-                                            placeholder="Confirm new password"
-                                        />
-                                        <i
-                                            className={`bi ${showConfirmPassword ? "bi-eye-slash" : "bi-eye"}`}
-                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        ></i>
-                                    </div>
-                                </div>
-
-                                <div className="account-info-actions">
-                                    <button type="submit" className="account-info-save-btn" disabled={savingPassword}>
-                                        {savingPassword && <span className="spinner-border spinner-border-sm me-2" role="status" />}
-                                        {savingPassword ? "Saving..." : "Update Password"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="account-info-cancel-btn"
-                                        onClick={() => {
-                                            setShowPasswordForm(false);
-                                            setPasswordData({ current_password: "", new_password: "", confirm_password: "" });
-                                            setPasswordError("");
-                                        }}
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
+                    {/* Change Password Button */}
+                    <button 
+                        className="account-change-password-btn" 
+                        onClick={() => setShowPasswordForm(true)}
+                    >
+                        <i className="bi bi-shield-lock-fill"></i>
+                        Change Password
+                    </button>
                 </div>
+            )}
+
+            {/* Change Password Modal */}
+            {showPasswordForm && (
+                <ChangePasswordModal
+                    user={user}
+                    onClose={() => setShowPasswordForm(false)}
+                />
             )}
         </div>
     );
