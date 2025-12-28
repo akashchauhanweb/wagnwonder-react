@@ -314,7 +314,6 @@ function AccountInfo() {
                 action: "CHANGE_PASSWORD",
                 session_id: localStorage.getItem("session_id"),
                 user_id: user.id,
-                forgot_redirect: false,
                 current_password: passwordData.current_password,
                 new_password: passwordData.new_password
             };
