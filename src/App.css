@@ -4556,6 +4556,91 @@ input[type="date"].hero-input:invalid {
     color: #D84A39;
 }
 
+/* Password Section */
+.account-password-section {
+    margin-top: 24px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 24px;
+}
+
+.account-password-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.account-password-header:hover {
+    background: #f1f5f9;
+}
+
+.account-password-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.account-password-title i {
+    color: #D84A39;
+}
+
+.account-password-form {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper input {
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    transition: border-color 0.2s;
+}
+
+.password-input-wrapper input:focus {
+    outline: none;
+    border-color: #D84A39;
+}
+
+.password-input-wrapper i {
+    position: absolute;
+    right: 14px;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.password-input-wrapper i:hover {
+    color: #64748b;
+}
+
+.account-info-success {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ecfdf5;
+    color: #059669;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
 /* ==================== CRECHE BOOKINGS ==================== */
 .creche-bookings {
     padding: 0;

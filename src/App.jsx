@@ -22,6 +22,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
 import ContactUs from './pages/ContactUs.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
 
 
 function App() {
@@ -36,7 +37,7 @@ function App() {
           <Route path="/booking-review" element={<BookingReview />} />
           <Route path="/payment-status" element={<PaymentStatus />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsConditions />} />

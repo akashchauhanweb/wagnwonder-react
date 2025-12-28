@@ -26,7 +26,7 @@ export const getVerificationEmailHtml = (userName, verificationCode) => `
               <h2 style="margin: 0 0 16px; color: #1a1a1a; font-size: 22px; font-weight: 600;">Verify Your Email</h2>
               <p style="margin: 0 0 24px; color: #6b7280; font-size: 15px; line-height: 1.6;">
                 Hi <strong style="color: #1a1a1a;">${userName}</strong>,<br><br>
-                Welcome to Wag N Wonder! Please use the verification code below to complete your registration.
+                Welcome to Wag N Wonder! Please use the verification code below.
               </p>
               
               <!-- Verification Code Box -->
