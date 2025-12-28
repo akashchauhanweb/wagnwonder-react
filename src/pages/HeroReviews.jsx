@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import meetaSharmaPhoto from "../assets/images/reviews/meeta-sharma.png";
 import jayeetaMitraPhoto from "../assets/images/reviews/jayeeta-mitra.png";
 
@@ -21,6 +22,14 @@ const REVIEWS = [
 
 function HeroReviews() {
     const navigate = useNavigate();
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        const session = localStorage.getItem("session_id");
+        const userData = localStorage.getItem("user_data");
+        setIsLoggedIn(!!(session && userData));
+    }, []);
+
     return (
         <section className="reviews-section">
             <div className="info-container">
@@ -54,8 +63,8 @@ function HeroReviews() {
 
                 <div className="reviews-cta">
                     <p>Your pet's comfort is our biggest reward.</p>
-                    <button className="cta-button" onClick={() => navigate('/signup')}>
-                        Join the Family
+                    <button className="cta-button" onClick={() => navigate(isLoggedIn ? "/account" : "/signup")}>
+                        {isLoggedIn ? "View your Account" : "Join the Family"}
                         <i className="bi bi-arrow-right"></i>
                     </button>
                 </div>
