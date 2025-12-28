@@ -24,6 +24,10 @@ function Account() {
         }
     }, [navigate]);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     const handleLogout = () => {
         localStorage.clear();
         navigate("/");
