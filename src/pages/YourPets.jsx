@@ -30,12 +30,11 @@ const YourPets = () => {
         const formData = new FormData(form);
 
         try {
-            // Get files
             let vaccineCardFile = formData.get("vaccine_card");
             let photoFile = formData.get("photo");
             vaccineCardFile = await imageCompressor(vaccineCardFile);
             photoFile = await imageCompressor(photoFile);
-            // Upload images
+
             const vaccineCardPath = vaccineCardFile
                 ? await uploadImageToS3(vaccineCardFile, "pets/")
                 : "";
@@ -44,7 +43,6 @@ const YourPets = () => {
                     ? await uploadImageToS3(photoFile, "pets/")
                     : "";
 
-            // Prepare payload
             const payload = {
                 action: "ADD_PET",
                 session_id: localStorage.getItem("session_id"),
@@ -59,20 +57,19 @@ const YourPets = () => {
                 vaccine_card_path: vaccineCardPath,
                 photo_path: photoPath,
             };
-            const result = await callServicesApi(payload)
+            const result = await callServicesApi(payload);
             if (!result.success && result.status_code === 498) {
                 alert("Session expired. Please login again.");
                 localStorage.clear();
-                window.location.href = "/login.html";
+                window.location.href = "/login";
                 return;
             }
 
             if (result.success) {
-                alert("Pet added successfully!");
                 localStorage.removeItem("pets");
                 form.reset();
                 setShowForm(false);
-                fetchPets(); // refresh pet list
+                fetchPets();
             } else {
                 alert("Failed to add pet: " + result.message);
             }
@@ -84,8 +81,8 @@ const YourPets = () => {
     };
 
     const handleDeletePet = async (petId) => {
-        setLoading(true);
         if (!window.confirm("Are you sure you want to delete this pet?")) return;
+        setLoading(true);
 
         try {
             const payload = {
@@ -93,20 +90,18 @@ const YourPets = () => {
                 session_id: localStorage.getItem("session_id"),
                 pet_id: petId,
             };
-            console.log(payload);
             const result = await callServicesApi(payload);
 
             if (!result.success && result.status_code === 498) {
                 alert("Session expired. Please login again.");
                 localStorage.clear();
-                window.location.href = "/login.html";
+                window.location.href = "/login";
                 return;
             }
 
             if (result.success) {
-                alert("Pet deleted successfully!");
                 localStorage.removeItem("pets");
-                fetchPets(); // refresh list
+                fetchPets();
             } else {
                 alert("Failed to delete pet: " + result.message);
             }
@@ -123,7 +118,6 @@ const YourPets = () => {
         let vaccineCardPath = editFormData.vaccine_card_path || "";
         let photoPath = editFormData.photo_path || "";
 
-        // 🧠 Upload if new file selected
         if (editFormData.vaccine_card instanceof File) {
             try {
                 const vaccineCardFile = await imageCompressor(editFormData.vaccine_card);
@@ -131,6 +125,7 @@ const YourPets = () => {
             } catch (error) {
                 console.error("Vaccine card compression failed:", error);
                 alert("Failed to upload vaccine card image.");
+                setLoading(false);
                 return;
             }
         }
@@ -142,9 +137,11 @@ const YourPets = () => {
             } catch (error) {
                 console.error("Photo compression failed:", error);
                 alert("Failed to upload pet photo.");
+                setLoading(false);
                 return;
             }
         }
+
         const payload = {
             action: "EDIT_PET",
             session_id: localStorage.getItem("session_id"),
@@ -162,18 +159,16 @@ const YourPets = () => {
         };
 
         try {
-            console.log(payload);
             const result = await callServicesApi(payload);
 
             if (!result.success && result.status_code === 498) {
                 alert("Session expired. Please login again.");
                 localStorage.clear();
-                window.location.href = "/login.html";
+                window.location.href = "/login";
                 return;
             }
 
             if (result.success) {
-                alert("Pet updated successfully!");
                 localStorage.removeItem("pets");
                 setEditPetId(null);
                 setEditFormData({});
@@ -188,10 +183,8 @@ const YourPets = () => {
         setLoading(false);
     };
 
-
     useEffect(() => {
         const cachedPets = localStorage.getItem("pets");
-
         if (cachedPets) {
             const parsed = JSON.parse(cachedPets);
             setFetchingPets(false);
@@ -204,13 +197,11 @@ const YourPets = () => {
     const fetchPets = async () => {
         setFetchingPets(true);
         try {
-            // Replace this with actual API call later
             const response = await callServicesApi({
                 action: "FETCH_PET_LIST",
                 session_id: localStorage.getItem("session_id")
-            })
+            });
             localStorage.setItem("pets", JSON.stringify(response.pet_list));
-            console.log(response.pet_list);
             setPets(response.pet_list);
         } catch (error) {
             console.error("Error fetching pets:", error);
@@ -218,411 +209,329 @@ const YourPets = () => {
         setFetchingPets(false);
     };
 
+    const startEdit = (pet) => {
+        setEditPetId(pet.id);
+        setBreedOptions(breeds[pet.type] || []);
+        setEditFormData({
+            ...pet,
+            vaccine_card_path: pet.vaccine_card_path || "",
+            photo_path: pet.photo_path || "",
+        });
+    };
+
     return (
-        <div className="container my-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                {/* <h2 className="mb-0">Your Pets</h2> */}
-                <h3 className="mb-4 fw-bold">Your Pets</h3>
-                <div className="position-relative">
-                    <div className="psition-absolute top-0 end-0 pe-2 pt-1">
-                        {showForm ? (
-                            <button
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() => setShowForm(false)}
-                            >
-                                Cancel
-                            </button>
-
-                        ) : (
-                            <i
-                                className="bi bi-plus-circle me-2 fs-4"
-                                onClick={() => setShowForm(!showForm)}
-                            ></i>
-
-                        )}
-                    </div>
-                </div>
+        <div className="your-pets">
+            <div className="pets-header">
+                <h2>Your Pets</h2>
+                {!showForm && (
+                    <button className="pets-add-btn" onClick={() => setShowForm(true)}>
+                        <i className="bi bi-plus-lg"></i>
+                        Add Pet
+                    </button>
+                )}
             </div>
 
+            {/* Add Pet Form */}
             {showForm && (
-                <form className="border rounded p-4 mb-4" onSubmit={handleAddPet}>
-                    <div className="row g-3">
-                        <div className="col-md-6">
-                            <label htmlFor="name" className="form-label">Pet Name</label>
-                            <input type="text" className="form-control" id="name" name="name" required />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="age" className="form-label">Age (in years)</label>
-                            <input type="number" className="form-control" id="age" name="age" min="0" max="30" required />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="type" className="form-label">Type</label>
-                            <select className="form-select" id="type" name="type" onChange={handleTypeChange} required>
-                                <option value="">Select Type</option>
-                                <option value="dog">Dog</option>
-                                <option value="cat">Cat</option>
-                                <option value="bird">Bird</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="breed" className="form-label">Breed</label>
-                            <select
-                                className="form-select"
-                                id="breed"
-                                name="breed"
-                                required
-                                disabled={breedOptions.length === 0}
-                            >
-                                <option value="">Select Breed</option>
-                                {breedOptions.map((breed, i) => (
-                                    <option key={i} value={breed}>{breed}</option>
-                                ))}
-                            </select>
-                        </div>
-
-
-                        <div className="col-md-6">
-                            <label htmlFor="weight" className="form-label">Weight (kg)</label>
-                            <select className="form-select" id="weight" name="weight" required>
-                                <option value="">Select Weight</option>
-                                <option value="below 15kgs">below 15kgs</option>
-                                <option value="above 15kgs and below 40kgs">15-40kgs</option>
-                                <option value="above 40kgs">above 40kgs</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="gender" className="form-label">Gender</label>
-                            <select className="form-select" id="gender" name="gender" required>
-                                <option value="">Select Gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="aggression" className="form-label">Aggression Level</label>
-                            <select className="form-select" id="aggression" name="aggression" required>
-                                <option value="">Select Level</option>
-                                <option value="low">Low</option>
-                                <option value="moderate">Moderate</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="vaccine_card" className="form-label">Vaccine Card (Image)</label>
-                            <input type="file" className="form-control" id="vaccine_card" name="vaccine_card" accept="image/*" required />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="photo" className="form-label">Pet Photo (Optional)</label>
-                            <input type="file" className="form-control" id="photo" name="photo" accept="image/*" />
-                        </div>
-                    </div>
-
-                    <div className="mt-4 col-12">
-                        <button
-                            type="submit"
-                            className="btn w-100"
-                            style={{ backgroundColor: "#471915", color: "#fff" }}
-                        >
-                            Add Pet
+                <div className="pets-form-card">
+                    <div className="pets-form-header">
+                        <h3>Add New Pet</h3>
+                        <button className="pets-form-close" onClick={() => { setShowForm(false); window.scrollTo(0, 0); }}>
+                            <i className="bi bi-x-lg"></i>
                         </button>
                     </div>
-                </form>
-
+                    <form onSubmit={handleAddPet}>
+                        <div className="pets-form-grid">
+                            <div className="pets-field">
+                                <label>Pet Name *</label>
+                                <input type="text" name="name" placeholder="Enter pet name" required />
+                            </div>
+                            <div className="pets-field">
+                                <label>Age (years) *</label>
+                                <input type="number" name="age" min="0" max="30" placeholder="Age" required />
+                            </div>
+                            <div className="pets-field">
+                                <label>Type *</label>
+                                <select name="type" onChange={handleTypeChange} required>
+                                    <option value="">Select Type</option>
+                                    <option value="dog">Dog</option>
+                                    <option value="cat">Cat</option>
+                                    <option value="bird">Bird</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div className="pets-field">
+                                <label>Breed *</label>
+                                <select name="breed" required disabled={breedOptions.length === 0}>
+                                    <option value="">Select Breed</option>
+                                    {breedOptions.map((breed, i) => (
+                                        <option key={i} value={breed}>{breed}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="pets-field">
+                                <label>Weight *</label>
+                                <select name="weight" required>
+                                    <option value="">Select Weight</option>
+                                    <option value="below 15kgs">Below 15 kgs</option>
+                                    <option value="above 15kgs and below 40kgs">15 - 40 kgs</option>
+                                    <option value="above 40kgs">Above 40 kgs</option>
+                                </select>
+                            </div>
+                            <div className="pets-field">
+                                <label>Gender *</label>
+                                <select name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                            </div>
+                            <div className="pets-field">
+                                <label>Aggression Level *</label>
+                                <select name="aggression" required>
+                                    <option value="">Select Level</option>
+                                    <option value="low">Low</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div className="pets-field">
+                                <label>Vaccine Card *</label>
+                                <input type="file" name="vaccine_card" accept="image/*" required />
+                            </div>
+                            <div className="pets-field full-width">
+                                <label>Pet Photo (Optional)</label>
+                                <input type="file" name="photo" accept="image/*" />
+                            </div>
+                        </div>
+                        <div className="pets-form-actions">
+                            <button type="submit" className="pets-submit-btn">
+                                <i className="bi bi-plus-circle"></i>
+                                Add Pet
+                            </button>
+                            <button type="button" className="pets-cancel-btn" onClick={() => { setShowForm(false); window.scrollTo(0, 0); }}>
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
             )}
 
-
+            {/* Pet List */}
             {fetchingPets ? (
-                <div className="text-center my-4">
-                    <div className="spinner-border" role="status" style={{ color: "#471915" }} />
+                <div className="pets-loading">
+                    <div className="spinner-border" role="status" />
                 </div>
             ) : pets.length === 0 ? (
-                <div className="alert alert-info">You have not added any pets yet.</div>
+                <div className="pets-empty">
+                    <div className="pets-empty-icon">
+                        <i className="bi bi-heart"></i>
+                    </div>
+                    <h3>No pets yet</h3>
+                    <p>Add your furry friends to get started with bookings.</p>
+                    <button onClick={() => setShowForm(true)}>
+                        <i className="bi bi-plus-lg"></i>
+                        Add Your First Pet
+                    </button>
+                </div>
             ) : (
-                <div className="row g-4">
+                <div className="pets-grid">
                     {pets.map((pet) => (
-                        <div className="col-lg-6" key={pet.id}>
-                            <div
-                                className={`card shadow-sm position-relative p-4`}
-                                style={editPetId === pet.pet_id ? { minHeight: "auto", paddingBottom: "2rem" } : {}}
-                            >
-                                {/* Name + Icons */}
-                                <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
-
-                                    <div className="d-flex align-items-center">
-                                        {pet.photo_path ? (
-                                            <img
-                                                src={pet.photo_path}
-                                                alt={pet.name}
-                                                className="rounded-circle me-3"
-                                                style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                        <div key={pet.id} className={`pet-card ${editPetId === pet.id ? 'editing' : ''}`}>
+                            {editPetId === pet.id ? (
+                                /* Edit Mode */
+                                <form onSubmit={(e) => handleSaveEdit(e, pet.id)} className="pet-edit-form">
+                                    <div className="pet-edit-header">
+                                        <h4>Edit Pet</h4>
+                                        <button type="button" onClick={() => { setEditPetId(null); window.scrollTo(0, 0); }}>
+                                            <i className="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    <div className="pets-form-grid">
+                                        <div className="pets-field">
+                                            <label>Name</label>
+                                            <input
+                                                type="text"
+                                                value={editFormData.name || ""}
+                                                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                                             />
-                                        ) : (
-                                            <div
-                                                className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3"
-                                                style={{ width: "50px", height: "50px", fontSize: "20px" }}
-                                            >
-                                                {pet.name.charAt(0).toUpperCase()}
-                                            </div>
-                                        )}
-                                        <h4 className="mb-0">{pet.name}</h4>
-                                    </div>
-
-                                    <div className="d-flex align-items-center gap-0">
-                                        {editPetId !== pet.id && (
-                                            <i
-                                                className="bi bi-pencil-square fs-5 me-3 text-dark"
-                                                role="button"
-                                                title="Edit"
-                                                onClick={() => {
-                                                    setEditPetId(pet.id);
-                                                    setBreedOptions(breeds[pet.type]);
-                                                    setEditFormData({
-                                                        ...pet,
-                                                        vaccine_card_path: pet.vaccine_card_path || "",
-                                                        photo_path: pet.photo_path || "",
-                                                    });
-                                                }}
-                                            ></i>
-                                        )}
-
-                                        <i
-                                            className="bi bi-trash"
-                                            role="button"
-                                            title="Delete"
-                                            style={{ fontSize: "1.3rem", color: "black", backgroundColor: "white", borderRadius: "4px", padding: "4px" }}
-                                            onClick={() => handleDeletePet(pet.id)}
-                                        ></i>
-                                    </div>
-
-                                </div>
-
-
-                                {/* Info */}
-                                <div className="mt-4">
-                                    <p className="mb-1 text-capitalize"><strong>Type:</strong> {pet.type}</p>
-                                    <p className="mb-1 text-capitalize"><strong>Breed:</strong> {pet.breed}</p>
-                                    <p className="mb-1 text-capitalize"><strong>Age:</strong> {pet.age}</p>
-                                    <p className="mb-1 text-capitalize"><strong>Gender:</strong> {pet.gender}</p>
-                                    {/* Add more fields as needed */}
-                                </div>
-                                {editPetId === pet.id && (
-                                    <form onSubmit={(e) => handleSaveEdit(e, pet.id)} className="mt-3 border-top pt-3">
-                                        <div className="row g-3">
-                                            <div className="col-md-6">
-                                                <label className="form-label">Name</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={editFormData.name || ""}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <label className="form-label">Age</label>
-                                                <input
-                                                    type="number"
-                                                    className="form-control"
-                                                    min="0"
-                                                    max="30"
-                                                    value={editFormData.age || ""}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, age: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <label className="form-label">Type</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={editFormData.type || ""}
-                                                    onChange={(e) => {
-                                                        const newType = e.target.value;
-                                                        setEditFormData({ ...editFormData, type: newType, breed: "" });
-                                                        const breeds = {
-                                                            dog: ["Labrador", "German Shepherd", "Golden Retriever", "Poodle", "Bulldog", "Beagle"],
-                                                            cat: ["Indian", "Persian", "Siamese", "Maine Coon", "Ragdoll", "Bengal", "Sphynx", "British Shorthair", "Scottish Fold", "Abyssinian", "Norwegian Forest Cat", "American Shorthair", "Russian Blue", "Devon Rex"]
-                                                        };
-                                                        setBreedOptions(breeds[newType] || []);
-                                                    }}
-                                                >
-                                                    <option value="">Select Type</option>
-                                                    <option value="dog">Dog</option>
-                                                    <option value="cat">Cat</option>
-                                                    <option value="bird">Bird</option>
-                                                    <option value="other">Other</option>
-                                                </select>
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <label className="form-label">Breed</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={editFormData.breed || ""}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, breed: e.target.value })}
-                                                    disabled={!(editFormData.type === "dog" || editFormData.type === "cat")}
-                                                >
-                                                    <option value="">Select Breed</option>
-                                                    {breedOptions.map((breed, i) => (
-                                                        <option key={i} value={breed}>{breed}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <label className="form-label">Weight</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={editFormData.weight || ""}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, weight: e.target.value })}
-                                                >
-                                                    <option value="">Select Weight</option>
-                                                    <option value="below 15kgs">below 15kgs</option>
-                                                    <option value="above 15kgs and below 40kgs">15-40kgs</option>
-                                                    <option value="above 40kgs">above 40kgs</option>
-                                                </select>
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <label className="form-label">Gender</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={editFormData.gender || ""}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
-                                                >
-                                                    <option value="">Select Gender</option>
-                                                    <option value="male">Male</option>
-                                                    <option value="female">Female</option>
-                                                </select>
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <label className="form-label">Aggression Level</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={editFormData.aggression || ""}
-                                                    onChange={(e) => setEditFormData({ ...editFormData, aggression: e.target.value })}
-                                                >
-                                                    <option value="">Select Level</option>
-                                                    <option value="low">Low</option>
-                                                    <option value="moderate">Moderate</option>
-                                                    <option value="high">High</option>
-                                                </select>
-                                            </div>
-
-                                            {editFormData.vaccine_card_path ? (
-                                                <div className="col-md-6">
-                                                    <label className="form-label d-flex justify-content-between">
-                                                        <span>Current Vaccine Card</span>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-outline-danger ms-2"
-                                                            onClick={() =>
-                                                                setEditFormData({
-                                                                    ...editFormData,
-                                                                    vaccine_card_path: "",
-                                                                    vaccine_card: null
-                                                                })
-                                                            }
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    </label>
-                                                    <img
-                                                        src={editFormData.vaccine_card_path}
-                                                        alt="Vaccine Card"
-                                                        style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "6px" }}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="col-md-6">
-                                                    <label className="form-label">Upload New Vaccine Card</label>
-                                                    <input
-                                                        type="file"
-                                                        className="form-control"
-                                                        accept="image/*"
-                                                        onChange={(e) =>
-                                                            setEditFormData({ ...editFormData, vaccine_card: e.target.files[0] })
-                                                        }
-                                                    />
-                                                </div>
-                                            )}
-
-
-                                            {editFormData.photo_path ? (
-                                                <div className="col-md-6">
-                                                    <label className="form-label d-flex justify-content-between">
-                                                        <span>Current Pet Photo</span>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-outline-danger ms-2"
-                                                            onClick={() =>
-                                                                setEditFormData({
-                                                                    ...editFormData,
-                                                                    photo_path: "", // clear existing image
-                                                                    photo: null     // clear file too
-                                                                })
-                                                            }
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    </label>
-                                                    <img
-                                                        src={editFormData.photo_path}
-                                                        alt="Pet"
-                                                        style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "6px" }}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="col-md-6">
-                                                    <label className="form-label">Upload New Pet Photo</label>
-                                                    <input
-                                                        type="file"
-                                                        className="form-control"
-                                                        accept="image/*"
-                                                        onChange={(e) =>
-                                                            setEditFormData({ ...editFormData, photo: e.target.files[0] })
-                                                        }
-                                                    />
-                                                </div>
-                                            )}
-
-                                            <div className="col-12 text-end">
-                                                <button
-                                                    type="submit"
-                                                    className="btn btn-sm me-2"
-                                                    style={{ backgroundColor: "#471915", color: "#fff" }}
-                                                >
-                                                    Save
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    onClick={() => setEditPetId(null)}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
                                         </div>
-                                    </form>
-                                )}
-
-
-                            </div>
+                                        <div className="pets-field">
+                                            <label>Age</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="30"
+                                                value={editFormData.age || ""}
+                                                onChange={(e) => setEditFormData({ ...editFormData, age: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="pets-field">
+                                            <label>Type</label>
+                                            <select
+                                                value={editFormData.type || ""}
+                                                onChange={(e) => {
+                                                    const newType = e.target.value;
+                                                    setEditFormData({ ...editFormData, type: newType, breed: "" });
+                                                    setBreedOptions(breeds[newType] || []);
+                                                }}
+                                            >
+                                                <option value="">Select Type</option>
+                                                <option value="dog">Dog</option>
+                                                <option value="cat">Cat</option>
+                                                <option value="bird">Bird</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div className="pets-field">
+                                            <label>Breed</label>
+                                            <select
+                                                value={editFormData.breed || ""}
+                                                onChange={(e) => setEditFormData({ ...editFormData, breed: e.target.value })}
+                                                disabled={!(editFormData.type === "dog" || editFormData.type === "cat")}
+                                            >
+                                                <option value="">Select Breed</option>
+                                                {breedOptions.map((breed, i) => (
+                                                    <option key={i} value={breed}>{breed}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="pets-field">
+                                            <label>Weight</label>
+                                            <select
+                                                value={editFormData.weight || ""}
+                                                onChange={(e) => setEditFormData({ ...editFormData, weight: e.target.value })}
+                                            >
+                                                <option value="">Select Weight</option>
+                                                <option value="below 15kgs">Below 15 kgs</option>
+                                                <option value="above 15kgs and below 40kgs">15 - 40 kgs</option>
+                                                <option value="above 40kgs">Above 40 kgs</option>
+                                            </select>
+                                        </div>
+                                        <div className="pets-field">
+                                            <label>Gender</label>
+                                            <select
+                                                value={editFormData.gender || ""}
+                                                onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
+                                            >
+                                                <option value="">Select Gender</option>
+                                                <option value="male">Male</option>
+                                                <option value="female">Female</option>
+                                            </select>
+                                        </div>
+                                        <div className="pets-field">
+                                            <label>Aggression</label>
+                                            <select
+                                                value={editFormData.aggression || ""}
+                                                onChange={(e) => setEditFormData({ ...editFormData, aggression: e.target.value })}
+                                            >
+                                                <option value="">Select Level</option>
+                                                <option value="low">Low</option>
+                                                <option value="moderate">Moderate</option>
+                                                <option value="high">High</option>
+                                            </select>
+                                        </div>
+                                        <div className="pets-field">
+                                            {editFormData.vaccine_card_path ? (
+                                                <div className="pets-image-preview">
+                                                    <label>Vaccine Card</label>
+                                                    <img src={editFormData.vaccine_card_path} alt="Vaccine Card" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditFormData({ ...editFormData, vaccine_card_path: "", vaccine_card: null })}
+                                                    >
+                                                        <i className="bi bi-trash"></i> Remove
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <label>Vaccine Card</label>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => setEditFormData({ ...editFormData, vaccine_card: e.target.files[0] })}
+                                                    />
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="pets-field">
+                                            {editFormData.photo_path ? (
+                                                <div className="pets-image-preview">
+                                                    <label>Pet Photo</label>
+                                                    <img src={editFormData.photo_path} alt="Pet" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditFormData({ ...editFormData, photo_path: "", photo: null })}
+                                                    >
+                                                        <i className="bi bi-trash"></i> Remove
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <label>Pet Photo</label>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => setEditFormData({ ...editFormData, photo: e.target.files[0] })}
+                                                    />
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="pets-form-actions">
+                                        <button type="submit" className="pets-submit-btn">Save Changes</button>
+                                        <button type="button" className="pets-cancel-btn" onClick={() => { setEditPetId(null); window.scrollTo(0, 0); }}>Cancel</button>
+                                    </div>
+                                </form>
+                            ) : (
+                                /* Display Mode */
+                                <>
+                                    <div className="pet-card-header">
+                                        <div className="pet-avatar">
+                                            {pet.photo_path ? (
+                                                <img src={pet.photo_path} alt={pet.name} />
+                                            ) : (
+                                                <span>{pet.name.charAt(0).toUpperCase()}</span>
+                                            )}
+                                        </div>
+                                        <div className="pet-header-info">
+                                            <h3>{pet.name}</h3>
+                                            <span className="pet-type-badge">{pet.type}</span>
+                                        </div>
+                                        <div className="pet-actions">
+                                            <button onClick={() => startEdit(pet)} title="Edit">
+                                                <i className="bi bi-pencil"></i>
+                                            </button>
+                                            <button onClick={() => handleDeletePet(pet.id)} title="Delete" className="delete">
+                                                <i className="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="pet-details">
+                                        <div className="pet-detail-item">
+                                            <span className="label">Breed</span>
+                                            <span className="value">{pet.breed}</span>
+                                        </div>
+                                        <div className="pet-detail-item">
+                                            <span className="label">Age</span>
+                                            <span className="value">{pet.age} {pet.age === 1 ? 'year' : 'years'}</span>
+                                        </div>
+                                        <div className="pet-detail-item">
+                                            <span className="label">Gender</span>
+                                            <span className="value">{pet.gender}</span>
+                                        </div>
+                                        <div className="pet-detail-item">
+                                            <span className="label">Weight</span>
+                                            <span className="value">{pet.weight}</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ))}
                 </div>
             )}
         </div>
-
     );
 };
 

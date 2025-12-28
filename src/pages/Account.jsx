@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
 
+const MENU_ITEMS = [
+    { path: "/account/info", icon: "bi-person-fill", label: "Personal Info" },
+    { path: "/account/pets", icon: "bi-heart-pulse-fill", label: "Your Pets" },
+    { path: "/account/creche-bookings", icon: "bi-house-heart-fill", label: "Creche Bookings" },
+    { path: "/account/orders", icon: "bi-bag-check-fill", label: "Orders", comingSoon: true },
+    { path: "/account/addresses", icon: "bi-geo-alt-fill", label: "Addresses", comingSoon: true },
+];
+
 function Account() {
     const navigate = useNavigate();
-    const [_, setUser] = useState(null);
+    const location = useLocation();
+    const [user, setUser] = useState(null);
+
     useEffect(() => {
         const session = localStorage.getItem("session_id");
         const userData = localStorage.getItem("user_data");
@@ -12,67 +22,83 @@ function Account() {
         } else {
             setUser(JSON.parse(userData));
         }
-    }, []);
+    }, [navigate]);
 
-    function handleLogout() {
+    const handleLogout = () => {
         localStorage.clear();
         navigate("/");
-    }
+    };
 
-    const location = useLocation();
-    const isBaseAccountRoute = location.pathname === "/account";
+    const isBaseRoute = location.pathname === "/account";
+    const isAdmin = user?.user_type === "admin";
 
     return (
-        <div className="container my-4">
-            <div className="row border">
+        <div className="account-page">
+            {/* Header */}
+            <div className="account-header">
+                <div className="account-header-content">
+                    <button className="account-back-btn" onClick={() => navigate("/")}>
+                        <i className="bi bi-arrow-left"></i>
+                    </button>
+                    <h1>My Account</h1>
+                </div>
+            </div>
+
+            <div className="account-container">
                 {/* Sidebar */}
-                <div className={`col-md-4 border-md-end ${isBaseAccountRoute ? 'd-block' : 'd-none d-md-block'}`}>
-                    <ul className="list-group list-group-flush">
-                        <Link to="/account/orders" className="list-group-item list-group-item-action">
-                            <i className="bi bi-bag-check me-2"></i> Your Orders
-                        </Link>
-                        <Link to="/account/creche-bookings" className="list-group-item list-group-item-action">
-                            <i className="bi bi-house-heart me-2"></i> Your Creche Bookings
-                        </Link>
-                        <Link to="/account/pets" className="list-group-item list-group-item-action">
-                            <i className="bi bi-heart-pulse me-2"></i> Your Pets
-                        </Link>
-                        <Link to="/account/info" className="list-group-item list-group-item-action">
-                            <i className="bi bi-person me-2"></i> Your Personal Info
-                        </Link>
-                        <Link to="/account/addresses" className="list-group-item list-group-item-action">
-                            <i className="bi bi-geo-alt me-2"></i> Your Addresses
-                        </Link>
-                        <Link to="/account/password" className="list-group-item list-group-item-action">
-                            <i className="bi bi-shield-lock me-2"></i> Change Password
-                        </Link>
-                        {JSON.parse(localStorage.getItem("user_data"))?.user_type === "admin" && (
-                            <Link to="/admin" className="list-group-item list-group-item-action">
-                                <i className="bi bi-shield-lock me-2"></i> Admin Panel
+                <aside className={`account-sidebar ${isBaseRoute ? "" : "hide-mobile"}`}>
+                    {user && (
+                        <div className="account-user-card">
+                            <div className="account-avatar">
+                                {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
+                            </div>
+                            <div className="account-user-info">
+                                <h3>{user.first_name} {user.last_name}</h3>
+                                <p>{user.email}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <nav className="account-nav">
+                        {MENU_ITEMS.map((item) => (
+                            <Link
+                                key={item.path}
+                                to={item.comingSoon ? "#" : item.path}
+                                className={`account-nav-item ${location.pathname === item.path ? "active" : ""} ${item.comingSoon ? "disabled" : ""}`}
+                                onClick={(e) => item.comingSoon && e.preventDefault()}
+                            >
+                                <i className={`bi ${item.icon}`}></i>
+                                <span>{item.label}</span>
+                                {item.comingSoon && <span className="coming-soon-badge">Soon</span>}
+                            </Link>
+                        ))}
+
+                        {isAdmin && (
+                            <Link to="/admin" className="account-nav-item">
+                                <i className="bi bi-shield-lock-fill"></i>
+                                <span>Admin Panel</span>
                             </Link>
                         )}
 
-                        <li
-                            className="list-group-item list-group-item-action text-danger"
-                            onClick={handleLogout}
-                            style={{ cursor: "pointer" }}
-                        >
-                            <i className="bi bi-box-arrow-right me-2"></i> Logout
-                        </li>
+                        <button className="account-nav-item logout" onClick={handleLogout}>
+                            <i className="bi bi-box-arrow-right"></i>
+                            <span>Logout</span>
+                        </button>
+                    </nav>
+                </aside>
 
-                    </ul>
-                </div>
-
-                {/* Content Area */}
-                <div className={`col-md-8 ${isBaseAccountRoute ? 'd-md-block d-none' : 'd-block'}`}>
-                    <div className="p-4 text-muted">
-                        <Outlet />
-                    </div>
-                </div>
-
+                {/* Content */}
+                <main className={`account-content ${isBaseRoute ? "hide-mobile" : ""}`}>
+                    {!isBaseRoute && (
+                        <button className="account-content-back" onClick={() => { navigate("/account"); window.scrollTo(0, 0); }}>
+                            <i className="bi bi-arrow-left"></i>
+                            Back to menu
+                        </button>
+                    )}
+                    <Outlet />
+                </main>
             </div>
         </div>
-
     );
 }
 
