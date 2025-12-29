@@ -72,6 +72,7 @@ export default function PaymentStatus() {
                     const res = await callServicesApi(bookingPayload);
                     console.log(res);
                     localStorage.removeItem("pending_booking");
+                    localStorage.removeItem("bookings");
                 } catch (e) {
                     console.error("Failed to create booking entry:", e);
                 }

@@ -6,28 +6,37 @@ export default function CrecheBookings() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        async function fetchBookings() {
-            try {
-                const user = JSON.parse(localStorage.getItem("user_data") || "{}");
-                const payload = {
-                    action: "GET_BOOKINGS",
-                    session_id: localStorage.getItem("session_id"),
-                    user_id: user.id,
-                };
-                const res = await callServicesApi(payload);
-                if (res.success) {
-                    setBookings(res.bookings);
-                } else {
-                    setError(res.message || "Failed to fetch bookings.");
-                }
-            } catch {
-                setError("Error fetching bookings.");
-            } finally {
-                setLoading(false);
+    const fetchBookings = async () => {
+        setLoading(true);
+        try {
+            const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const payload = {
+                action: "GET_BOOKINGS",
+                session_id: localStorage.getItem("session_id"),
+                user_id: user.id,
+            };
+            const res = await callServicesApi(payload);
+            if (res.success) {
+                setBookings(res.bookings);
+                localStorage.setItem("bookings", JSON.stringify(res.bookings));
+            } else {
+                setError(res.message || "Failed to fetch bookings.");
             }
+        } catch {
+            setError("Error fetching bookings.");
+        } finally {
+            setLoading(false);
         }
-        fetchBookings();
+    };
+
+    useEffect(() => {
+        const cachedBookings = localStorage.getItem("bookings");
+        if (cachedBookings) {
+            setBookings(JSON.parse(cachedBookings));
+            setLoading(false);
+        } else {
+            fetchBookings();
+        }
     }, []);
 
     const formatDate = (dateStr) => {
