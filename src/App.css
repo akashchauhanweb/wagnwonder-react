@@ -6055,7 +6055,7 @@ input[type="date"].hero-input:invalid {
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 16px 20px;
     position: sticky;
-    top: 62px;
+    top: 0;
     z-index: 50;
 }
 
@@ -6090,6 +6090,25 @@ input[type="date"].hero-input:invalid {
     font-size: 1.25rem;
     font-weight: 600;
     margin: 0;
+}
+
+.admin-header-branding {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-header-branding span {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 400;
+}
+
+.admin-header-branding img {
+    height: 28px;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
 }
 
 .admin-container {
@@ -9393,5 +9412,25 @@ input[type="date"].hero-input:invalid {
 
     .attribute-entry .remove-btn {
         align-self: flex-end;
+    }
+}
+
+/* Admin Layout - No Header/Footer */
+.admin-layout {
+    min-height: 100vh;
+}
+
+.admin-layout .admin-page {
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+.admin-layout .admin-small-screen-message {
+    min-height: 100vh;
+}
+
+@media (max-width: 576px) {
+    .admin-layout .admin-small-screen-message {
+        min-height: 100vh;
     }
 }

@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './assets/components/Header.jsx';
 import Hero from './pages/Hero.jsx';
 import Footer from './assets/components/Footer.jsx';
@@ -25,43 +25,50 @@ import ContactUs from './pages/ContactUs.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 
 
+function AppContent() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  return (
+    <div className={isAdminRoute ? 'admin-layout' : ''}>
+      {!isAdminRoute && <Header />}
+      <Routes>
+        <Route path="" element={<Hero />} />
+        <Route path="/search-results" element={<SearchResults />} />
+        <Route path="/search-results/:kennelId" element={<SearchDetails />} />
+        <Route path="/booking-review" element={<BookingReview />} />
+        <Route path="/payment-status" element={<PaymentStatus />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsConditions />} />
+        <Route path="/refund" element={<RefundPolicy />} />
+        <Route path="/contact" element={<ContactUs />} />
+        <Route path="/account" element={<Account />}>
+          <Route path="info" element={<AccountInfo />} />
+          <Route path="pets" element={<YourPets />} />
+          <Route path="creche-bookings" element={<CrecheBookings />} />
+        </Route>
+        <Route path="/admin" element={<AdminPage />}>
+          <Route path="manage-products" element={<ManageProducts />} />
+          <Route path="manage-users" element={<ManageUsers />} />
+          <Route path="manage-kennels" element={<ManageKennels />} />
+          <Route path="manage-bookings" element={<ManageBookings />} />
+        </Route>
+      </Routes>
+
+      {!isAdminRoute && <Footer />}
+    </div>
+  );
+}
+
 function App() {
   return (
-    <>
-      <Router>
-        <Header />
-        <Routes>
-          <Route path="" element={<Hero />} />
-          <Route path="/search-results" element={<SearchResults />} />
-          <Route path="/search-results/:kennelId" element={<SearchDetails />} />
-          <Route path="/booking-review" element={<BookingReview />} />
-          <Route path="/payment-status" element={<PaymentStatus />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<TermsConditions />} />
-          <Route path="/refund" element={<RefundPolicy />} />
-          <Route path="/contact" element={<ContactUs />} />
-          <Route path="/account" element={<Account />}>
-            <Route path="info" element={<AccountInfo />} />
-            <Route path="pets" element={<YourPets />} />
-            <Route path="creche-bookings" element={<CrecheBookings />} />
-          </Route>
-          <Route path="/admin" element={<AdminPage />}>
-            <Route path="manage-products" element={<ManageProducts />} />
-            <Route path="manage-users" element={<ManageUsers />} />
-            <Route path="manage-kennels" element={<ManageKennels />} />
-            <Route path="manage-bookings" element={<ManageBookings />} />
-          </Route>
-        </Routes>
-
-        <Footer />
-      </Router>
-
-
-    </>
-  )
+    <Router>
+      <AppContent />
+    </Router>
+  );
 }
 
 export default App;
