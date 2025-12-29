@@ -4641,6 +4641,34 @@ input[type="date"].hero-input:invalid {
     font-size: 0.9rem;
 }
 
+.account-change-password-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px 20px;
+    margin-top: 8px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.account-change-password-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.account-change-password-btn i {
+    font-size: 1.1rem;
+    color: #D84A39;
+}
+
 /* ==================== CRECHE BOOKINGS ==================== */
 .creche-bookings {
     padding: 0;
@@ -5794,30 +5822,141 @@ input[type="date"].hero-input:invalid {
     margin-top: 4px;
 }
 
-.account-change-password-btn {
+.change-password-forgot-link {
+    text-align: center;
+    margin-top: -8px;
+}
+
+.change-password-forgot-link a {
+    font-size: 0.85rem;
+    color: #D84A39;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.change-password-forgot-link a:hover {
+    color: #471915;
+    text-decoration: underline;
+}
+
+.change-password-verify-content {
+    padding: 24px;
+    text-align: center;
+}
+
+.verify-description {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.verify-description strong {
+    color: #1e293b;
+}
+
+.change-password-code-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.change-password-code-input {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    color: #1e293b;
+    transition: border-color 0.2s;
+}
+
+.change-password-code-input:focus {
+    outline: none;
+    border-color: #D84A39;
+}
+
+.change-password-resend {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.change-password-resend span {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.change-password-resend button {
+    background: none;
+    border: none;
+    color: #D84A39;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.change-password-resend button:hover:not(:disabled) {
+    color: #471915;
+    text-decoration: underline;
+}
+
+.change-password-resend button:disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.change-password-back-btn {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    gap: 8px;
     width: 100%;
-    padding: 16px 20px;
-    margin-top: 8px;
-    background: #f8fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #475569;
+    padding: 12px;
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: color 0.2s;
 }
 
-.account-change-password-btn:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #334155;
+.change-password-back-btn:hover {
+    color: #1e293b;
 }
 
-.account-change-password-btn i {
-    font-size: 1.1rem;
-    color: #D84A39;
+.change-password-input-wrapper.input-error {
+    border-color: #dc2626;
+}
+
+.change-password-input-wrapper.input-error input {
+    border-color: #dc2626;
+}
+
+.change-password-input-wrapper.input-success input {
+    border-color: #22c55e;
+}
+
+.add-pet-field .field-hint.error {
+    color: #dc2626;
+}
+
+.add-pet-field .field-hint.success {
+    color: #22c55e;
+}
+
+@media (max-width: 576px) {
+    .change-password-code-input {
+        width: 42px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
 }
