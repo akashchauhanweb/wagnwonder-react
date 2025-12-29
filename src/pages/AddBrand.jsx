@@ -106,132 +106,84 @@ const AddBrand = () => {
     };
 
     return (
-        <>
-            <h5 className="card-title mb-3">Add Brand</h5>
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Brand Name</label>
-                    <div className="input-group">
-                        <span className="input-group-text">
-                            <i className="bi bi-tag"></i>
-                        </span>
+        <div className="add-layer-section">
+            <div className="layer-add-form">
+                <h5>Add New Brand</h5>
+                <form onSubmit={handleSubmit} className="add-inline-form">
+                    <div className="filter-input-wrapper">
+                        <i className="bi bi-tag"></i>
                         <input
                             type="text"
-                            className="form-control"
                             placeholder="Enter brand name"
                             value={brandName}
                             onChange={(e) => setBrandName(e.target.value)}
                             disabled={brandLoad}
                         />
-                        <button
-                            className="btn"
-                            type="submit"
-                            disabled={brandLoad}
-                            style={{
-                                backgroundColor: "#471915",
-                                color: "#fff",
-                                opacity: brandLoad ? 0.65 : 1,
-                                cursor: brandLoad ? "not-allowed" : "pointer",
-                            }}
-                        >
-                            {brandLoad ? "Adding..." : "Add"}
-                        </button>
+                    </div>
+                    <button type="submit" disabled={brandLoad}>
+                        {brandLoad ? "Adding..." : "Add Brand"}
+                    </button>
+                </form>
 
+                {errorMsg && (
+                    <div className="manage-products-alert error">
+                        <i className="bi bi-exclamation-circle"></i>
+                        <span>{errorMsg}</span>
+                        <button onClick={() => setErrorMsg("")}><i className="bi bi-x"></i></button>
+                    </div>
+                )}
+                {successMsg && (
+                    <div className="manage-products-alert success">
+                        <i className="bi bi-check-circle"></i>
+                        <span>{successMsg}</span>
+                        <button onClick={() => setSuccessMsg("")}><i className="bi bi-x"></i></button>
+                    </div>
+                )}
+            </div>
+
+            <div className="layer-list-section">
+                <div className="layer-list-header">
+                    <h5>Existing Brands</h5>
+                    <div className="filter-input-wrapper">
+                        <i className="bi bi-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Search brands..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
-                {errorMsg && (
-                    <div className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                        <div>{errorMsg}</div>
-                        <button
-                            type="button"
-                            className="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                            onClick={() => setErrorMsg("")}
-                        ></button>
+
+                {fetchingBrands ? (
+                    <div className="manage-products-loading">
+                        <div className="spinner-border" role="status" />
+                    </div>
+                ) : brandList.length === 0 ? (
+                    <div className="manage-products-empty small">
+                        <i className="bi bi-tag"></i>
+                        <p>No brands available</p>
+                    </div>
+                ) : (
+                    <div className="layer-items-list">
+                        {brandList
+                            // eslint-disable-next-line no-unused-vars
+                            .filter(([id, name]) => name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(([id, name]) => (
+                                <div key={id} className="layer-item">
+                                    <div className="layer-item-info">
+                                        <span className="item-id">#{id}</span>
+                                        <span className="item-name">{name}</span>
+                                    </div>
+                                    <button className="delete-btn" onClick={() => handleDeleteBrand(id)}>
+                                        <i className="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            ))}
                     </div>
                 )}
-
-                {successMsg && (
-                    <div className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                        <div>{successMsg}</div>
-                        <button
-                            type="button"
-                            className="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                            onClick={() => setSuccessMsg("")}
-                        ></button>
-                    </div>
-                )}
-
-            </form>
-            <hr className="my-4" />
-
-            <h5>Existing Brands</h5>
-
-            <div className="mb-3">
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search brand..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
             </div>
-
-            <div className="table-responsive">
-                <table className="table table-sm table-bordered align-middle">
-                    <thead className="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Brand Name</th>
-                            <th className="text-end" style={{ width: "1%" }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {fetchingBrands ? (
-                            <tr>
-                                <td colSpan="3" className="text-center py-4">
-                                    <div
-                                        className="spinner-border"
-                                        role="status"
-                                        style={{ borderColor: "#471915", borderRightColor: "transparent" }}
-                                    />
-                                </td>
-                            </tr>
-                        ) : brandList.length === 0 ? (
-                            <tr>
-                                <td colSpan="3" className="text-center text-muted">
-                                    No brands available
-                                </td>
-                            </tr>
-                        ) : (
-                            brandList
-                                .filter(([id, name]) =>  //eslint-disable-line
-                                    name.toLowerCase().includes(searchTerm.toLowerCase())
-                                )
-                                .map(([id, name]) => (
-                                    <tr key={id}>
-                                        <td>{id}</td>
-                                        <td>{name}</td>
-                                        <td className="text-end">
-                                            <button
-                                                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
-                                                onClick={() => handleDeleteBrand(id)}
-                                            >
-                                                <i className="bi bi-trash me-1"></i>
-                                                Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </>
-
+        </div>
     );
 };
 

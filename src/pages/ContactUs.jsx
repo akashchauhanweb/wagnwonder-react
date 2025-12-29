@@ -267,15 +267,15 @@ function ContactUs() {
                     <div className="contact-social">
                         <h3>Follow Us</h3>
                         <div className="contact-social-links">
-                            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+                            <a href="https://www.instagram.com/wagnwonder.co" target="_blank" rel="noopener noreferrer">
                                 <i className="bi bi-instagram"></i>
                             </a>
-                            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+                            <a href="https://www.facebook.com/share/17yjD1igH5/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer">
                                 <i className="bi bi-facebook"></i>
                             </a>
-                            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
+                            {/* <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
                                 <i className="bi bi-twitter-x"></i>
-                            </a>
+                            </a> */}
                         </div>
                     </div>
                 </div>

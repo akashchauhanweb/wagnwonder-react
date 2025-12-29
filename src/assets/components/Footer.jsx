@@ -16,9 +16,9 @@ const USEFUL_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-    { label: 'Instagram', icon: 'bi-instagram', url: 'https://instagram.com' },
-    { label: 'Facebook', icon: 'bi-facebook', url: 'https://facebook.com' },
-    { label: 'Twitter', icon: 'bi-twitter-x', url: 'https://twitter.com' },
+    { label: 'Instagram', icon: 'bi-instagram', url: 'https://www.instagram.com/wagnwonder.co' },
+    { label: 'Facebook', icon: 'bi-facebook', url: 'https://www.facebook.com/share/17yjD1igH5/?mibextid=wwXIfr' },
+    // { label: 'Twitter', icon: 'bi-twitter-x', url: 'https://twitter.com' },
 ];
 
 function Footer() {

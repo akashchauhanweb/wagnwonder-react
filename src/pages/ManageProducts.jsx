@@ -5,61 +5,54 @@ import AddCategory from "./AddCategory";
 import AddSubcategory from "./AddSubcategory";
 import AddProduct from "./AddProduct";
 
-
 const ManageProducts = () => {
     const [activeTab, setActiveTab] = useState("view");
 
     return (
-        <div>
-            <ul className="nav nav-tabs mb-3">
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "view" ? "active" : ""}`}
-                        style={{ color: activeTab === "view" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("view")}
-                    >
-                        View Products
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "add" ? "active" : ""}`}
-                        style={{ color: activeTab === "add" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("add")}
-                    >
-                        Add Product
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "category" ? "active" : ""}`}
-                        style={{ color: activeTab === "category" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("category")}
-                    >
-                        Add Category
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "subcategory" ? "active" : ""}`}
-                        style={{ color: activeTab === "subcategory" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("subcategory")}
-                    >
-                        Add Subcategory
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "brand" ? "active" : ""}`}
-                        style={{ color: activeTab === "brand" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("brand")}
-                    >
-                        Add Brand
-                    </button>
-                </li>
-            </ul>
+        <div className="manage-products">
+            <div className="manage-products-header">
+                <h2>Manage Products</h2>
+            </div>
 
-            <div>
+            <div className="manage-products-submenu">
+                <button
+                    className={`submenu-item ${activeTab === "view" ? "active" : ""}`}
+                    onClick={() => setActiveTab("view")}
+                >
+                    <i className="bi bi-box-seam"></i>
+                    View Products
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "add" ? "active" : ""}`}
+                    onClick={() => setActiveTab("add")}
+                >
+                    <i className="bi bi-plus-circle"></i>
+                    Add Product
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "category" ? "active" : ""}`}
+                    onClick={() => setActiveTab("category")}
+                >
+                    <i className="bi bi-folder"></i>
+                    Categories
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "subcategory" ? "active" : ""}`}
+                    onClick={() => setActiveTab("subcategory")}
+                >
+                    <i className="bi bi-folder2-open"></i>
+                    Subcategories
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "brand" ? "active" : ""}`}
+                    onClick={() => setActiveTab("brand")}
+                >
+                    <i className="bi bi-tag"></i>
+                    Brands
+                </button>
+            </div>
+
+            <div className="manage-products-content">
                 {activeTab === "view" && <ViewProducts />}
                 {activeTab === "add" && <AddProduct />}
                 {activeTab === "category" && <AddCategory />}
