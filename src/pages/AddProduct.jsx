@@ -214,271 +214,346 @@ const AddProduct = () => {
     };
 
     return (
-        <>
-            <h5 className="card-title mb-3">Add New Product</h5>
+        <div className="add-product-section">
+            {/* Alerts */}
             {successMsg && (
-                <div className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                    <div>{successMsg}</div>
-                    <button
-                        type="button"
-                        className="btn-close"
-                        data-bs-dismiss="alert"
-                        aria-label="Close"
-                        onClick={() => setSuccessMsg("")}
-                    ></button>
+                <div className="manage-products-alert success">
+                    <i className="bi bi-check-circle"></i>
+                    <span>{successMsg}</span>
+                    <button onClick={() => setSuccessMsg("")}><i className="bi bi-x"></i></button>
                 </div>
             )}
             {errorMsg && (
-                <div className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                    <div>{errorMsg}</div>
-                    <button
-                        type="button"
-                        className="btn-close"
-                        data-bs-dismiss="alert"
-                        aria-label="Close"
-                        onClick={() => setErrorMsg("")}
-                    ></button>
+                <div className="manage-products-alert error">
+                    <i className="bi bi-exclamation-circle"></i>
+                    <span>{errorMsg}</span>
+                    <button onClick={() => setErrorMsg("")}><i className="bi bi-x"></i></button>
                 </div>
             )}
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Product Name</label>
-                    <input type="text" name="name" className="form-control" value={formData.name} onChange={handleChange} />
+
+            <form onSubmit={handleSubmit} className="add-product-form">
+                {/* Basic Info Section */}
+                <div className="form-section">
+                    <h5 className="form-section-title">
+                        <i className="bi bi-info-circle"></i>
+                        Basic Information
+                    </h5>
+                    <div className="form-grid">
+                        <div className="form-field full-width">
+                            <label>Product Name *</label>
+                            <input 
+                                type="text" 
+                                name="name" 
+                                placeholder="Enter product name"
+                                value={formData.name} 
+                                onChange={handleChange} 
+                            />
+                        </div>
+                        <div className="form-field full-width">
+                            <label>Description *</label>
+                            <textarea 
+                                name="description" 
+                                rows="3" 
+                                placeholder="Enter product description"
+                                value={formData.description} 
+                                onChange={handleChange}
+                            ></textarea>
+                        </div>
+                        <div className="form-field">
+                            <label>Suitable For *</label>
+                            <select
+                                name="suitable_for"
+                                value={formData.suitable_for}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">Select Type</option>
+                                <option value="dog">Dog</option>
+                                <option value="cat">Cat</option>
+                                <option value="bird">Bird</option>
+                                <option value="others">Others</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="mb-3">
-                    <label className="form-label">Description</label>
-                    <textarea name="description" className="form-control" rows="3" value={formData.description} onChange={handleChange}></textarea>
-                </div>
-                <div className="mb-3">
-                    <label className="form-label">Suitable For</label>
-                    <select
-                        name="suitable_for"
-                        className="form-select"
-                        value={formData.suitable_for}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Select Type</option>
-                        <option value="dog">Dog</option>
-                        <option value="cat">Cat</option>
-                        <option value="bird">Bird</option>
-                        <option value="others">Others</option>
-                    </select>
+                {/* Classification Section */}
+                <div className="form-section">
+                    <h5 className="form-section-title">
+                        <i className="bi bi-folder"></i>
+                        Classification
+                    </h5>
+                    <div className="form-grid">
+                        <div className="form-field">
+                            <label>Category *</label>
+                            <select
+                                name="category_id"
+                                value={formData.category_id}
+                                onChange={handleCategoryChange}
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                {Object.entries(categories).map(([id, cat]) => (
+                                    <option key={id} value={id}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-field">
+                            <label>Subcategory *</label>
+                            <select
+                                name="subcategory_id"
+                                value={formData.subcategory_id}
+                                onChange={handleChange}
+                                required
+                                disabled={!formData.category_id}
+                            >
+                                <option value="">Select Subcategory</option>
+                                {subcategories.map(sub => (
+                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-field">
+                            <label>Brand *</label>
+                            <select
+                                name="brand_id"
+                                value={formData.brand_id}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">Select Brand</option>
+                                {Object.entries(brands).map(([id, brand]) => (
+                                    <option key={id} value={id}>{brand.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="form-check form-switch mb-3">
-                    <input className="form-check-input" type="checkbox" id="hasVariant" checked={showVariant} onChange={() => setShowVariant(!showVariant)} />
-                    <label className="form-check-label" htmlFor="hasVariant">Does this product have a variant?</label>
+                {/* Variants Toggle */}
+                <div className="form-section">
+                    <div className="toggle-switch-row">
+                        <label className="toggle-switch">
+                            <input 
+                                type="checkbox" 
+                                checked={showVariant} 
+                                onChange={() => setShowVariant(!showVariant)} 
+                            />
+                            <span className="toggle-slider"></span>
+                        </label>
+                        <span className="toggle-label">Does this product have variants?</span>
+                    </div>
+
+                    {showVariant ? (
+                        <div className="variants-section">
+                            <h5 className="form-section-title">
+                                <i className="bi bi-layers"></i>
+                                Product Variants
+                            </h5>
+                            {variants.map((variant, index) => (
+                                <div key={index} className="variant-entry">
+                                    <div className="variant-header">
+                                        <span>Variant {index + 1}</span>
+                                        <button 
+                                            type="button" 
+                                            className="remove-btn"
+                                            onClick={() => setVariants(variants.filter((_, i) => i !== index))}
+                                        >
+                                            <i className="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    <div className="variant-grid">
+                                        <div className="form-field full-width">
+                                            <label>Variant Name *</label>
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                placeholder="e.g., 500g, Large, Red"
+                                                value={variant.name}
+                                                onChange={(e) => handleVariantChange(index, e)}
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>SKU</label>
+                                            <input
+                                                type="text"
+                                                name="sku"
+                                                placeholder="SKU"
+                                                value={variant.sku}
+                                                onChange={(e) => handleVariantChange(index, e)}
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Price *</label>
+                                            <input
+                                                type="number"
+                                                name="price"
+                                                placeholder="₹"
+                                                value={variant.price}
+                                                onChange={(e) => handleVariantChange(index, e)}
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Discount Price</label>
+                                            <input
+                                                type="number"
+                                                name="discount_price"
+                                                placeholder="₹"
+                                                value={variant.discount_price}
+                                                onChange={(e) => handleVariantChange(index, e)}
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Stock *</label>
+                                            <input
+                                                type="number"
+                                                name="stock_quantity"
+                                                placeholder="Qty"
+                                                value={variant.stock_quantity}
+                                                onChange={(e) => handleVariantChange(index, e)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <button type="button" className="add-more-btn" onClick={handleAddVariant}>
+                                <i className="bi bi-plus-circle"></i>
+                                Add Variant
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="pricing-section">
+                            <h5 className="form-section-title">
+                                <i className="bi bi-currency-rupee"></i>
+                                Pricing & Stock
+                            </h5>
+                            <div className="form-grid four-col">
+                                <div className="form-field">
+                                    <label>SKU</label>
+                                    <input 
+                                        type="text" 
+                                        name="sku" 
+                                        placeholder="SKU"
+                                        value={formData.sku} 
+                                        onChange={handleChange} 
+                                    />
+                                </div>
+                                <div className="form-field">
+                                    <label>Price *</label>
+                                    <input 
+                                        type="number" 
+                                        name="price" 
+                                        placeholder="₹"
+                                        value={formData.price} 
+                                        onChange={handleChange} 
+                                    />
+                                </div>
+                                <div className="form-field">
+                                    <label>Discount Price</label>
+                                    <input 
+                                        type="number" 
+                                        name="discount_price" 
+                                        placeholder="₹"
+                                        value={formData.discount_price} 
+                                        onChange={handleChange} 
+                                    />
+                                </div>
+                                <div className="form-field">
+                                    <label>Stock Quantity *</label>
+                                    <input 
+                                        type="number" 
+                                        name="stock_quantity" 
+                                        placeholder="Qty"
+                                        value={formData.stock_quantity} 
+                                        onChange={handleChange} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                {showVariant && (
-                    <>
-                        {variants.map((variant, index) => (
-                            <div key={index} className="border p-3 mb-3 rounded">
-                                <h6 className="mb-3">Variant {index + 1}</h6>
-                                <div className="row g-3">
-                                    <div className="col-md-12">
+
+                {/* Attributes Toggle */}
+                <div className="form-section">
+                    <div className="toggle-switch-row">
+                        <label className="toggle-switch">
+                            <input 
+                                type="checkbox" 
+                                checked={showAttributes} 
+                                onChange={() => setShowAttributes(!showAttributes)} 
+                            />
+                            <span className="toggle-slider"></span>
+                        </label>
+                        <span className="toggle-label">Add custom attributes?</span>
+                    </div>
+
+                    {showAttributes && (
+                        <div className="attributes-section">
+                            <h5 className="form-section-title">
+                                <i className="bi bi-list-check"></i>
+                                Custom Attributes
+                            </h5>
+                            {attributes.map((attr, index) => (
+                                <div key={index} className="attribute-entry">
+                                    <div className="form-field">
                                         <input
                                             type="text"
                                             name="name"
-                                            placeholder="Variant Name"
-                                            value={variant.name}
-                                            onChange={(e) => handleVariantChange(index, e)}
-                                            className="form-control"
+                                            placeholder="Attribute Name"
+                                            value={attr.name}
+                                            onChange={(e) => handleAttributeChange(index, e)}
                                         />
                                     </div>
-                                    <div className="col-md-3">
+                                    <div className="form-field">
                                         <input
                                             type="text"
-                                            name="sku"
-                                            placeholder="SKU"
-                                            value={variant.sku}
-                                            onChange={(e) => handleVariantChange(index, e)}
-                                            className="form-control"
+                                            name="value"
+                                            placeholder="Attribute Value"
+                                            value={attr.value}
+                                            onChange={(e) => handleAttributeChange(index, e)}
                                         />
                                     </div>
-                                    <div className="col-md-3">
-                                        <input
-                                            type="number"
-                                            name="price"
-                                            placeholder="Price"
-                                            value={variant.price}
-                                            onChange={(e) => handleVariantChange(index, e)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                    <div className="col-md-3">
-                                        <input
-                                            type="number"
-                                            name="discount_price"
-                                            placeholder="Discount Price"
-                                            value={variant.discount_price}
-                                            onChange={(e) => handleVariantChange(index, e)}
-                                            className="form-control"
-                                        />
-                                    </div>
-                                    <div className="col-md-3">
-                                        <input
-                                            type="number"
-                                            name="stock_quantity"
-                                            placeholder="Stock"
-                                            value={variant.stock_quantity}
-                                            onChange={(e) => handleVariantChange(index, e)}
-                                            className="form-control"
-                                        />
-                                    </div>
+                                    <button 
+                                        type="button" 
+                                        className="remove-btn"
+                                        onClick={() => setAttributes(attributes.filter((_, i) => i !== index))}
+                                    >
+                                        <i className="bi bi-trash"></i>
+                                    </button>
                                 </div>
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={handleAddVariant}
-                            className="btn btn-outline-secondary d-flex justify-content-center align-items-center gap-2 shadow-sm px-4 py-2 w-100"
-                        >
-                            <i className="bi bi-plus-circle"></i>
-                            Add Variant
-                        </button>
-
-
-                    </>
-                )}
-
-                {!showVariant && (
-                    <>
-                        <div className="row g-3">
-                            <div className="col-lg-3">
-                                <label className="form-label">SKU</label>
-                                <input type="text" name="sku" className="form-control" value={formData.sku} onChange={handleChange} />
-                            </div>
-                            <div className="col-lg-3">
-                                <label className="form-label">Price</label>
-                                <input type="number" name="price" className="form-control" value={formData.price} onChange={handleChange} />
-                            </div>
-                            <div className="col-lg-3">
-                                <label className="form-label">Discount Price</label>
-                                <input type="number" name="discount_price" className="form-control" value={formData.discount_price} onChange={handleChange} />
-                            </div>
-                            <div className="col-lg-3">
-                                <label className="form-label">Stock Quantity</label>
-                                <input type="number" name="stock_quantity" className="form-control" value={formData.stock_quantity} onChange={handleChange} />
-                            </div>
+                            ))}
+                            <button type="button" className="add-more-btn" onClick={handleAddAttribute}>
+                                <i className="bi bi-plus-circle"></i>
+                                Add Attribute
+                            </button>
                         </div>
-                    </>
-                )}
-                <div className="form-check form-switch my-3">
-                    <input className="form-check-input" type="checkbox" id="hasAttributes" checked={showAttributes} onChange={() => setShowAttributes(!showAttributes)} />
-                    <label className="form-check-label" htmlFor="hasAttributes">Add Custom Attributes?</label>
+                    )}
                 </div>
 
-                {showAttributes && (
-                    <div className="mb-4">
-                        <h6 className="mb-2">Custom Attributes</h6>
-                        {attributes.map((attr, index) => (
-                            <div key={index} className="row g-3 mb-2">
-                                <div className="col-6">
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        placeholder="Attribute Name"
-                                        className="form-control"
-                                        value={attr.name}
-                                        onChange={(e) => handleAttributeChange(index, e)}
-                                    />
-                                </div>
-                                <div className="col-6">
-                                    <input
-                                        type="text"
-                                        name="value"
-                                        placeholder="Attribute Value"
-                                        className="form-control"
-                                        value={attr.value}
-                                        onChange={(e) => handleAttributeChange(index, e)}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={handleAddAttribute}
-                            className="btn btn-outline-secondary d-flex justify-content-center align-items-center gap-2 shadow-sm px-4 py-2 w-100"
-                        >
-                            <i className="bi bi-plus-circle-dotted"></i>
-                            Add More Attributes
-                        </button>
-
-
+                {/* Images Section */}
+                <div className="form-section">
+                    <h5 className="form-section-title">
+                        <i className="bi bi-images"></i>
+                        Product Images *
+                    </h5>
+                    <div className="form-field">
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            multiple 
+                            onChange={handleImageChange} 
+                        />
+                        <span className="file-hint">You can select multiple images</span>
                     </div>
-                )}
-
-                <div className="mb-3">
-                    <label className="form-label">Category</label>
-                    <select
-                        name="category_id"
-                        className="form-select"
-                        value={formData.category_id}
-                        onChange={handleCategoryChange}
-                        required
-                    >
-                        <option value="">Select Category</option>
-                        {Object.entries(categories).map(([id, cat]) => (
-                            <option key={id} value={id}>{cat.name}</option>
-                        ))}
-                    </select>
                 </div>
 
-
-                <div className="mb-3">
-                    <label className="form-label">Subcategory</label>
-                    <select
-                        name="subcategory_id"
-                        className="form-select"
-                        value={formData.subcategory_id}
-                        onChange={handleChange}
-                        required
-                        disabled={!formData.category_id}
-                    >
-                        <option value="">Select Subcategory</option>
-                        {subcategories.map(sub => (
-                            <option key={sub.id} value={sub.id}>{sub.name}</option>
-                        ))}
-                    </select>
-                </div>
-
-
-                <div className="mb-3">
-                    <label className="form-label">Brand</label>
-                    <select
-                        name="brand_id"
-                        className="form-select"
-                        value={formData.brand_id}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Select Brand</option>
-                        {Object.entries(brands).map(([id, brand]) => (
-                            <option key={id} value={id}>{brand.name}</option>
-                        ))}
-                    </select>
-                </div>
-
-
-                <div className="mb-3">
-                    <label className="form-label">Upload Images</label>
-                    <input type="file" accept="image/*" multiple className="form-control" onChange={handleImageChange} />
-                </div>
-
-                <button
-                    type="submit"
-                    className="btn col-12"
-                    style={{ backgroundColor: "#471915", color: "#fff" }}
-                >
+                {/* Submit Button */}
+                <button type="submit" className="submit-btn">
+                    <i className="bi bi-plus-lg"></i>
                     Save Product
                 </button>
-
             </form>
-
-
-        </>
+        </div>
     );
 };
 
