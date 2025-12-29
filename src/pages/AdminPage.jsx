@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Outlet } from "react-router-dom";
+import logo from '../assets/images/horizontal-compressed.png';
 
 const MENU_ITEMS = [
     { path: "/admin/manage-products", icon: "bi-box-seam-fill", label: "Manage Products" },
@@ -49,6 +50,10 @@ const AdminPage = () => {
                             <i className="bi bi-arrow-left"></i>
                         </button>
                         <h1>Admin Panel</h1>
+                        <div className="admin-header-branding">
+                            <span>Powered by</span>
+                            <img src={logo} alt="Wag N Wonder" />
+                        </div>
                     </div>
                 </div>
 
@@ -99,7 +104,7 @@ const AdminPage = () => {
                                     <i className="bi bi-speedometer2"></i>
                                 </div>
                                 <h2>Welcome, {userData.first_name}!</h2>
-                                <p>Manage your dashboard using the menu on the left.</p>
+                                <p>Manage your dashboard using the menu on the left or get started below.</p>
                                 
                                 <div className="admin-quick-stats">
                                     {MENU_ITEMS.map((item) => (
