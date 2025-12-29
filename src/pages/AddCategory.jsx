@@ -106,131 +106,84 @@ const AddCategory = () => {
     };
 
     return (
-        <>
-            <h5 className="card-title mb-3">Add Category</h5>
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Category Name</label>
-                    <div className="input-group">
-                        <span className="input-group-text">
-                            <i className="bi bi-folder"></i>
-                        </span>
+        <div className="add-layer-section">
+            <div className="layer-add-form">
+                <h5>Add New Category</h5>
+                <form onSubmit={handleSubmit} className="add-inline-form">
+                    <div className="filter-input-wrapper">
+                        <i className="bi bi-folder"></i>
                         <input
                             type="text"
-                            className="form-control"
                             placeholder="Enter category name"
                             value={categoryName}
                             onChange={(e) => setCategoryName(e.target.value)}
                             disabled={categoryLoad}
                         />
-                        <button
-                            className="btn"
-                            type="submit"
-                            disabled={categoryLoad}
-                            style={{
-                                backgroundColor: "#471915",
-                                color: "#fff",
-                                opacity: categoryLoad ? 0.65 : 1,
-                                cursor: categoryLoad ? "not-allowed" : "pointer",
-                            }}
-                        >
-                            {categoryLoad ? "Adding..." : "Add"}
-                        </button>
+                    </div>
+                    <button type="submit" disabled={categoryLoad}>
+                        {categoryLoad ? "Adding..." : "Add Category"}
+                    </button>
+                </form>
 
+                {errorMsg && (
+                    <div className="manage-products-alert error">
+                        <i className="bi bi-exclamation-circle"></i>
+                        <span>{errorMsg}</span>
+                        <button onClick={() => setErrorMsg("")}><i className="bi bi-x"></i></button>
+                    </div>
+                )}
+                {successMsg && (
+                    <div className="manage-products-alert success">
+                        <i className="bi bi-check-circle"></i>
+                        <span>{successMsg}</span>
+                        <button onClick={() => setSuccessMsg("")}><i className="bi bi-x"></i></button>
+                    </div>
+                )}
+            </div>
+
+            <div className="layer-list-section">
+                <div className="layer-list-header">
+                    <h5>Existing Categories</h5>
+                    <div className="filter-input-wrapper">
+                        <i className="bi bi-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Search categories..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
-                {errorMsg && (
-                    <div className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                        <div>{errorMsg}</div>
-                        <button
-                            type="button"
-                            className="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                            onClick={() => setErrorMsg("")}
-                        ></button>
+
+                {fetchingCategories ? (
+                    <div className="manage-products-loading">
+                        <div className="spinner-border" role="status" />
                     </div>
-                )}
-
-                {successMsg && (
-                    <div className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                        <div>{successMsg}</div>
-                        <button
-                            type="button"
-                            className="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                            onClick={() => setSuccessMsg("")}
-                        ></button>
+                ) : categoryList.length === 0 ? (
+                    <div className="manage-products-empty small">
+                        <i className="bi bi-folder"></i>
+                        <p>No categories available</p>
                     </div>
-                )}
-
-            </form>
-            <hr className="my-4" />
-
-            <h5>Existing Categories</h5>
-
-            <div className="mb-3">
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search category..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-
-            <div className="table-responsive">
-                <table className="table table-sm table-bordered align-middle">
-                    <thead className="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Category Name</th>
-                            <th className="text-end" style={{ width: "1%" }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                ) : (
+                    <div className="layer-items-list">
                         {categoryList
-                            .filter(([id, name]) => // eslint-disable-line
-                                name.toLowerCase().includes(searchTerm.toLowerCase())
-                            )
+                            // eslint-disable-next-line no-unused-vars
+                            .filter(([id, name]) => name.toLowerCase().includes(searchTerm.toLowerCase()))
                             .map(([id, name]) => (
-                                <tr key={id}>
-                                    <td>{id}</td>
-                                    <td>{name}</td>
-                                    <td className="text-end">
-                                        <button
-                                            className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
-                                            onClick={() => handleDeleteCategory(id)}
-                                        >
-                                            <i className="bi bi-trash me-1"></i>
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
+                                <div key={id} className="layer-item">
+                                    <div className="layer-item-info">
+                                        <span className="item-id">#{id}</span>
+                                        <span className="item-name">{name}</span>
+                                    </div>
+                                    <button className="delete-btn" onClick={() => handleDeleteCategory(id)}>
+                                        <i className="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             ))}
-                        {fetchingCategories ? (
-                            <tr>
-                                <td colSpan="3" className="text-center py-4">
-                                    <div
-                                        className="spinner-border"
-                                        role="status"
-                                        style={{ borderColor: "#471915", borderRightColor: "transparent" }}
-                                    />
-                                </td>
-                            </tr>
-                        ) : categoryList.length === 0 && (
-                            <tr>
-                                <td colSpan="3" className="text-center text-muted">
-                                    No categories available
-                                </td>
-                            </tr>
-                        )}
-
-                    </tbody>
-                </table>
+                    </div>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 

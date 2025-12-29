@@ -89,13 +89,12 @@ const ManageUsers = () => {
         user.phone_number.includes(phoneFilter)
     );
 
-    const handleAccessChange = (e) => {
-        const { options } = e.target;
-        const selected = [];
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].selected) selected.push(options[i].value);
-        }
-        setAccessFilter(selected);
+    const handleAccessChange = (value) => {
+        setAccessFilter(prev => 
+            prev.includes(value) 
+                ? prev.filter(v => v !== value)
+                : [...prev, value]
+        );
     };
 
     const handleSubmit = async (e) => {
@@ -105,8 +104,7 @@ const ManageUsers = () => {
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
             ...formData
-        }
-        console.log(payload);
+        };
         const res = await callServicesApi(payload);
 
         if (res?.success) {
@@ -123,7 +121,7 @@ const ManageUsers = () => {
                 has_services_access: false,
                 has_clinic_access: false,
             });
-            fetchUsers(); // refresh list
+            fetchUsers();
         } else {
             setErrorMsg(res?.message || "Failed to add user.");
         }
@@ -135,320 +133,311 @@ const ManageUsers = () => {
         setLoading(false);
     };
 
+    const getAccessBadges = (user) => {
+        const badges = [];
+        if (user.has_admin_access) badges.push({ label: "Admin", type: "admin" });
+        if (user.has_boarding_access) badges.push({ label: "Boarding", type: "boarding" });
+        if (user.has_services_access) badges.push({ label: "Services", type: "services" });
+        if (user.has_clinic_access) badges.push({ label: "Clinic", type: "clinic" });
+        return badges;
+    };
 
     return (
-        <div className="container py-4">
-            <h3 className="mb-4">Manage Users</h3>
+        <div className="manage-users">
+            <div className="manage-users-header">
+                <h2>Manage Users</h2>
+                <span className="manage-users-count">{users.length} user{users.length !== 1 ? 's' : ''}</span>
+            </div>
 
-            <ul className="nav nav-tabs mb-3">
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "list" ? "active" : ""}`}
-                        style={{ color: activeTab === "list" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("list")}
-                    >
-                        List Users
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "add" ? "active" : ""}`}
-                        style={{ color: activeTab === "add" ? "#000" : "#471915" }}
-                        onClick={() => setActiveTab("add")}
-                    >
-                        Add User
-                    </button>
-                </li>
-            </ul>
+            {/* Submenu Tabs */}
+            <div className="manage-users-submenu">
+                <button
+                    className={`submenu-item ${activeTab === "list" ? "active" : ""}`}
+                    onClick={() => setActiveTab("list")}
+                >
+                    <i className="bi bi-list-ul"></i>
+                    List Users
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "add" ? "active" : ""}`}
+                    onClick={() => setActiveTab("add")}
+                >
+                    <i className="bi bi-person-plus"></i>
+                    Add User
+                </button>
+            </div>
 
-
-            {activeTab === "list" && (
-                <div>
-                    <div className="row g-3 mb-3">
-                        <div className="col-md-6">
-                            <label className="form-label">Search Users</label>
-                            <input
-                                type="text"
-                                placeholder="Search by name or email"
-                                className="form-control"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label">Filter by Email</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Enter email"
-                                value={emailFilter}
-                                onChange={(e) => setEmailFilter(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Filter by Mobile</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Enter phone number"
-                                value={phoneFilter}
-                                onChange={(e) => setPhoneFilter(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Select filter</label>
-                            <select
-                                className="form-select"
-                                multiple
-                                value={accessFilter}
-                                onChange={handleAccessChange}
-                            >
-                                <option value="admin">Admin</option>
-                                <option value="boarding">Boarding</option>
-                                <option value="services">Services</option>
-                                <option value="clinic">Clinic</option>
-                            </select>
-                            <div className="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</div>
-                        </div>
-                    </div>
-
-                    {errorMsg && (
-                        <div className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                            <div>{errorMsg}</div>
-                            <button
-                                type="button"
-                                className="btn-close"
-                                data-bs-dismiss="alert"
-                                aria-label="Close"
-                                onClick={() => setErrorMsg("")}
-                            ></button>
-                        </div>
-                    )}
-
-                    {successMsg && (
-                        <div className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                            <div>{successMsg}</div>
-                            <button
-                                type="button"
-                                className="btn-close"
-                                data-bs-dismiss="alert"
-                                aria-label="Close"
-                                onClick={() => setSuccessMsg("")}
-                            ></button>
-                        </div>
-                    )}
-
-                    <div className="table-responsive">
-                        <table className="table table-bordered">
-                            <thead className="table-light">
-                                <tr>
-                                    <th>Id</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                    <th>Access</th>
-                                    <th className="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {fetchingUsers ? (
-                                    <tr>
-                                        <td colSpan="6" className="text-center py-4">
-                                            <div
-                                                className="spinner-border"
-                                                role="status"
-                                                style={{ borderColor: "#471915", borderRightColor: "transparent" }}
-                                            />
-                                        </td>
-                                    </tr>
-                                ) : filteredUsers.length ? (
-                                    filteredUsers.map((u, idx) => (  // eslint-disable-line
-                                        <tr key={u.id}>
-                                            <td>{u.id}</td>
-                                            <td>{u.first_name} {u.last_name}</td>
-                                            <td>{u.email}</td>
-                                            <td>{u.phone_number}</td>
-                                            <td>
-                                                {u.has_admin_access ? "Admin, " : ""}
-                                                {u.has_boarding_access ? "Boarding, " : ""}
-                                                {u.has_services_access ? "Services, " : ""}
-                                                {u.has_clinic_access ? "Clinic" : ""}
-                                            </td>
-                                            <td className="text-end">
-                                                <button
-                                                    className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
-                                                    onClick={() => handleDelete(u.id)}
-                                                >
-                                                    <i className="bi bi-trash me-1"></i> Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="6" className="text-center text-muted">
-                                            No users found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-
+            {/* Success/Error Messages */}
+            {successMsg && (
+                <div className="manage-users-alert success">
+                    <i className="bi bi-check-circle"></i>
+                    <span>{successMsg}</span>
+                    <button onClick={() => setSuccessMsg("")}><i className="bi bi-x"></i></button>
                 </div>
             )}
 
+            {errorMsg && (
+                <div className="manage-users-alert error">
+                    <i className="bi bi-exclamation-circle"></i>
+                    <span>{errorMsg}</span>
+                    <button onClick={() => setErrorMsg("")}><i className="bi bi-x"></i></button>
+                </div>
+            )}
+
+            {/* List Users Tab */}
+            {activeTab === "list" && (
+                <div className="manage-users-list">
+                    {/* Filters */}
+                    <div className="manage-users-filters">
+                        <div className="filter-row">
+                            <div className="filter-field">
+                                <label>Search Users</label>
+                                <div className="filter-input-wrapper">
+                                    <i className="bi bi-search"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or email"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="filter-field">
+                                <label>Filter by Email</label>
+                                <div className="filter-input-wrapper">
+                                    <i className="bi bi-envelope"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter email"
+                                        value={emailFilter}
+                                        onChange={(e) => setEmailFilter(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="filter-row">
+                            <div className="filter-field">
+                                <label>Filter by Mobile</label>
+                                <div className="filter-input-wrapper">
+                                    <i className="bi bi-phone"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter phone number"
+                                        value={phoneFilter}
+                                        onChange={(e) => setPhoneFilter(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="filter-field">
+                                <label>Filter by Access</label>
+                                <div className="filter-chips">
+                                    {["admin", "boarding", "services", "clinic"].map((type) => (
+                                        <button
+                                            key={type}
+                                            className={`filter-chip ${accessFilter.includes(type) ? "active" : ""}`}
+                                            onClick={() => handleAccessChange(type)}
+                                        >
+                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Users Table */}
+                    {fetchingUsers ? (
+                        <div className="manage-users-loading">
+                            <div className="spinner-border" role="status" />
+                        </div>
+                    ) : filteredUsers.length === 0 ? (
+                        <div className="manage-users-empty">
+                            <i className="bi bi-people"></i>
+                            <p>No users found</p>
+                        </div>
+                    ) : (
+                        <div className="manage-users-table-wrapper">
+                            <table className="manage-users-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Access</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredUsers.map((user) => (
+                                        <tr key={user.id}>
+                                            <td className="user-id">#{user.id}</td>
+                                            <td className="user-name">
+                                                <div className="user-name-inner">
+                                                    <div className="user-avatar">
+                                                        {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                                                    </div>
+                                                    <span>{user.first_name} {user.last_name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="user-email">{user.email}</td>
+                                            <td className="user-phone">{user.phone_number}</td>
+                                            <td className="user-access">
+                                                {getAccessBadges(user).length > 0 ? (
+                                                    getAccessBadges(user).map((badge, idx) => (
+                                                        <span key={idx} className={`access-badge ${badge.type}`}>
+                                                            {badge.label}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="access-badge client">Client</span>
+                                                )}
+                                            </td>
+                                            <td className="user-actions">
+                                                <button
+                                                    className="action-btn delete"
+                                                    onClick={() => handleDelete(user.id)}
+                                                    title="Delete User"
+                                                >
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Add User Tab */}
             {activeTab === "add" && (
-                <div>
-                    {errorMsg && (
-                        <div className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                            <div>{errorMsg}</div>
-                            <button
-                                type="button"
-                                className="btn-close"
-                                data-bs-dismiss="alert"
-                                aria-label="Close"
-                                onClick={() => setErrorMsg("")}
-                            ></button>
-                        </div>
-                    )}
-
-                    {successMsg && (
-                        <div className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center" role="alert">
-                            <div>{successMsg}</div>
-                            <button
-                                type="button"
-                                className="btn-close"
-                                data-bs-dismiss="alert"
-                                aria-label="Close"
-                                onClick={() => setSuccessMsg("")}
-                            ></button>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="row g-3">
-                        <div className="col-md-6">
-                            <label className="form-label">First Name</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                required
-                                value={formData.first_name}
-                                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                            />
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label">Last Name</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                required
-                                value={formData.last_name}
-                                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Email</label>
-                            <input
-                                type="email"
-                                className="form-control"
-                                required
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Phone Number</label>
-                            <input
-                                type="tel"
-                                className="form-control"
-                                required
-                                value={formData.phone_number}
-                                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="col-md-6">
-                            <label className="form-label">Password</label>
-                            <input
-                                type="password"
-                                className="form-control"
-                                required
-                                value={formData.password_hashed}
-                                onChange={(e) => setFormData({ ...formData, password_hashed: e.target.value })}
-                            />
-                        </div>
-
-
-                        <div className="col-md-6">
-                            <label className="form-label">User Type</label>
-                            <select
-                                className="form-select"
-                                value={formData.user_type}
-                                onChange={(e) => setFormData({ ...formData, user_type: e.target.value })}
-                            >
-                                <option value="client">Client</option>
-                                <option value="admin">Admin</option>
-                            </select>
+                <div className="manage-users-add">
+                    <form onSubmit={handleSubmit} className="add-user-form">
+                        <div className="form-grid">
+                            <div className="form-field">
+                                <label>First Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Enter first name"
+                                    value={formData.first_name}
+                                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-field">
+                                <label>Last Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Enter last name"
+                                    value={formData.last_name}
+                                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-field">
+                                <label>Email *</label>
+                                <input
+                                    type="email"
+                                    required
+                                    placeholder="Enter email address"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-field">
+                                <label>Phone Number *</label>
+                                <input
+                                    type="tel"
+                                    required
+                                    placeholder="Enter phone number"
+                                    value={formData.phone_number}
+                                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-field">
+                                <label>Password *</label>
+                                <input
+                                    type="password"
+                                    required
+                                    placeholder="Enter password"
+                                    value={formData.password_hashed}
+                                    onChange={(e) => setFormData({ ...formData, password_hashed: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-field">
+                                <label>User Type *</label>
+                                <select
+                                    value={formData.user_type}
+                                    onChange={(e) => setFormData({ ...formData, user_type: e.target.value })}
+                                >
+                                    <option value="client">Client</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
                         </div>
 
                         {formData.user_type === "admin" && (
-                            <div className="col-12">
-                                <label className="form-label">Access Permissions</label>
-                                <div className="form-check">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id="admin"
-                                        checked={formData.has_admin_access}
-                                        onChange={(e) => setFormData({ ...formData, has_admin_access: e.target.checked })}
-                                    />
-                                    <label className="form-check-label" htmlFor="admin">Admin Access</label>
-                                </div>
-                                <div className="form-check">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id="boarding"
-                                        checked={formData.has_boarding_access}
-                                        onChange={(e) => setFormData({ ...formData, has_boarding_access: e.target.checked })}
-                                    />
-                                    <label className="form-check-label" htmlFor="boarding">Boarding Access</label>
-                                </div>
-                                <div className="form-check">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id="services"
-                                        checked={formData.has_services_access}
-                                        onChange={(e) => setFormData({ ...formData, has_services_access: e.target.checked })}
-                                    />
-                                    <label className="form-check-label" htmlFor="services">Services Access</label>
-                                </div>
-                                <div className="form-check">
-                                    <input
-                                        className="form-check-input"
-                                        type="checkbox"
-                                        id="clinic"
-                                        checked={formData.has_clinic_access}
-                                        onChange={(e) => setFormData({ ...formData, has_clinic_access: e.target.checked })}
-                                    />
-                                    <label className="form-check-label" htmlFor="clinic">Clinic Access</label>
+                            <div className="form-permissions">
+                                <label>Access Permissions</label>
+                                <div className="permissions-grid">
+                                    <label className="permission-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.has_admin_access}
+                                            onChange={(e) => setFormData({ ...formData, has_admin_access: e.target.checked })}
+                                        />
+                                        <span className="checkmark"></span>
+                                        <span className="permission-label">
+                                            <i className="bi bi-shield-lock"></i>
+                                            Admin Access
+                                        </span>
+                                    </label>
+                                    <label className="permission-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.has_boarding_access}
+                                            onChange={(e) => setFormData({ ...formData, has_boarding_access: e.target.checked })}
+                                        />
+                                        <span className="checkmark"></span>
+                                        <span className="permission-label">
+                                            <i className="bi bi-house-door"></i>
+                                            Boarding Access
+                                        </span>
+                                    </label>
+                                    <label className="permission-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.has_services_access}
+                                            onChange={(e) => setFormData({ ...formData, has_services_access: e.target.checked })}
+                                        />
+                                        <span className="checkmark"></span>
+                                        <span className="permission-label">
+                                            <i className="bi bi-gear"></i>
+                                            Services Access
+                                        </span>
+                                    </label>
+                                    <label className="permission-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.has_clinic_access}
+                                            onChange={(e) => setFormData({ ...formData, has_clinic_access: e.target.checked })}
+                                        />
+                                        <span className="checkmark"></span>
+                                        <span className="permission-label">
+                                            <i className="bi bi-heart-pulse"></i>
+                                            Clinic Access
+                                        </span>
+                                    </label>
                                 </div>
                             </div>
                         )}
 
-                        <div className="col-12 d-flex justify-content-center align-items-center">
-                            <button type="submit" className="btn col-12" style={{ backgroundColor: "#471915", color: "#fff" }}>
-                                Add User
-                            </button>
-
-                        </div>
+                        <button type="submit" className="add-user-submit">
+                            <i className="bi bi-person-plus"></i>
+                            Add User
+                        </button>
                     </form>
                 </div>
             )}

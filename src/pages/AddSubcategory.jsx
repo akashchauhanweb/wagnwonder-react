@@ -127,167 +127,108 @@ const AddSubcategory = () => {
     };
 
     return (
-        <>
-            <h5 className="card-title mb-3">Add Subcategory</h5>
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Select Category</label>
-                    <select
-                        className="form-select"
-                        value={selectedCategory}
-                        onChange={(e) => {
-                            setSelectedCategory(e.target.value);
-                            setSubcategoryList([]);
-                            fetchSubcategories(e.target.value);
-                        }}
-
-                        disabled={subcategoryLoad}
-                    >
-                        <option value="">-- Select Category --</option>
-                        {categoryList.map(([id, name]) => (
-                            <option key={id} value={id}>{name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="mb-3">
-                    <label className="form-label">Subcategory Name</label>
-                    <div className="input-group">
-                        <span className="input-group-text">
-                            <i className="bi bi-folder2-open"></i>
-                        </span>
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter subcategory name"
-                            value={subcategoryName}
-                            onChange={(e) => setSubcategoryName(e.target.value)}
-                            disabled={subcategoryLoad}
-                        />
-                        <button
-                            className="btn"
-                            type="submit"
-                            disabled={subcategoryLoad}
-                            style={{
-                                backgroundColor: "#471915",
-                                color: "#fff",
-                                opacity: subcategoryLoad ? 0.65 : 1,
-                                cursor: subcategoryLoad ? "not-allowed" : "pointer",
+        <div className="add-layer-section">
+            <div className="layer-add-form">
+                <h5>Add New Subcategory</h5>
+                <div className="subcategory-form">
+                    <div className="form-field">
+                        <label>Parent Category</label>
+                        <select
+                            value={selectedCategory}
+                            onChange={(e) => {
+                                setSelectedCategory(e.target.value);
+                                setSubcategoryList([]);
+                                fetchSubcategories(e.target.value);
                             }}
+                            disabled={subcategoryLoad}
                         >
-                            {subcategoryLoad ? "Adding..." : "Add"}
-                        </button>
-
+                            <option value="">-- Select Category --</option>
+                            {categoryList.map(([id, name]) => (
+                                <option key={id} value={id}>{name}</option>
+                            ))}
+                        </select>
                     </div>
+                    <form onSubmit={handleSubmit} className="add-inline-form">
+                        <div className="filter-input-wrapper">
+                            <i className="bi bi-folder2-open"></i>
+                            <input
+                                type="text"
+                                placeholder="Enter subcategory name"
+                                value={subcategoryName}
+                                onChange={(e) => setSubcategoryName(e.target.value)}
+                                disabled={subcategoryLoad}
+                            />
+                        </div>
+                        <button type="submit" disabled={subcategoryLoad || !selectedCategory}>
+                            {subcategoryLoad ? "Adding..." : "Add Subcategory"}
+                        </button>
+                    </form>
                 </div>
-
 
                 {errorMsg && (
-                    <div
-                        className="alert alert-danger alert-dismissible fade show py-2 d-flex justify-content-between align-items-center"
-                        role="alert"
-                    >
-                        <div>{errorMsg}</div>
-                        <button
-                            type="button"
-                            className="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                            onClick={() => setErrorMsg("")}
-                        ></button>
+                    <div className="manage-products-alert error">
+                        <i className="bi bi-exclamation-circle"></i>
+                        <span>{errorMsg}</span>
+                        <button onClick={() => setErrorMsg("")}><i className="bi bi-x"></i></button>
                     </div>
                 )}
-
                 {successMsg && (
-                    <div
-                        className="alert alert-success alert-dismissible fade show py-2 d-flex justify-content-between align-items-center"
-                        role="alert"
-                    >
-                        <div>{successMsg}</div>
-                        <button
-                            type="button"
-                            className="btn-close"
-                            data-bs-dismiss="alert"
-                            aria-label="Close"
-                            onClick={() => setSuccessMsg("")}
-                        ></button>
+                    <div className="manage-products-alert success">
+                        <i className="bi bi-check-circle"></i>
+                        <span>{successMsg}</span>
+                        <button onClick={() => setSuccessMsg("")}><i className="bi bi-x"></i></button>
                     </div>
                 )}
-
-
-            </form>
-
-            <hr className="my-4" />
-            <h5>Existing Subcategories</h5>
-
-            <div className="mb-3">
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search subcategory..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
             </div>
 
-            <div className="table-responsive">
-                <table className="table table-sm table-bordered align-middle">
-                    <thead className="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Subcategory Name</th>
-                            <th className="text-end" style={{ width: "1%" }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {selectedCategory === "" ? (
-                            <tr>
-                                <td colSpan="3" className="text-center text-muted">
-                                    Select a category to view subcategories
-                                </td>
-                            </tr>
-                        ) : fetchingSubcategories ? (
-                            <tr>
-                                <td colSpan="3" className="text-center py-4">
-                                    <div
-                                        className="spinner-border"
-                                        role="status"
-                                        style={{ borderColor: "#471915", borderRightColor: "transparent" }}
-                                    />
-                                </td>
-                            </tr>
-                        ) : subcategoryList.length === 0 ? (
-                            <tr>
-                                <td colSpan="3" className="text-center text-muted">
-                                    No subcategories available
-                                </td>
-                            </tr>
-                        ) : (
-                            subcategoryList
-                                .filter(([id, name]) =>  // eslint-disable-line
-                                    name.toLowerCase().includes(searchTerm.toLowerCase())
-                                )
-                                .map(([id, name]) => (
-                                    <tr key={id}>
-                                        <td>{id}</td>
-                                        <td>{name}</td>
-                                        <td className="text-end">
-                                            <button
-                                                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center"
-                                                onClick={() => handleDeleteSubcategory(id)}
-                                            >
-                                                <i className="bi bi-trash me-1"></i>
-                                                Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                        )}
+            <div className="layer-list-section">
+                <div className="layer-list-header">
+                    <h5>Existing Subcategories</h5>
+                    <div className="filter-input-wrapper">
+                        <i className="bi bi-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Search subcategories..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
 
-                    </tbody>
-                </table>
+                {selectedCategory === "" ? (
+                    <div className="manage-products-empty small">
+                        <i className="bi bi-arrow-up-circle"></i>
+                        <p>Select a category to view subcategories</p>
+                    </div>
+                ) : fetchingSubcategories ? (
+                    <div className="manage-products-loading">
+                        <div className="spinner-border" role="status" />
+                    </div>
+                ) : subcategoryList.length === 0 ? (
+                    <div className="manage-products-empty small">
+                        <i className="bi bi-folder2-open"></i>
+                        <p>No subcategories available</p>
+                    </div>
+                ) : (
+                    <div className="layer-items-list">
+                        {subcategoryList
+                            // eslint-disable-next-line no-unused-vars
+                            .filter(([id, name]) => name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .map(([id, name]) => (
+                                <div key={id} className="layer-item">
+                                    <div className="layer-item-info">
+                                        <span className="item-id">#{id}</span>
+                                        <span className="item-name">{name}</span>
+                                    </div>
+                                    <button className="delete-btn" onClick={() => handleDeleteSubcategory(id)}>
+                                        <i className="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            ))}
+                    </div>
+                )}
             </div>
-        </>
+        </div>
     );
 };
 
