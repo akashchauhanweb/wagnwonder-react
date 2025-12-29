@@ -104,7 +104,7 @@ const AdminPage = () => {
                                     <i className="bi bi-speedometer2"></i>
                                 </div>
                                 <h2>Welcome, {userData.first_name}!</h2>
-                                <p>Manage your dashboard using the menu on the left.</p>
+                                <p>Manage your dashboard using the menu on the left or get started below.</p>
                                 
                                 <div className="admin-quick-stats">
                                     {MENU_ITEMS.map((item) => (

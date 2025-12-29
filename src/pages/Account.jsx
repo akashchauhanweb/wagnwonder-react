@@ -99,7 +99,27 @@ function Account() {
                             Back to menu
                         </button>
                     )}
-                    <Outlet />
+                    
+                    {isBaseRoute ? (
+                        <div className="account-welcome">
+                            <div className="account-welcome-icon">
+                                <i className="bi bi-person-heart"></i>
+                            </div>
+                            <h2>Welcome{user ? `, ${user.first_name}` : ''}!</h2>
+                            <p>Manage your profile, pets, and bookings all in one place.</p>
+                            
+                            <div className="account-quick-links">
+                                {MENU_ITEMS.filter(item => !item.comingSoon).map((item) => (
+                                    <Link key={item.path} to={item.path} className="account-quick-card">
+                                        <i className={`bi ${item.icon}`}></i>
+                                        <span>{item.label}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <Outlet />
+                    )}
                 </main>
             </div>
         </div>
