@@ -868,6 +868,14 @@ input[type="date"].hero-input:invalid {
   margin-top: 16px;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.85);
+}
+
+.hero-partner-cta.desktop-only {
+  display: none;
+}
+
+.hero-partner-cta.mobile-only {
+  display: block;
   text-align: center;
 }
 
@@ -879,9 +887,14 @@ input[type="date"].hero-input:invalid {
   transition: all 0.2s ease;
 }
 
-@media (max-width: 768px) {
-  .hero-partner-cta {
-    text-align: center;
+@media (min-width: 992px) {
+  .hero-partner-cta.desktop-only {
+    display: block;
+    text-align: left;
+  }
+
+  .hero-partner-cta.mobile-only {
+    display: none;
   }
 }
 

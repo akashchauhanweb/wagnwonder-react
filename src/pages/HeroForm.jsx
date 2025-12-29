@@ -216,6 +216,16 @@ function HeroForm() {
                                 </div>
                             ))}
                         </div>
+
+                        <div className="hero-partner-cta desktop-only">
+                            <span>Own a pet crèche? </span>
+                            <span 
+                                className="hero-partner-link"
+                                onClick={() => navigate("/contact", { state: { subject: "partnership" } })}
+                            >
+                                Partner with us
+                            </span>
+                        </div>
                     </div>
 
                     {/* Right Column - Form */}
@@ -298,7 +308,7 @@ function HeroForm() {
                             </form>
                         </div>
 
-                        <div className="hero-partner-cta">
+                        <div className="hero-partner-cta mobile-only">
                             <span>Own a pet crèche? </span>
                             <span 
                                 className="hero-partner-link"
