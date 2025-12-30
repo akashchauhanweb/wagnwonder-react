@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
+import { callServicesApi } from "../assets/js/servicesApi";
 
 const MENU_ITEMS = [
     { path: "/account/info", icon: "bi-person-fill", label: "Personal Info" },
@@ -28,7 +29,18 @@ function Account() {
         window.scrollTo(0, 0);
     }, []);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+    const sessionId = localStorage.getItem("session_id");
+        if (sessionId) {
+            try {
+                await callServicesApi({
+                    action: "LOGOUT",
+                    session_id: sessionId
+                });
+            } catch (err) {
+                console.error("Logout error:", err);
+            }
+        }
         localStorage.clear();
         navigate("/");
     };
