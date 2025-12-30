@@ -1,6 +1,6 @@
-import React from 'react';
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import React from 'react';
 import Header from './assets/components/Header.jsx';
 import Hero from './pages/Hero.jsx';
 import Footer from './assets/components/Footer.jsx';
@@ -19,11 +19,13 @@ import BookingReview from './pages/BookingReview.jsx';
 import PaymentStatus from './pages/PaymentStatus.jsx';
 import CrecheBookings from './pages/CrecheBookings.jsx';
 import ManageBookings from './pages/ManageBookings.jsx';
+import SupportTickets from './pages/SupportTickets.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
 import ContactUs from './pages/ContactUs.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
+import WhatsAppButton from './assets/components/WhatsAppButton.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
 
@@ -33,7 +35,6 @@ function AppContent() {
   const isAdminRoute = location.pathname.startsWith('/admin');
   const { sessionExpired, handleSessionExpired } = useSession();
 
-  // Set up global session handler for API calls
   React.useEffect(() => {
     setGlobalSessionHandler(handleSessionExpired);
   }, [handleSessionExpired]);
@@ -64,12 +65,13 @@ function AppContent() {
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="manage-kennels" element={<ManageKennels />} />
           <Route path="manage-bookings" element={<ManageBookings />} />
+          <Route path="support-tickets" element={<SupportTickets />} />
         </Route>
       </Routes>
 
       {!isAdminRoute && <Footer />}
-        
-        <SessionExpiredModal isOpen={sessionExpired} />
+      {!isAdminRoute && <WhatsAppButton />}
+      <SessionExpiredModal isOpen={sessionExpired} />
     </div>
   );
 }
