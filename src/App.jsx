@@ -26,7 +26,7 @@ import ContactUs from './pages/ContactUs.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
-
+import WhatsAppButton from './assets/components/WhatsAppButton';
 
 function AppContent() {
   const location = useLocation();
@@ -68,8 +68,9 @@ function AppContent() {
       </Routes>
 
       {!isAdminRoute && <Footer />}
-        
-        <SessionExpiredModal isOpen={sessionExpired} />
+
+      <SessionExpiredModal isOpen={sessionExpired} />
+      {!isAdminRoute && <WhatsAppButton />}
     </div>
   );
 }
