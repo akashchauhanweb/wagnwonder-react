@@ -14,6 +14,7 @@ function Account() {
     const navigate = useNavigate();
     const location = useLocation();
     const [user, setUser] = useState(null);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
         const session = localStorage.getItem("session_id");
@@ -30,7 +31,8 @@ function Account() {
     }, []);
 
     const handleLogout = async () => {
-    const sessionId = localStorage.getItem("session_id");
+        setLoggingOut(true);
+        const sessionId = localStorage.getItem("session_id");
         if (sessionId) {
             try {
                 await callServicesApi({
@@ -96,9 +98,18 @@ function Account() {
                             </Link>
                         )}
 
-                        <button className="account-nav-item logout" onClick={handleLogout}>
-                            <i className="bi bi-box-arrow-right"></i>
-                            <span>Logout</span>
+                        <button className="account-nav-item logout" onClick={handleLogout} disabled={loggingOut}>
+                            {loggingOut ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                    <span>Logging out...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="bi bi-box-arrow-right"></i>
+                                    <span>Logout</span>
+                                </>
+                            )}
                         </button>
                     </nav>
                 </aside>
