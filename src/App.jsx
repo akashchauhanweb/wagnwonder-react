@@ -1,3 +1,4 @@
+import React from 'react';
 import './App.css';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './assets/components/Header.jsx';
@@ -23,11 +24,19 @@ import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
 import ContactUs from './pages/ContactUs.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
+import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
+import SessionExpiredModal from './assets/components/SessionExpiredModal';
 
 
 function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const { sessionExpired, handleSessionExpired } = useSession();
+
+  // Set up global session handler for API calls
+  React.useEffect(() => {
+    setGlobalSessionHandler(handleSessionExpired);
+  }, [handleSessionExpired]);
 
   return (
     <div className={isAdminRoute ? 'admin-layout' : ''}>
@@ -59,6 +68,8 @@ function AppContent() {
       </Routes>
 
       {!isAdminRoute && <Footer />}
+        
+        <SessionExpiredModal isOpen={sessionExpired} />
     </div>
   );
 }

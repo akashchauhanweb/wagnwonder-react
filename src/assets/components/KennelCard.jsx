@@ -1,6 +1,3 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-
 export default function KennelCard({
     kennel,
     onBook,
@@ -8,7 +5,6 @@ export default function KennelCard({
     isLoading = false,
     showCity = false,
 }) {
-    const navigate = useNavigate();
     const {
         kennel_id,
         kennel_name,
@@ -21,11 +17,11 @@ export default function KennelCard({
     const carouselId = `carousel-${kennel_id}`;
 
     const handleClick = () => {
-        navigate(`/kennels/${kennel_id}`);
-    };
+    if (onBook) onBook();
+};
 
-    return (
-        <div className="kennel-card" onClick={handleClick}>
+return (
+    <div className="kennel-card" onClick={bookLabel !== "Sold Out" ? handleClick : undefined}>
             {/* Image Section */}
             <div className="kennel-card-image" onClick={(e) => e.stopPropagation()}>
                 {images.length > 0 ? (

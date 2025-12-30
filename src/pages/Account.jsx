@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
+import { callServicesApi } from "../assets/js/servicesApi";
 
 const MENU_ITEMS = [
     { path: "/account/info", icon: "bi-person-fill", label: "Personal Info" },
@@ -13,6 +14,7 @@ function Account() {
     const navigate = useNavigate();
     const location = useLocation();
     const [user, setUser] = useState(null);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
         const session = localStorage.getItem("session_id");
@@ -28,7 +30,19 @@ function Account() {
         window.scrollTo(0, 0);
     }, []);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        setLoggingOut(true);
+        const sessionId = localStorage.getItem("session_id");
+        if (sessionId) {
+            try {
+                await callServicesApi({
+                    action: "LOGOUT",
+                    session_id: sessionId
+                });
+            } catch (err) {
+                console.error("Logout error:", err);
+            }
+        }
         localStorage.clear();
         navigate("/");
     };
@@ -84,9 +98,18 @@ function Account() {
                             </Link>
                         )}
 
-                        <button className="account-nav-item logout" onClick={handleLogout}>
-                            <i className="bi bi-box-arrow-right"></i>
-                            <span>Logout</span>
+                        <button className="account-nav-item logout" onClick={handleLogout} disabled={loggingOut}>
+                            {loggingOut ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                    <span>Logging out...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <i className="bi bi-box-arrow-right"></i>
+                                    <span>Logout</span>
+                                </>
+                            )}
                         </button>
                     </nav>
                 </aside>

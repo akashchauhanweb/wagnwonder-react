@@ -4196,6 +4196,17 @@ input[type="date"].hero-input:invalid {
     background-color: #fef2f2;
 }
 
+.account-nav-item.logout:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.account-nav-item .spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 2px;
+}
+
 /* Content Area */
 .account-content {
     background: white;
@@ -7250,7 +7261,6 @@ input[type="date"].hero-input:invalid {
     background: #f8fafc;
     border: 2px solid #e2e8f0;
     border-radius: 12px;
-    padding: 16px;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -9535,4 +9545,91 @@ input[type="date"].hero-input:invalid {
     .admin-layout .admin-small-screen-message {
         min-height: 100vh;
     }
+}
+
+/* Session Expired Modal */
+.session-expired-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.session-expired-modal {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: sessionModalIn 0.3s ease;
+}
+
+@keyframes sessionModalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.session-expired-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #fef2f2;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 20px;
+}
+
+.session-expired-modal h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 8px;
+}
+
+.session-expired-modal p {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin: 0 0 24px;
+    line-height: 1.5;
+}
+
+.session-expired-modal button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.session-expired-modal button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(216, 74, 57, 0.4);
 }

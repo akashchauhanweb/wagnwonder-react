@@ -6,11 +6,14 @@ import '../node_modules/bootstrap-icons/font/bootstrap-icons.css';
 import './index.css'
 import App from './App.jsx'
 import { LoadingProvider } from "./contexts/LoadingContext";
+import { SessionProvider } from "./contexts/SessionContext";
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <LoadingProvider>
-      <App />
-    </LoadingProvider>
+    <SessionProvider>
+      <LoadingProvider>
+        <App />
+      </LoadingProvider>
+    </SessionProvider>
   </StrictMode>,
 )
