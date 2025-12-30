@@ -8,6 +8,7 @@ const MENU_ITEMS = [
     { path: "/admin/manage-users", icon: "bi-people-fill", label: "Manage Users" },
     { path: "/admin/manage-kennels", icon: "bi-house-door-fill", label: "Manage Kennels" },
     { path: "/admin/manage-bookings", icon: "bi-calendar-check-fill", label: "Manage Bookings" },
+    { path: "/admin/support-tickets", icon: "bi-chat-dots-fill", label: "Support Tickets" },
 ];
 
 const AdminPage = () => {
