@@ -13,6 +13,7 @@ import AdminPage from './pages/AdminPage';
 import ManageProducts from './pages/ManageProducts';
 import ManageUsers from './pages/ManageUsers.jsx';
 import ManageKennels from "./pages/ManageKennels";
+import MyTickets from './pages/MyTickets.jsx';
 import SearchResults from "./pages/SearchResults";
 import SearchDetails from "./pages/SearchDetails.jsx";
 import BookingReview from './pages/BookingReview.jsx';
@@ -59,6 +60,7 @@ function AppContent() {
           <Route path="info" element={<AccountInfo />} />
           <Route path="pets" element={<YourPets />} />
           <Route path="creche-bookings" element={<CrecheBookings />} />
+          <Route path="my-tickets" element={<MyTickets />} />
         </Route>
         <Route path="/admin" element={<AdminPage />}>
           <Route path="manage-products" element={<ManageProducts />} />

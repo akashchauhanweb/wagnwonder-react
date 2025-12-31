@@ -10,6 +10,7 @@ const SupportTickets = () => {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [replyText, setReplyText] = useState("");
     const [sending, setSending] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -18,21 +19,18 @@ const SupportTickets = () => {
 
     useEffect(() => {
         fetchTickets();
-    }, [statusFilter]);
+    }, []);
 
     const fetchTickets = async () => {
         setLoading(true);
         const session_id = localStorage.getItem("session_id");
         const body = {
             action: "GET_TICKETS",
-            session_id,
-            status: statusFilter
+            session_id
         };
-        console.log(body);
         const response = await callServicesApi(body);
 
         if (response?.success) {
-            console.log("Tickets response:", response.tickets);
             setTickets(response.tickets || []);
         } else {
             setTickets([]);
@@ -93,6 +91,7 @@ const SupportTickets = () => {
     };
 
     const handleStatusChange = async (newStatus) => {
+        setUpdatingStatus(true);
         const session_id = localStorage.getItem("session_id");
 
         const response = await callServicesApi({
@@ -112,6 +111,7 @@ const SupportTickets = () => {
             setErrorMsg(response?.message || "Failed to update status.");
             setTimeout(() => setErrorMsg(""), 3000);
         }
+        setUpdatingStatus(false);
     };
 
     const handleBackToList = () => {
@@ -143,7 +143,7 @@ const SupportTickets = () => {
 
     const getStatusLabel = (status) => {
         switch (status) {
-            case 'open': return 'Open';
+            case 'open': return 'New';
             case 'in_progress': return 'In Progress';
             case 'closed': return 'Closed';
             default: return status;
@@ -151,6 +151,29 @@ const SupportTickets = () => {
     };
 
     const filteredTickets = tickets.filter((ticket) => {
+        // Helper: check if ticket is awaiting reply (more than 1 message and last reply by user)
+        const isAwaitingReply = ticket.last_reply_by === 'user' && ticket.status !== 'closed' && ticket.source !== 'contact_us' && ticket.message_count > 1;
+
+        // Helper: check if ticket is new (only 1 message)
+        const isNew = ticket.status === 'open' && ticket.source !== 'contact_us' && ticket.message_count === 1;
+
+        // Status/Source filter
+        if (statusFilter === 'contact_us') {
+            if (ticket.source !== 'contact_us') return false;
+        } else if (statusFilter === 'awaiting_reply') {
+            if (!isAwaitingReply) return false;
+        } else if (statusFilter === 'open') {
+            // New tickets - only 1 message
+            if (!isNew) return false;
+        } else if (statusFilter === 'in_progress') {
+            // In Progress - admin replied, waiting for user
+            if (ticket.status !== 'in_progress' || ticket.source === 'contact_us' || ticket.last_reply_by !== 'admin') return false;
+        } else if (statusFilter === 'closed') {
+            // Closed tickets - only registered users
+            if (ticket.status !== 'closed' || ticket.source === 'contact_us') return false;
+        }
+
+        // Search filter
         if (!searchQuery.trim()) return true;
         const query = searchQuery.toLowerCase();
         return (
@@ -179,7 +202,7 @@ const SupportTickets = () => {
                 </h2>
                 {!selectedTicket && (
                     <div className="ticket-count">
-                        {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
+                        {filteredTickets.length} {filteredTickets.length === 1 ? 'ticket' : 'tickets'}
                     </div>
                 )}
             </div>
@@ -217,13 +240,13 @@ const SupportTickets = () => {
                             )}
                         </div>
                         <div className="filter-chips">
-                            {['all', 'open', 'in_progress', 'closed'].map((status) => (
+                            {['all', 'open', 'awaiting_reply', 'in_progress', 'closed', 'contact_us'].map((status) => (
                                 <button
                                     key={status}
                                     className={`filter-chip ${statusFilter === status ? 'active' : ''}`}
                                     onClick={() => setStatusFilter(status)}
                                 >
-                                    {status === 'all' ? 'All' : getStatusLabel(status)}
+                                    {status === 'all' ? 'All' : status === 'contact_us' ? 'Contact Us Enquiries' : status === 'awaiting_reply' ? 'Awaiting Reply' : getStatusLabel(status)}
                                 </button>
                             ))}
                         </div>
@@ -244,7 +267,7 @@ const SupportTickets = () => {
                             {filteredTickets.map((ticket) => (
                                 <div
                                     key={ticket.ticket_id}
-                                    className={`ticket-card ${ticket.last_reply_by === 'user' && ticket.status !== 'closed' ? 'needs-reply' : ''}`}
+                                    className={`ticket-card ${(ticket.last_reply_by === 'user' || ticket.last_reply_by === null) && ticket.status !== 'closed' ? 'needs-reply' : ''}`}
                                     onClick={() => handleTicketClick(ticket)}
                                 >
                                     <div className="ticket-card-header">
@@ -253,10 +276,12 @@ const SupportTickets = () => {
                                             <h3 className="ticket-subject">{ticket.subject}</h3>
                                         </div>
                                         <div className="ticket-meta">
-                                            <span className={`ticket-status ${getStatusBadgeClass(ticket.status)}`}>
-                                                {getStatusLabel(ticket.status)}
-                                            </span>
-                                            {ticket.source === 'contact_us' && !ticket.can_reply && (
+                                            {!(ticket.last_reply_by === 'user' && ticket.status !== 'closed' && ticket.source !== 'contact_us' && ticket.message_count > 1) && (
+                                                <span className={`ticket-status ${getStatusBadgeClass(ticket.status)}`}>
+                                                    {getStatusLabel(ticket.status)}
+                                                </span>
+                                            )}
+                                            {ticket.source === 'contact_us' && (
                                                 <span className="ticket-source">
                                                     <i className="bi bi-envelope"></i>
                                                     Contact Form
@@ -281,7 +306,7 @@ const SupportTickets = () => {
                                             </span>
                                         </div>
                                     </div>
-                                    {ticket.last_reply_by === 'user' && ticket.status !== 'closed' && (
+                                    {ticket.last_reply_by === 'user' && ticket.status !== 'closed' && ticket.source !== 'contact_us' && ticket.message_count > 1 && (
                                         <div className="ticket-badge-waiting">
                                             Awaiting Reply
                                         </div>
@@ -332,17 +357,27 @@ const SupportTickets = () => {
                                     <button 
                                         className="btn-close-ticket"
                                         onClick={() => handleStatusChange('closed')}
+                                        disabled={updatingStatus}
                                     >
-                                        <i className="bi bi-check-circle"></i>
-                                        Close Ticket
+                                        {updatingStatus ? (
+                                            <span className="spinner-border spinner-border-sm" />
+                                        ) : (
+                                            <i className="bi bi-check-circle"></i>
+                                        )}
+                                        {updatingStatus ? 'Closing...' : 'Close Ticket'}
                                     </button>
                                 ) : (
                                     <button 
                                         className="btn-reopen-ticket"
                                         onClick={() => handleStatusChange('open')}
+                                        disabled={updatingStatus}
                                     >
-                                        <i className="bi bi-arrow-counterclockwise"></i>
-                                        Reopen Ticket
+                                        {updatingStatus ? (
+                                            <span className="spinner-border spinner-border-sm" />
+                                        ) : (
+                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                        )}
+                                        {updatingStatus ? 'Reopening...' : 'Reopen Ticket'}
                                     </button>
                                 )}
                             </div>

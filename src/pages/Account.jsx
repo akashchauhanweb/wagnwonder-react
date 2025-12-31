@@ -6,6 +6,7 @@ const MENU_ITEMS = [
     { path: "/account/info", icon: "bi-person-fill", label: "Personal Info" },
     { path: "/account/pets", icon: "bi-heart-pulse-fill", label: "Your Pets" },
     { path: "/account/creche-bookings", icon: "bi-house-heart-fill", label: "Creche Bookings" },
+    { path: "/account/my-tickets", icon: "bi-chat-dots-fill", label: "Help" },
     { path: "/account/orders", icon: "bi-bag-check-fill", label: "Orders", comingSoon: true },
     { path: "/account/addresses", icon: "bi-geo-alt-fill", label: "Addresses", comingSoon: true },
 ];

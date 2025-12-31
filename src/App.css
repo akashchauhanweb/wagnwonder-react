@@ -10362,3 +10362,564 @@ input[type="date"].hero-input:invalid {
     background: #e2e8f0;
     color: #1e293b;
 }
+
+/* ==================== MY TICKETS (User Account) ==================== */
+.my-tickets {
+    padding: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.my-tickets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.my-tickets-header h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.my-tickets-header .back-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.my-tickets-header .back-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.new-ticket-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.new-ticket-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(216, 74, 57, 0.3);
+}
+
+/* Alerts */
+.my-tickets-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+}
+
+.my-tickets-alert.success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.my-tickets-alert.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+/* Loading & Empty */
+.my-tickets-loading {
+    display: flex;
+    justify-content: center;
+    padding: 60px 0;
+}
+
+.my-tickets-loading .spinner-border {
+    color: #D84A39;
+}
+
+.my-tickets-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #64748b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.my-tickets-empty i {
+    font-size: 3rem;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.my-tickets-empty p {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #475569;
+    margin: 0 0 8px;
+}
+
+.my-tickets-empty span {
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.my-tickets-empty button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Tickets List */
+.my-tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.my-ticket-card {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.my-ticket-card:hover {
+    border-color: #D84A39;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.my-ticket-card.has-reply {
+    border-left: 4px solid #22c55e;
+}
+
+.my-ticket-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.my-ticket-id {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.my-ticket-status {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.my-ticket-status.status-open {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.my-ticket-status.status-in-progress {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.my-ticket-status.status-closed {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.my-ticket-subject {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 12px;
+    text-transform: capitalize;
+}
+
+.my-ticket-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.my-ticket-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.my-ticket-new-reply {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.85rem;
+    color: #22c55e;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Ticket Detail */
+.my-ticket-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.my-ticket-info {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.my-ticket-info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+}
+
+.my-ticket-info .info-label {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.my-ticket-info .info-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+/* Messages */
+.my-ticket-messages {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.my-messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.my-message-item {
+    padding: 14px;
+    border-radius: 12px;
+    max-width: 85%;
+}
+
+.my-message-item.user {
+    background: #f1f5f9;
+    align-self: flex-end;
+}
+
+.my-message-item.admin {
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    align-self: flex-start;
+}
+
+.my-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 12px;
+}
+
+.my-message-sender {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.my-message-item.user .my-message-sender {
+    color: #475569;
+}
+
+.my-message-item.admin .my-message-sender {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.my-message-time {
+    font-size: 0.75rem;
+}
+
+.my-message-item.user .my-message-time {
+    color: #94a3b8;
+}
+
+.my-message-item.admin .my-message-time {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.my-message-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+/* Reply Box */
+.my-ticket-reply {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.my-ticket-reply textarea {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    resize: none;
+    min-height: 80px;
+}
+
+.my-ticket-reply textarea:focus {
+    outline: none;
+    border-color: #D84A39;
+}
+
+.my-ticket-reply button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: fit-content;
+}
+
+.my-ticket-reply button:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.my-ticket-reply button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.my-ticket-closed {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    color: #64748b;
+}
+
+.my-ticket-closed i {
+    font-size: 1.25rem;
+}
+
+.my-ticket-closed p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* New Ticket Modal */
+.new-ticket-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.new-ticket-modal {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.new-ticket-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.new-ticket-modal-header h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.new-ticket-modal-header .modal-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.new-ticket-modal-header .modal-close-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.new-ticket-modal form {
+    padding: 20px;
+}
+
+.new-ticket-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #fef2f2;
+    color: #dc2626;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+.new-ticket-field {
+    margin-bottom: 16px;
+}
+
+.new-ticket-field label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.new-ticket-field select,
+.new-ticket-field textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.new-ticket-field select:focus,
+.new-ticket-field textarea:focus {
+    outline: none;
+    border-color: #D84A39;
+}
+
+.new-ticket-field textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.new-ticket-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.new-ticket-actions .btn-cancel {
+    padding: 12px 20px;
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.new-ticket-actions .btn-cancel:hover {
+    background: #e2e8f0;
+}
+
+.new-ticket-actions .btn-submit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.new-ticket-actions .btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
