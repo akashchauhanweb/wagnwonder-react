@@ -151,11 +151,12 @@ const SupportTickets = () => {
     };
 
     const filteredTickets = tickets.filter((ticket) => {
-        // Helper: check if ticket is awaiting reply (more than 1 message and last reply by user)
-        const isAwaitingReply = ticket.last_reply_by === 'user' && ticket.status !== 'closed' && ticket.source !== 'contact_us' && ticket.message_count > 1;
 
-        // Helper: check if ticket is new (only 1 message)
-        const isNew = ticket.status === 'open' && ticket.source !== 'contact_us' && ticket.message_count === 1;
+        // Helper: check if ticket is new (admin has never replied - status is still 'open')
+        const isNew = ticket.status === 'open' && ticket.source !== 'contact_us';
+
+        // Helper: check if ticket is awaiting reply (admin has replied before, but user replied last)
+        const isAwaitingReply = ticket.last_reply_by === 'user' && ticket.status === 'in_progress' && ticket.source !== 'contact_us';
 
         // Status/Source filter
         if (statusFilter === 'contact_us') {
@@ -276,7 +277,7 @@ const SupportTickets = () => {
                                             <h3 className="ticket-subject">{ticket.subject}</h3>
                                         </div>
                                         <div className="ticket-meta">
-                                            {!(ticket.last_reply_by === 'user' && ticket.status !== 'closed' && ticket.source !== 'contact_us' && ticket.message_count > 1) && (
+                                            {!(ticket.last_reply_by === 'user' && ticket.status === 'in_progress' && ticket.source !== 'contact_us') && (
                                                 <span className={`ticket-status ${getStatusBadgeClass(ticket.status)}`}>
                                                     {getStatusLabel(ticket.status)}
                                                 </span>
@@ -306,7 +307,7 @@ const SupportTickets = () => {
                                             </span>
                                         </div>
                                     </div>
-                                    {ticket.last_reply_by === 'user' && ticket.status !== 'closed' && ticket.source !== 'contact_us' && ticket.message_count > 1 && (
+                                    {ticket.last_reply_by === 'user' && ticket.status === 'in_progress' && ticket.source !== 'contact_us' && (
                                         <div className="ticket-badge-waiting">
                                             Awaiting Reply
                                         </div>
