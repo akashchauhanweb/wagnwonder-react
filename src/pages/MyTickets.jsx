@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
+import FAQSection from "../assets/components/FAQSection";
 
 const MyTickets = () => {
     const [tickets, setTickets] = useState([]);
@@ -10,6 +11,8 @@ const MyTickets = () => {
     const [replyText, setReplyText] = useState("");
     const [sending, setSending] = useState(false);
     const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+    const [showFAQModal, setShowFAQModal] = useState(false);
+    const [showTicketsList, setShowTicketsList] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
 
@@ -56,6 +59,7 @@ const MyTickets = () => {
     };
 
     const handleTicketClick = (ticket) => {
+        setShowTicketsList(false);
         setSelectedTicket(ticket);
         setMessages([]);
         setReplyText("");
@@ -94,6 +98,7 @@ const MyTickets = () => {
         setSelectedTicket(null);
         setMessages([]);
         setReplyText("");
+        setShowTicketsList(true);
     };
 
     const formatDate = (dateStr) => {
@@ -142,12 +147,6 @@ const MyTickets = () => {
                         "Help"
                     )}
                 </h2>
-                {!selectedTicket && (
-                    <button className="new-ticket-btn" onClick={() => setShowNewTicketModal(true)}>
-                        <i className="bi bi-plus-lg"></i>
-                        New Ticket
-                    </button>
-                )}
             </div>
 
             {/* Alerts */}
@@ -166,53 +165,44 @@ const MyTickets = () => {
 
             {!selectedTicket ? (
                 <>
-                    {/* Tickets List */}
-                    {loading ? (
-                        <div className="my-tickets-loading">
-                            <div className="spinner-border" role="status" />
-                        </div>
-                    ) : tickets.length === 0 ? (
-                        <div className="my-tickets-empty">
-                            <i className="bi bi-chat-square-text"></i>
-                            <p>No support tickets yet</p>
-                            <span>Need help? Create a new ticket to get in touch with us.</span>
-                        </div>
-                    ) : (
-                        <div className="my-tickets-list">
-                            {tickets.map((ticket) => (
-                                <div
-                                    key={ticket.ticket_id}
-                                    className={`my-ticket-card ${ticket.last_reply_by === 'admin' && ticket.status !== 'closed' ? 'has-reply' : ''}`}
-                                    onClick={() => handleTicketClick(ticket)}
-                                >
-                                    <div className="my-ticket-card-header">
-                                        <span className="my-ticket-id">#{ticket.ticket_id}</span>
-                                        <span className={`my-ticket-status ${getStatusBadgeClass(ticket.status)}`}>
-                                            {getStatusLabel(ticket.status)}
-                                        </span>
-                                    </div>
-                                    <h3 className="my-ticket-subject">{ticket.subject}</h3>
-                                    <div className="my-ticket-meta">
-                                        <span>
-                                            <i className="bi bi-chat-dots"></i>
-                                            {ticket.message_count} {ticket.message_count === 1 ? 'message' : 'messages'}
-                                        </span>
-                                        <span>
-                                            <i className="bi bi-clock"></i>
-                                            {formatDate(ticket.last_reply_at || ticket.created_at)}
-                                        </span>
-                                    </div>
-                                    {ticket.last_reply_by === 'admin' && ticket.status !== 'closed' && (
-                                        <div className="my-ticket-new-reply">
-                                            <i className="bi bi-reply-fill"></i>
-                                            New reply from support
-                                        </div>
-                                    )}
+                    {/* Help Options - Hidden when viewing tickets */}
+                    {!showTicketsList && (
+                        <div className="help-options">
+                            {/* How can we help you */}
+                            <div className="help-card">
+                                <div className="help-card-icon">
+                                    <i className="bi bi-question-circle"></i>
                                 </div>
-                            ))}
+                                <h3>How can we help you?</h3>
+                                <p>Browse through our frequently asked questions for quick answers.</p>
+                                <button className="help-card-btn" onClick={() => setShowFAQModal(true)}>
+                                    <i className="bi bi-journal-text"></i>
+                                    Review FAQs
+                                </button>
+                            </div>
+
+                            {/* Still need help */}
+                            <div className="help-card">
+                                <div className="help-card-icon support">
+                                    <i className="bi bi-headset"></i>
+                                </div>
+                                <h3>Still need help?</h3>
+                                <p>Can't find what you're looking for? Our support team is here to help.</p>
+                                <div className="help-card-actions">
+                                    <button className="help-card-btn primary" onClick={() => setShowNewTicketModal(true)}>
+                                        <i className="bi bi-plus-lg"></i>
+                                        Create Ticket
+                                    </button>
+                                    <button className="help-card-btn secondary" onClick={() => setShowTicketsList(true)}>
+                                        <i className="bi bi-ticket-detailed"></i>
+                                        View Tickets {tickets.length > 0 && `(${tickets.length})`}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
-                </>
+
+                    </>
             ) : (
                 <>
                     {/* Ticket Detail View */}
@@ -318,6 +308,82 @@ const MyTickets = () => {
                     }}
                     userData={userData}
                 />
+            )}
+
+            {/* Tickets List Modal */}
+            {showTicketsList && (
+                <div className="tickets-modal-overlay" onClick={() => setShowTicketsList(false)}>
+                    <div className="tickets-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="tickets-modal-header">
+                            <h3>Your Tickets</h3>
+                            <button className="modal-close-btn" onClick={() => setShowTicketsList(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="tickets-modal-body">
+                            {loading ? (
+                                <div className="my-tickets-loading">
+                                    <div className="spinner-border" role="status" />
+                                </div>
+                            ) : tickets.length === 0 ? (
+                                <div className="my-tickets-no-tickets">
+                                    <i className="bi bi-inbox"></i>
+                                    <p>You haven't created any support tickets yet.</p>
+                                </div>
+                            ) : (
+                                <div className="my-tickets-list">
+                                    {tickets.map((ticket) => (
+                                        <div
+                                            key={ticket.ticket_id}
+                                            className={`my-ticket-card ${ticket.last_reply_by === 'admin' && ticket.status !== 'closed' ? 'has-reply' : ''}`}
+                                            onClick={() => handleTicketClick(ticket)}
+                                        >
+                                            <div className="my-ticket-card-header">
+                                                <span className="my-ticket-id">#{ticket.ticket_id}</span>
+                                                <span className={`my-ticket-status ${getStatusBadgeClass(ticket.status)}`}>
+                                                    {getStatusLabel(ticket.status)}
+                                                </span>
+                                            </div>
+                                            <h3 className="my-ticket-subject">{ticket.subject}</h3>
+                                            <div className="my-ticket-meta">
+                                                <span>
+                                                    <i className="bi bi-chat-dots"></i>
+                                                    {ticket.message_count} {ticket.message_count === 1 ? 'message' : 'messages'}
+                                                </span>
+                                                <span>
+                                                    <i className="bi bi-clock"></i>
+                                                    {formatDate(ticket.last_reply_at)}
+                                                </span>
+                                            </div>
+                                            {ticket.last_reply_by === 'admin' && ticket.status !== 'closed' && (
+                                                <div className="my-ticket-badge-new">
+                                                    New Reply
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* FAQ Modal */}
+            {showFAQModal && (
+                <div className="faq-modal-overlay" onClick={() => setShowFAQModal(false)}>
+                    <div className="faq-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="faq-modal-header">
+                            <h3>Frequently Asked Questions</h3>
+                            <button className="modal-close-btn" onClick={() => setShowFAQModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="faq-modal-body">
+                            <FAQSection showHeader={false} />
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
