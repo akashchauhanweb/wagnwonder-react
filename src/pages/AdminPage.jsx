@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 import logo from '../assets/images/horizontal-compressed.png';
+import { callServicesApi } from "../assets/js/servicesApi";
 
 const MENU_ITEMS = [
     { path: "/admin/manage-products", icon: "bi-box-seam-fill", label: "Manage Products" },
@@ -15,6 +16,44 @@ const AdminPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const userData = JSON.parse(localStorage.getItem("user_data"));
+    
+    const [supportTickets, setSupportTickets] = useState([]);
+    const [ticketsLoading, setTicketsLoading] = useState(true);
+    const [pendingTicketCount, setPendingTicketCount] = useState(0);
+
+    const fetchSupportTickets = async () => {
+        const session_id = localStorage.getItem("session_id");
+        setTicketsLoading(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_TICKETS",
+                session_id
+            });
+            if (response?.success && response.tickets) {
+                setSupportTickets(response.tickets);
+                // Count "New" + "Awaiting Reply" + "Contact Us New" tickets
+                const pendingCount = response.tickets.filter(ticket => {
+                    const isNew = ticket.status === 'open' && ticket.source !== 'contact_us';
+                    const isAwaitingReply = ticket.last_reply_by === 'user' && ticket.status === 'in_progress' && ticket.source !== 'contact_us';
+                    const isContactUsNew = ticket.source === 'contact_us' && ticket.status !== 'closed';
+                    return isNew || isAwaitingReply || isContactUsNew;
+                }).length;
+                setPendingTicketCount(pendingCount);
+            } else {
+                setSupportTickets([]);
+            }
+        } catch (err) {
+            console.error("Error fetching tickets:", err);
+        } finally {
+            setTicketsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (userData && userData.user_type === 'admin') {
+            fetchSupportTickets();
+        }
+    }, []);
 
     if (
         !userData ||
@@ -80,6 +119,9 @@ const AdminPage = () => {
                                 >
                                     <i className={`bi ${item.icon}`}></i>
                                     <span>{item.label}</span>
+                                    {item.path === "/admin/support-tickets" && pendingTicketCount > 0 && (
+                                        <span className="admin-unread-badge">{pendingTicketCount}</span>
+                                    )}
                                 </Link>
                             ))}
 
@@ -117,7 +159,7 @@ const AdminPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <Outlet />
+                            <Outlet context={{ supportTickets, ticketsLoading, refreshTickets: fetchSupportTickets }} />
                         )}
                     </main>
                 </div>

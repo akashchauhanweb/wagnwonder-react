@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useOutletContext } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 
 const SupportTickets = () => {
-    const [tickets, setTickets] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { supportTickets: tickets, ticketsLoading: loading, refreshTickets } = useOutletContext();
     const [statusFilter, setStatusFilter] = useState("all");
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -18,25 +18,8 @@ const SupportTickets = () => {
     const userData = JSON.parse(localStorage.getItem("user_data"));
 
     useEffect(() => {
-        fetchTickets();
+        window.scrollTo(0, 0);
     }, []);
-
-    const fetchTickets = async () => {
-        setLoading(true);
-        const session_id = localStorage.getItem("session_id");
-        const body = {
-            action: "GET_TICKETS",
-            session_id
-        };
-        const response = await callServicesApi(body);
-
-        if (response?.success) {
-            setTickets(response.tickets || []);
-        } else {
-            setTickets([]);
-        }
-        setLoading(false);
-    };
 
     const fetchMessages = async (ticketId) => {
         setLoadingMessages(true);
@@ -80,7 +63,7 @@ const SupportTickets = () => {
         if (response?.success) {
             setReplyText("");
             fetchMessages(selectedTicket.ticket_id);
-            fetchTickets();
+            refreshTickets();
             setSuccessMsg("Reply sent successfully.");
             setTimeout(() => setSuccessMsg(""), 3000);
         } else {
@@ -104,7 +87,7 @@ const SupportTickets = () => {
 
         if (response?.success) {
             fetchMessages(selectedTicket.ticket_id);
-            fetchTickets();
+            refreshTickets();
             setSuccessMsg(`Ticket ${newStatus === 'closed' ? 'closed' : 'reopened'} successfully.`);
             setTimeout(() => setSuccessMsg(""), 3000);
         } else {
@@ -150,7 +133,23 @@ const SupportTickets = () => {
         }
     };
 
-    const filteredTickets = tickets.filter((ticket) => {
+    // Calculate counts for each filter
+    const filterCounts = useMemo(() => {
+        if (!tickets) return {};
+        const contactUsTickets = tickets.filter(t => t.source === 'contact_us');
+        return {
+            all: tickets.filter(t => t.source !== 'contact_us').length,
+            open: tickets.filter(t => t.status === 'open' && t.source !== 'contact_us').length,
+            awaiting_reply: tickets.filter(t => t.last_reply_by === 'user' && t.status === 'in_progress' && t.source !== 'contact_us').length,
+            in_progress: tickets.filter(t => t.status === 'in_progress' && t.source !== 'contact_us' && t.last_reply_by === 'admin').length,
+            closed: tickets.filter(t => t.status === 'closed' && t.source !== 'contact_us').length,
+            contact_us: contactUsTickets.length,
+            contact_us_new: contactUsTickets.filter(t => t.status !== 'closed').length,
+            contact_us_closed: contactUsTickets.filter(t => t.status === 'closed').length
+        };
+    }, [tickets]);
+
+    const filteredTickets = (tickets || []).filter((ticket) => {
 
         // Helper: check if ticket is new (admin has never replied - status is still 'open')
         const isNew = ticket.status === 'open' && ticket.source !== 'contact_us';
@@ -247,7 +246,16 @@ const SupportTickets = () => {
                                     className={`filter-chip ${statusFilter === status ? 'active' : ''}`}
                                     onClick={() => setStatusFilter(status)}
                                 >
-                                    {status === 'all' ? 'All' : status === 'contact_us' ? 'Contact Us Enquiries' : status === 'awaiting_reply' ? 'Awaiting Reply' : getStatusLabel(status)}
+                                    {status === 'all' ? 'All' : status === 'contact_us' ? 'Contact Us' : status === 'awaiting_reply' ? 'Awaiting Reply' : getStatusLabel(status)}
+                                    {status === 'contact_us' ? (
+                                        <span className={`filter-count ${filterCounts.contact_us_new > 0 ? 'highlight' : ''}`}>
+                                            {filterCounts.contact_us_new || 0}/{filterCounts.contact_us_closed || 0}
+                                        </span>
+                                    ) : (
+                                        <span className={`filter-count ${(status === 'open' || status === 'awaiting_reply') && filterCounts[status] > 0 ? 'highlight' : ''}`}>
+                                            {filterCounts[status] || 0}
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         </div>

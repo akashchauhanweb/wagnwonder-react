@@ -16,6 +16,9 @@ function Account() {
     const location = useLocation();
     const [user, setUser] = useState(null);
     const [loggingOut, setLoggingOut] = useState(false);
+    const [tickets, setTickets] = useState([]);
+    const [ticketsLoading, setTicketsLoading] = useState(true);
+    const [unreadTicketCount, setUnreadTicketCount] = useState(0);
 
     useEffect(() => {
         const session = localStorage.getItem("session_id");
@@ -29,6 +32,41 @@ function Account() {
 
     useEffect(() => {
         window.scrollTo(0, 0);
+    }, []);
+
+    const fetchTickets = async () => {
+        const userData = localStorage.getItem("user_data");
+        if (!userData) return;
+        
+        const parsedUser = JSON.parse(userData);
+        const session_id = localStorage.getItem("session_id");
+        
+        setTicketsLoading(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_USER_TICKETS",
+                session_id,
+                user_id: parsedUser?.id
+            });
+            
+            if (response?.success && response.tickets) {
+                setTickets(response.tickets);
+                const unreadCount = response.tickets.filter(
+                    ticket => ticket.last_reply_by === 'admin' && ticket.status !== 'closed'
+                ).length;
+                setUnreadTicketCount(unreadCount);
+            } else {
+                setTickets([]);
+            }
+        } catch (err) {
+            console.error("Error fetching tickets:", err);
+        } finally {
+            setTicketsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTickets();
     }, []);
 
     const handleLogout = async () => {
@@ -89,6 +127,9 @@ function Account() {
                                 <i className={`bi ${item.icon}`}></i>
                                 <span>{item.label}</span>
                                 {item.comingSoon && <span className="coming-soon-badge">Soon</span>}
+                                {item.path === "/account/my-tickets" && unreadTicketCount > 0 && (
+                                    <span className="unread-badge">{unreadTicketCount}</span>
+                                )}
                             </Link>
                         ))}
 
@@ -142,7 +183,7 @@ function Account() {
                             </div>
                         </div>
                     ) : (
-                        <Outlet />
+                        <Outlet context={{ tickets, ticketsLoading, refreshTickets: fetchTickets }} />
                     )}
                 </main>
             </div>
