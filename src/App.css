@@ -4283,6 +4283,30 @@ input[type="date"].hero-input:invalid {
     font-weight: 600;
 }
 
+.unread-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    background: #dc2626;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.admin-unread-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    background: #dc2626;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
 .account-nav-item.logout {
     margin-top: 8px;
     border-top: 1px solid #f1f5f9;
@@ -9984,6 +10008,36 @@ input[type="date"].hero-input:invalid {
     background: #1e293b;
     border-color: #1e293b;
     color: white;
+}
+
+.tickets-filters .filter-chip .filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.tickets-filters .filter-chip.active .filter-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.tickets-filters .filter-chip .filter-count.highlight {
+    background: #dc2626;
+    color: white;
+}
+
+.tickets-filters .filter-chip.active .filter-count.highlight {
+    background: #fecaca;
+    color: #dc2626;
 }
 
 /* Tickets List */

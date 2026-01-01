@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 import FAQSection from "../assets/components/FAQSection";
 
 const MyTickets = () => {
-    const [tickets, setTickets] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { tickets, ticketsLoading: loading, refreshTickets } = useOutletContext();
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [messages, setMessages] = useState([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
@@ -15,31 +15,11 @@ const MyTickets = () => {
     const [showTicketsList, setShowTicketsList] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
-
     const userData = JSON.parse(localStorage.getItem("user_data"));
 
     useEffect(() => {
-        fetchTickets();
+        window.scrollTo(0, 0);
     }, []);
-
-    const fetchTickets = async () => {
-        setLoading(true);
-        const session_id = localStorage.getItem("session_id");
-        const body = {
-            action: "GET_USER_TICKETS",
-            session_id,
-            user_id: userData?.id
-        };
-        console.log(body);
-        const response = await callServicesApi(body);
-        console.log(response);
-        if (response?.success) {
-            setTickets(response.tickets || []);
-        } else {
-            setTickets([]);
-        }
-        setLoading(false);
-    };
 
     const fetchMessages = async (ticketId) => {
         setLoadingMessages(true);
@@ -84,7 +64,7 @@ const MyTickets = () => {
         if (response?.success) {
             setReplyText("");
             fetchMessages(selectedTicket.ticket_id);
-            fetchTickets();
+            refreshTickets();
             setSuccessMsg("Reply sent successfully.");
             setTimeout(() => setSuccessMsg(""), 3000);
         } else {
@@ -348,7 +328,7 @@ const MyTickets = () => {
                     onClose={() => setShowNewTicketModal(false)}
                     onSuccess={() => {
                         setShowNewTicketModal(false);
-                        fetchTickets();
+                        refreshTickets();
                         setSuccessMsg("Ticket created successfully.");
                         setTimeout(() => setSuccessMsg(""), 3000);
                     }}
