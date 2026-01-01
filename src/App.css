@@ -2482,6 +2482,41 @@ input[type="date"].hero-input:invalid {
   transform: scale(1.2);
 }
 
+.kennel-card-image .carousel-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.kennel-card-image .carousel-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.kennel-card-image .carousel-nav-btn i {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.kennel-card-image .carousel-control-prev {
+  left: 10px;
+}
+
+.kennel-card-image .carousel-control-next {
+  right: 10px;
+}
+
 .kennel-card-no-image {
   width: 100%;
   height: 100%;
@@ -2706,6 +2741,41 @@ input[type="date"].hero-input:invalid {
 
 .search-details-carousel .carousel-indicators button.active {
   background-color: white;
+}
+
+.search-details-carousel .carousel-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.search-details-carousel .carousel-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.search-details-carousel .carousel-nav-btn i {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.search-details-carousel .carousel-control-prev {
+  left: 16px;
+}
+
+.search-details-carousel .carousel-control-next {
+  right: 16px;
 }
 
 .search-details-no-image {

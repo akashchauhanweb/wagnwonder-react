@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AddPetModal from "../assets/components/AddPetModal";
 import { callServicesApi } from '../assets/js/servicesApi';
 
@@ -14,9 +14,21 @@ export default function SearchDetails() {
     const [selectedPets, setSelectedPets] = useState([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [isFetchingPets, setIsFetchingPets] = useState(true);
+    const carouselRef = useRef(null);
 
     useEffect(() => {
         window.scrollTo(0, 0);
+    }, []);
+
+    useEffect(() => {
+        if (carouselRef.current && window.bootstrap) {
+            const carousel = new window.bootstrap.Carousel(carouselRef.current, {
+                interval: 3000,
+                ride: 'carousel',
+                touch: true
+            });
+            return () => carousel.dispose();
+        }
     }, []);
 
     const loadPets = async () => {
@@ -120,11 +132,9 @@ export default function SearchDetails() {
                 <div className="search-details-carousel" onClick={(e) => e.stopPropagation()}>
                     {images.length > 0 ? (
                         <div
+                            ref={carouselRef}
                             id={`carousel-${kennelId}`}
                             className="carousel slide"
-                            data-bs-ride="carousel"
-                            data-bs-interval="3000"
-                            data-bs-touch="true"
                         >
                             <div className="carousel-indicators">
                                 {images.map((_, idx) => (
@@ -149,6 +159,27 @@ export default function SearchDetails() {
                                     </div>
                                 ))}
                             </div>
+
+                            {images.length > 1 && (
+                                <>
+                                    <button
+                                        className="carousel-control-prev carousel-nav-btn"
+                                        type="button"
+                                        data-bs-target={`#carousel-${kennelId}`}
+                                        data-bs-slide="prev"
+                                    >
+                                        <i className="bi bi-chevron-left"></i>
+                                    </button>
+                                    <button
+                                        className="carousel-control-next carousel-nav-btn"
+                                        type="button"
+                                        data-bs-target={`#carousel-${kennelId}`}
+                                        data-bs-slide="next"
+                                    >
+                                        <i className="bi bi-chevron-right"></i>
+                                    </button>
+                                </>
+                            )}
                         </div>
                     ) : (
                         <div className="search-details-no-image">

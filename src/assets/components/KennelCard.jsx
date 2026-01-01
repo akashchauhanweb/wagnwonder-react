@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 export default function KennelCard({
     kennel,
     onBook,
@@ -15,6 +17,18 @@ export default function KennelCard({
     } = kennel;
 
     const carouselId = `carousel-${kennel_id}`;
+    const carouselRef = useRef(null);
+
+    useEffect(() => {
+        if (images.length > 1 && carouselRef.current && window.bootstrap) {
+            const carousel = new window.bootstrap.Carousel(carouselRef.current, {
+                interval: 3000,
+                ride: 'carousel',
+                touch: true
+            });
+            return () => carousel.dispose();
+        }
+    }, [images.length]);
 
     const handleClick = () => {
     if (onBook) onBook();
@@ -26,11 +40,9 @@ return (
             <div className="kennel-card-image" onClick={(e) => e.stopPropagation()}>
                 {images.length > 0 ? (
                     <div
+                        ref={carouselRef}
                         id={carouselId}
                         className="carousel slide"
-                        data-bs-ride="carousel"
-                        data-bs-interval="3000"
-                        data-bs-touch="true"
                     >
                         <div className="carousel-indicators">
                             {images.map((_, idx) => (
@@ -60,6 +72,29 @@ return (
                                 </div>
                             ))}
                         </div>
+
+                        {images.length > 1 && (
+                            <>
+                                <button
+                                    className="carousel-control-prev carousel-nav-btn"
+                                    type="button"
+                                    data-bs-target={`#${carouselId}`}
+                                    data-bs-slide="prev"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <i className="bi bi-chevron-left"></i>
+                                </button>
+                                <button
+                                    className="carousel-control-next carousel-nav-btn"
+                                    type="button"
+                                    data-bs-target={`#${carouselId}`}
+                                    data-bs-slide="next"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <i className="bi bi-chevron-right"></i>
+                                </button>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div className="kennel-card-no-image">
