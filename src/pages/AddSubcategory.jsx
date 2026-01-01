@@ -38,7 +38,7 @@ const AddSubcategory = () => {
             category_id: parentId,
             session_id: session_id,
         };
-        console.log(payload);
+        // console.log(payload);
         const response = await callServicesApi(payload);
         if (response?.success) {
             setSubcategoryList(response.subcategories);
@@ -78,7 +78,7 @@ const AddSubcategory = () => {
             name: subcategoryName.trim(),
             parent_id: selectedCategory
         };
-        console.log(payload);
+        // console.log(payload);
         const response = await callServicesApi(payload);
 
         setSubcategoryLoad(false);

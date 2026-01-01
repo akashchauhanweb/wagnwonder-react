@@ -56,7 +56,7 @@ const AddBrand = () => {
             layer: "BRAND",
             name: brandName.trim(),
         }
-        console.log(payload);
+        // console.log(payload);
         const response = await callServicesApi(payload);
 
         setBrandLoad(false);
@@ -87,7 +87,7 @@ const AddBrand = () => {
             brand_id: brand_id,
             session_id: session_id,
         };
-        console.log(payload);
+        // console.log(payload);
         const response = await callServicesApi(payload);
 
         if (response?.status_code === 498) {

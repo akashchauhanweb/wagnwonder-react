@@ -69,8 +69,7 @@ export default function PaymentStatus() {
                         })),
                     };
 
-                    const res = await callServicesApi(bookingPayload);
-                    console.log(res);
+                    await callServicesApi(bookingPayload);
                     localStorage.removeItem("pending_booking");
                     localStorage.removeItem("bookings");
                 } catch (e) {

@@ -13,7 +13,7 @@ export async function uploadImageToS3(file, folder) {
     body: JSON.stringify(body)
   });
 
-  console.log("Upload URL response:", response);
+  // console.log("Upload URL response:", response);
   const data = await response.json();
 
   if (!data.success && data.status_code === 498) {

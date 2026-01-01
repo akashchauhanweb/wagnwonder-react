@@ -181,7 +181,7 @@ const AddProduct = () => {
         }
 
         payload.image_urls = image_urls;
-        console.log(payload);
+        // console.log(payload);
         const res = await callServicesApi(payload);
 
         if (res?.success) {

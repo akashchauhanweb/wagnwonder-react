@@ -217,7 +217,7 @@ function Signup() {
                 ...payload,
                 token: token
             });
-            console.log(response);
+            // console.log(response);
             if (response?.success) {
                 navigate("/login", { 
                     state: { message: "Account created successfully! Please sign in." } 

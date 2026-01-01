@@ -56,7 +56,7 @@ const AddCategory = () => {
             layer: "CATEGORY",
             name: categoryName.trim(),
         };
-        console.log(payload);
+        // console.log(payload);
         const response = await callServicesApi(payload);
 
         setCategoryLoad(false);
@@ -87,7 +87,7 @@ const AddCategory = () => {
             category_id,
             session_id,
         };
-        console.log(payload);
+        // console.log(payload);
         const response = await callServicesApi(payload);
 
         if (response?.status_code === 498) {
