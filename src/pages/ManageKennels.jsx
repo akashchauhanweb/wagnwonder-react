@@ -16,6 +16,7 @@ const ManageKennels = () => {
     const [newRoomType, setNewRoomType] = useState("");
     const [roomTypeSearch, setRoomTypeSearch] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
     const [kennelsList, setKennelsList] = useState([]);
     const [loadingKennels, setLoadingKennels] = useState(true);
     const [searchKennel, setSearchKennel] = useState("");
@@ -23,6 +24,8 @@ const ManageKennels = () => {
     const [zoomImages, setZoomImages] = useState([]);
     const [zoomIndex, setZoomIndex] = useState(0);
     const [kennelInfo, setKennelInfo] = useState(null);
+    const [showImageOrderModal, setShowImageOrderModal] = useState(false);
+    const [pendingImages, setPendingImages] = useState([]);
     const session_id = localStorage.getItem("session_id");
 
     const [filters, setFilters] = useState({
@@ -109,6 +112,56 @@ const ManageKennels = () => {
                 console.error("Geolocation error:", error);
             }
         );
+    };
+
+    const handleImageSelect = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        // Create preview URLs for each file
+        const imagesWithPreview = files.map((file, index) => ({
+            file,
+            preview: URL.createObjectURL(file),
+            order: index
+        }));
+        
+        setPendingImages(imagesWithPreview);
+        setShowImageOrderModal(true);
+    };
+
+    const handleImageReorder = (fromIndex, toIndex) => {
+        const updated = [...pendingImages];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
+        // Update order numbers
+        updated.forEach((img, idx) => img.order = idx);
+        setPendingImages(updated);
+    };
+
+    const handleConfirmImageOrder = () => {
+        // Set images in the confirmed order
+        const orderedFiles = pendingImages.map(img => img.file);
+        setKennelForm(prev => ({ ...prev, images: orderedFiles }));
+        setShowImageOrderModal(false);
+        // Clean up preview URLs
+        pendingImages.forEach(img => URL.revokeObjectURL(img.preview));
+    };
+
+    const handleCancelImageOrder = () => {
+        setShowImageOrderModal(false);
+        setPendingImages([]);
+        // Clean up preview URLs
+        pendingImages.forEach(img => URL.revokeObjectURL(img.preview));
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    const moveImage = (index, direction) => {
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= pendingImages.length) return;
+        handleImageReorder(index, newIndex);
     };
 
     const fetchFeatures = async () => {
@@ -322,19 +375,25 @@ const ManageKennels = () => {
         setErrorMsg("");
         let imageUrls = [];
 
-        if (Array.isArray(kennelForm.images)) {
+        if (Array.isArray(kennelForm.images) && kennelForm.images.length > 0) {
+            const totalImages = kennelForm.images.length;
+            setUploadProgress({ current: 0, total: totalImages });
+            
             try {
-                for (let file of kennelForm.images) {
+                for (let i = 0; i < kennelForm.images.length; i++) {
+                    const file = kennelForm.images[i];
                     if (file instanceof File) {
                         const compressed = await imageCompressor(file);
                         const url = await uploadImageToS3(compressed, "kennels/");
                         imageUrls.push(url);
+                        setUploadProgress({ current: i + 1, total: totalImages });
                     }
                 }
             } catch (error) {
                 console.error("Error uploading images:", error);
                 setErrorMsg("Image upload failed.");
                 setSubmitting(false);
+                setUploadProgress({ current: 0, total: 0 });
                 return;
             }
         }
@@ -383,10 +442,12 @@ const ManageKennels = () => {
                 price_large: ""
             }]);
             if (fileInputRef.current) fileInputRef.current.value = "";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
             setErrorMsg(res.message || "Failed to onboard kennel.");
         }
         setSubmitting(false);
+        setUploadProgress({ current: 0, total: 0 });
     };
 
     const handleAddNewUser = async () => {
@@ -1001,14 +1062,47 @@ const ManageKennels = () => {
                                     multiple
                                     accept="image/*"
                                     ref={fileInputRef}
-                                    onChange={(e) => setKennelForm({ ...kennelForm, images: Array.from(e.target.files) })}
+                                    onChange={handleImageSelect}
                                 />
+                                {kennelForm.images.length > 0 && (
+                                    <div className="selected-images-info">
+                                        <i className="bi bi-check-circle-fill"></i>
+                                        <span>{kennelForm.images.length} image(s) selected and ordered</span>
+                                        <button 
+                                            type="button" 
+                                            className="reorder-btn"
+                                            onClick={() => {
+                                                const imagesWithPreview = kennelForm.images.map((file, index) => ({
+                                                    file,
+                                                    preview: URL.createObjectURL(file),
+                                                    order: index
+                                                }));
+                                                setPendingImages(imagesWithPreview);
+                                                setShowImageOrderModal(true);
+                                            }}
+                                        >
+                                            <i className="bi bi-arrow-down-up"></i>
+                                            Reorder
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <button type="submit" className="submit-btn" disabled={submitting}>
+                        <button 
+                            type="submit" 
+                            className={`submit-btn ${submitting && uploadProgress.total > 0 ? 'with-progress' : ''}`}
+                            disabled={submitting}
+                            style={submitting && uploadProgress.total > 0 ? {
+                                '--progress': `${(uploadProgress.current / uploadProgress.total) * 100}%`
+                            } : {}}
+                        >
                             {submitting && <span className="spinner-border spinner-border-sm me-2" role="status" />}
-                            {submitting ? "Onboarding..." : "Onboard Kennel"}
+                            {submitting ? (
+                                uploadProgress.total > 0 
+                                    ? `Uploading ${uploadProgress.current}/${uploadProgress.total}` 
+                                    : "Saving..."
+                            ) : "Onboard Kennel"}
                         </button>
                     </form>
                 </div>
@@ -1139,6 +1233,59 @@ const ManageKennels = () => {
                                 onClick={() => setZoomIndex(idx)}
                             />
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Image Order Modal */}
+            {showImageOrderModal && (
+                <div className="image-order-modal-overlay" onClick={handleCancelImageOrder}>
+                    <div className="image-order-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="image-order-modal-header">
+                            <h3>Arrange Image Order</h3>
+                            <p>Drag or use arrows to set the display order. First image will be shown first.</p>
+                            <button className="modal-close-btn" onClick={handleCancelImageOrder}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="image-order-modal-body">
+                            <div className="image-order-list">
+                                {pendingImages.map((img, index) => (
+                                    <div key={index} className="image-order-item">
+                                        <div className="image-order-number">{index + 1}</div>
+                                        <img src={img.preview} alt={`Preview ${index + 1}`} />
+                                        <div className="image-order-name">{img.file.name}</div>
+                                        <div className="image-order-actions">
+                                            <button 
+                                                type="button"
+                                                onClick={() => moveImage(index, 'up')}
+                                                disabled={index === 0}
+                                                title="Move up"
+                                            >
+                                                <i className="bi bi-chevron-up"></i>
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => moveImage(index, 'down')}
+                                                disabled={index === pendingImages.length - 1}
+                                                title="Move down"
+                                            >
+                                                <i className="bi bi-chevron-down"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="image-order-modal-footer">
+                            <button type="button" className="btn-cancel" onClick={handleCancelImageOrder}>
+                                Cancel
+                            </button>
+                            <button type="button" className="btn-confirm" onClick={handleConfirmImageOrder}>
+                                <i className="bi bi-check-lg"></i>
+                                Confirm Order
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
