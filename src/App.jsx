@@ -21,6 +21,7 @@ import PaymentStatus from './pages/PaymentStatus.jsx';
 import CrecheBookings from './pages/CrecheBookings.jsx';
 import ManageBookings from './pages/ManageBookings.jsx';
 import SupportTickets from './pages/SupportTickets.jsx';
+import EarningsDashboard from './pages/EarningsDashboard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
@@ -63,6 +64,7 @@ function AppContent() {
           <Route path="my-tickets" element={<MyTickets />} />
         </Route>
         <Route path="/admin" element={<AdminPage />}>
+          <Route path="earnings" element={<EarningsDashboard />} />
           <Route path="manage-products" element={<ManageProducts />} />
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="manage-kennels" element={<ManageKennels />} />

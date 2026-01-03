@@ -5,6 +5,7 @@ import logo from '../assets/images/horizontal-compressed.png';
 import { callServicesApi } from "../assets/js/servicesApi";
 
 const MENU_ITEMS = [
+    { path: "/admin/earnings", icon: "bi-bar-chart-line-fill", label: "Earnings Dashboard" },
     { path: "/admin/manage-products", icon: "bi-box-seam-fill", label: "Manage Products" },
     { path: "/admin/manage-users", icon: "bi-people-fill", label: "Manage Users" },
     { path: "/admin/manage-kennels", icon: "bi-house-door-fill", label: "Manage Kennels" },
