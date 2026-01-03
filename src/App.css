@@ -10593,6 +10593,93 @@ input[type="date"].hero-input:invalid {
     border-color: #1e293b;
 }
 
+/* Tickets Reply Banner */
+.tickets-reply-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #fdf2f1, #fbe9e7);
+    border: 1px solid #f5cac5;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.tickets-reply-banner-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tickets-reply-banner-icon i {
+    font-size: 1.25rem;
+    color: white;
+}
+
+.tickets-reply-banner-content {
+    flex: 1;
+}
+
+.tickets-reply-banner-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 2px 0;
+}
+
+.tickets-reply-banner-content p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.tickets-reply-banner-btn {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #D84A39, #471915);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tickets-reply-banner-btn:hover {
+    opacity: 0.9;
+    transform: translateX(2px);
+}
+
+@media (max-width: 600px) {
+    .tickets-reply-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .tickets-reply-banner-content {
+        order: 1;
+    }
+
+    .tickets-reply-banner-icon {
+        order: 0;
+    }
+
+    .tickets-reply-banner-btn {
+        order: 2;
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* Messages Thread */
 .messages-thread {
     background: white;
@@ -11029,6 +11116,9 @@ input[type="date"].hero-input:invalid {
     padding: 28px 24px;
     text-align: center;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .help-card:hover {

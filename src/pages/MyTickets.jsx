@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 import FAQSection from "../assets/components/FAQSection";
@@ -16,6 +16,14 @@ const MyTickets = () => {
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
     const userData = JSON.parse(localStorage.getItem("user_data"));
+
+    // Calculate tickets with admin replies that user hasn't responded to
+    const ticketsWithReplies = useMemo(() => {
+        if (!tickets) return [];
+        return tickets.filter(
+            ticket => ticket.last_reply_by === 'admin' && ticket.status !== 'closed'
+        );
+    }, [tickets]);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -147,39 +155,61 @@ const MyTickets = () => {
                 <>
                     {/* Help Options - Hidden when viewing tickets */}
                     {!showTicketsList ? (
-                        <div className="help-options">
-                            {/* How can we help you */}
-                            <div className="help-card">
-                                <div className="help-card-icon">
-                                    <i className="bi bi-question-circle"></i>
+                        <>
+                            {/* New Replies Banner */}
+                            {ticketsWithReplies.length > 0 && (
+                                <div className="tickets-reply-banner">
+                                    <div className="tickets-reply-banner-icon">
+                                        <i className="bi bi-chat-left-text-fill"></i>
+                                    </div>
+                                    <div className="tickets-reply-banner-content">
+                                        <h4>You have {ticketsWithReplies.length} ticket{ticketsWithReplies.length > 1 ? 's' : ''} with new replies</h4>
+                                        <p>Our support team has responded to your queries.</p>
+                                    </div>
+                                    <button
+                                        className="tickets-reply-banner-btn"
+                                        onClick={() => setShowTicketsList(true)}
+                                    >
+                                        View Tickets
+                                        <i className="bi bi-arrow-right"></i>
+                                    </button>
                                 </div>
-                                <h3>How can we help you?</h3>
-                                <p>Browse through our frequently asked questions for quick answers.</p>
-                                <button className="help-card-btn" onClick={() => setShowFAQModal(true)}>
-                                    <i className="bi bi-journal-text"></i>
-                                    Review FAQs
-                                </button>
-                            </div>
+                            )}
 
-                            {/* Still need help */}
-                            <div className="help-card">
-                                <div className="help-card-icon support">
-                                    <i className="bi bi-headset"></i>
+                            <div className="help-options">
+                                {/* How can we help you */}
+                                <div className="help-card">
+                                    <div className="help-card-icon">
+                                        <i className="bi bi-question-circle"></i>
+                                    </div>
+                                    <h3>How can we help you?</h3>
+                                    <p>Browse through our frequently asked questions for quick answers.</p>
+                                    <button className="help-card-btn" onClick={() => setShowFAQModal(true)}>
+                                        <i className="bi bi-journal-text"></i>
+                                        Review FAQs
+                                    </button>
                                 </div>
-                                <h3>Still need help?</h3>
-                                <p>Can't find what you're looking for? Our support team is here to help.</p>
-                                <div className="help-card-actions">
-                                    <button className="help-card-btn primary" onClick={() => setShowNewTicketModal(true)}>
-                                        <i className="bi bi-plus-lg"></i>
-                                        Create Ticket
-                                    </button>
-                                    <button className="help-card-btn secondary" onClick={() => setShowTicketsList(true)}>
-                                        <i className="bi bi-ticket-detailed"></i>
-                                        View Tickets {tickets.length > 0 && `(${tickets.length})`}
-                                    </button>
+
+                                {/* Still need help */}
+                                <div className="help-card">
+                                    <div className="help-card-icon support">
+                                        <i className="bi bi-headset"></i>
+                                    </div>
+                                    <h3>Still need help?</h3>
+                                    <p>Can't find what you're looking for? Our support team is here to help.</p>
+                                    <div className="help-card-actions">
+                                        <button className="help-card-btn primary" onClick={() => setShowNewTicketModal(true)}>
+                                            <i className="bi bi-plus-lg"></i>
+                                            Create Ticket
+                                        </button>
+                                        <button className="help-card-btn secondary" onClick={() => setShowTicketsList(true)}>
+                                            <i className="bi bi-ticket-detailed"></i>
+                                            View Tickets {tickets.length > 0 && `(${tickets.length})`}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </>
                     ) : (
                         <div className="your-tickets-section">
                             {loading ? (
@@ -336,7 +366,7 @@ const MyTickets = () => {
                 />
             )}
 
-            
+
 
             {/* FAQ Modal */}
             {showFAQModal && (
