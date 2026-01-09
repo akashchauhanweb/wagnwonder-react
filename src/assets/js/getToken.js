@@ -1,8 +1,11 @@
+const IS_DEV = import.meta.env.VITE_IS_DEV === '1' ? 1 : 0;
+
 export async function getTokenFromApi(inputJson) {
     // Add the new key-value to the input JSON
     const requestData = {
-      ...inputJson,
-      authorization_type: "GENERATE_TOKEN"
+        ...inputJson,
+        authorization_type: "GENERATE_TOKEN",
+        is_dev: IS_DEV
     };
     try {
       // Call the API
