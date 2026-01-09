@@ -7,10 +7,15 @@ export async function uploadImageToS3(file, folder) {
     content_type: file.type
   };
 
+  const IS_DEV = import.meta.env.VITE_IS_DEV === '1' ? 1 : 0;
+
   const response = await fetch("https://0oydlyiauf.execute-api.ap-south-1.amazonaws.com/default/wagnwonder-services", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+          ...body,
+          is_dev: IS_DEV
+      })
   });
 
   // console.log("Upload URL response:", response);
