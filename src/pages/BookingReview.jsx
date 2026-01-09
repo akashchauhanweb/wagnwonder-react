@@ -8,7 +8,8 @@ export default function BookingReview() {
     const { kennel, checkin, checkout, breakdown, total, days, room_type_id, errorMessage } = location.state || {};
     const [error, _] = useState(errorMessage || "");
     const [isProcessing, setIsProcessing] = useState(false);
-
+    const IS_DEV = import.meta.env.VITE_IS_DEV === '1' ? 1 : 0;
+    const ENV_NAME = import.meta.env.VITE_IS_DEV === '1' ? 'sandbox' : 'production';
     useEffect(() => {
         window.scrollTo(0, 0);
         const script = document.createElement("script");
@@ -61,7 +62,7 @@ export default function BookingReview() {
                 setIsProcessing(false);
                 return;
             }
-            const cashfree = window.Cashfree({ mode: "sandbox" });
+            const cashfree = window.Cashfree({ mode: ENV_NAME });
             cashfree.checkout({
                 paymentSessionId: data.payment_session_id,
                 redirectTarget: "_self",
