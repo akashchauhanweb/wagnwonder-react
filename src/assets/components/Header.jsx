@@ -1,24 +1,45 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
 import boardingIcon from '../icons/boarding.png';
+import eventsIcon from '../icons/events.png';
 import shopIcon from '../icons/shop.png';
 import servicesIcon from '../icons/services.png';
-import healthIcon from '../icons/health.png';
 
 const NAV_LINKS = [
     { label: 'Boarding', path: '/', icon: boardingIcon },
+    { label: 'Events', path: '/events', icon: eventsIcon },
     { label: 'Shop', path: '/shop', icon: shopIcon, comingSoon: true },
     { label: 'Services', path: '/services', icon: servicesIcon, comingSoon: true },
-    { label: 'Health', path: '/health', icon: healthIcon, comingSoon: true },
 ];
 
 function Header() {
     const navigate = useNavigate();
+    const location = useLocation();
     const isLoggedIn = !!localStorage.getItem("session_id");
+    
+    // Determine active nav based on current path
+    const getActiveNavFromPath = (pathname) => {
+        // Check if path starts with any nav link path (except home)
+        for (const link of NAV_LINKS) {
+            if (link.path !== '/' && pathname.startsWith(link.path)) {
+                return link.label;
+            }
+        }
+        // Default to Boarding for home and unknown paths
+        return pathname === '/' ? 'Boarding' : localStorage.getItem("activeNav") || 'Boarding';
+    };
+
     const [activeNav, setActiveNav] = useState(() => {
-        return localStorage.getItem("activeNav") || "Boarding";
+        return getActiveNavFromPath(location.pathname);
     });
+
+    // Update activeNav when route changes
+    useEffect(() => {
+        const newActiveNav = getActiveNavFromPath(location.pathname);
+        setActiveNav(newActiveNav);
+        localStorage.setItem("activeNav", newActiveNav);
+    }, [location.pathname]);
 
     const handleUserClick = () => {
         navigate(isLoggedIn ? "/account" : "/login");

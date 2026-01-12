@@ -3,9 +3,9 @@ import logo from '../images/horizontal-compressed.png';
 
 const QUICK_LINKS = [
     { label: 'Boarding', path: '/' },
+    { label: 'Events', path: '/events' },
     { label: 'Shop', path: '/shop' },
     { label: 'Services', path: '/services' },
-    { label: 'Health', path: '/health' },
 ];
 
 const USEFUL_LINKS = [

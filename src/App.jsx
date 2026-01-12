@@ -22,10 +22,15 @@ import CrecheBookings from './pages/CrecheBookings.jsx';
 import ManageBookings from './pages/ManageBookings.jsx';
 import SupportTickets from './pages/SupportTickets.jsx';
 import EarningsDashboard from './pages/EarningsDashboard.jsx';
+import ManageEvents from './pages/ManageEvents.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
 import ContactUs from './pages/ContactUs.jsx';
+import Events from './pages/Events.jsx';
+import EventDetails from './pages/EventDetails.jsx';
+import EventBookingReview from './pages/EventBookingReview.jsx';
+import EventBookings from './pages/EventBookings.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import WhatsAppButton from './assets/components/WhatsAppButton.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
@@ -57,10 +62,14 @@ function AppContent() {
         <Route path="/terms" element={<TermsConditions />} />
         <Route path="/refund" element={<RefundPolicy />} />
         <Route path="/contact" element={<ContactUs />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/:eventId" element={<EventDetails />} />
+        <Route path="/event-booking-review" element={<EventBookingReview />} />
         <Route path="/account" element={<Account />}>
           <Route path="info" element={<AccountInfo />} />
           <Route path="pets" element={<YourPets />} />
           <Route path="creche-bookings" element={<CrecheBookings />} />
+          <Route path="event-bookings" element={<EventBookings />} />
           <Route path="my-tickets" element={<MyTickets />} />
         </Route>
         <Route path="/admin" element={<AdminPage />}>
@@ -69,6 +78,7 @@ function AppContent() {
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="manage-kennels" element={<ManageKennels />} />
           <Route path="manage-bookings" element={<ManageBookings />} />
+          <Route path="manage-events" element={<ManageEvents />} />
           <Route path="support-tickets" element={<SupportTickets />} />
         </Route>
       </Routes>

@@ -49,7 +49,15 @@ function Login() {
             if (response && response.success) {
                 localStorage.setItem("session_id", response.session_id);
                 localStorage.setItem("user_data", JSON.stringify(response.user_data));
-                navigate("/");
+                
+                // Check for redirect destination
+                const redirectPath = localStorage.getItem("redirect_after_login");
+                if (redirectPath) {
+                    localStorage.removeItem("redirect_after_login");
+                    navigate(redirectPath);
+                } else {
+                    navigate("/");
+                }
             } else {
                 setIsSubmitting(false);
                 setError("Incorrect email or password.");
