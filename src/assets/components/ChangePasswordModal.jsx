@@ -52,10 +52,9 @@ export default function ChangePasswordModal({ user, onClose }) {
         const htmlContent = getVerificationEmailHtml(user.first_name, code);
         
         const payload = {
-            action: "SEND_VERIFICATION_EMAIL",
+            action: "SEND_EMAIL",
             email: user.email,
-            code: code,
-            name: user.first_name,
+            subject: "Verify Your Identity - Wag N Wonder",
             html: htmlContent
         };
 

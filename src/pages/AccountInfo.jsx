@@ -76,10 +76,9 @@ function AccountInfo() {
         const htmlContent = getVerificationEmailHtml(formData.first_name, code);
         
         const payload = {
-            action: "SEND_VERIFICATION_EMAIL",
+            action: "SEND_EMAIL",
             email: formData.email,
-            code: code,
-            name: formData.first_name,
+            subject: "Verify Your Email - Wag N Wonder",
             html: htmlContent
         };
 

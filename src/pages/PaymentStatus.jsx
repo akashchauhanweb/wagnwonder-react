@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
+import { getTokenFromApi } from "../assets/js/getToken";
+import { getBoardingBookingEmailHtml } from "../assets/js/boardingBookingEmail";
+import { getEventBookingEmailHtml } from "../assets/js/eventBookingEmail";
 
 export default function PaymentStatus() {
     const location = useLocation();
@@ -15,6 +18,47 @@ export default function PaymentStatus() {
     const params = new URLSearchParams(location.search);
     const orderId = params.get("orderId") || params.get("order_id");
     const bookingType = params.get("type"); // "event" or undefined (kennel)
+
+    // Helper function to send confirmation email
+    const sendConfirmationEmail = async (emailData) => {
+        try {
+            const payload = {
+                action: "SEND_EMAIL",
+                email: emailData.email,
+                subject: emailData.subject,
+                html: emailData.html
+            };
+            
+            const token = await getTokenFromApi(payload);
+            if (!token) return false;
+            
+            await callServicesApi({ ...payload, token });
+            return true;
+        } catch (err) {
+            console.error("Failed to send confirmation email:", err);
+            return false;
+        }
+    };
+
+    // Helper to format date
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "";
+        return new Date(dateStr).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+        });
+    };
+
+    // Helper to format time
+    const formatTime = (timeStr) => {
+        if (!timeStr) return "";
+        const [hours, minutes] = timeStr.split(":");
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? "PM" : "AM";
+        const hour12 = h % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    };
 
     const handleRetry = () => {
         // Check for event booking first
@@ -82,6 +126,29 @@ export default function PaymentStatus() {
                         };
 
                         await callServicesApi(eventBookingPayload);
+                        
+                        // Send confirmation email for event booking
+                        const emailHtml = getEventBookingEmailHtml({
+                            userName: user.first_name || "Guest",
+                            eventTitle: saved.event.title,
+                            eventDate: formatDate(saved.event.event_date),
+                            eventTime: formatTime(saved.event.event_time),
+                            venue: saved.event.venue,
+                            city: saved.event.city,
+                            ticketType: saved.selectedTier.label,
+                            ticketCount: saved.ticketCount,
+                            totalPrice: saved.total,
+                            orderId: orderId,
+                            transactionId: data.cf_order_id,
+                            pets: saved.selectedPets || []
+                        });
+                        
+                        await sendConfirmationEmail({
+                            email: user.email,
+                            subject: `Booking Confirmed: ${saved.event.title} - Wag N Wonder`,
+                            html: emailHtml
+                        });
+                        
                         localStorage.removeItem("pending_event_booking");
                     } catch (e) {
                         console.error("Failed to create event booking entry:", e);
@@ -114,6 +181,30 @@ export default function PaymentStatus() {
                         };
 
                         await callServicesApi(bookingPayload);
+                        
+                        // Send confirmation email for boarding booking
+                        const emailHtml = getBoardingBookingEmailHtml({
+                            userName: user.first_name || "Guest",
+                            kennelName: saved.kennel.kennel_name,
+                            checkIn: formatDate(saved.checkin),
+                            checkOut: formatDate(saved.checkout),
+                            days: saved.days,
+                            pets: saved.breakdown.map(p => ({
+                                name: p.name,
+                                breed: p.breed,
+                                total: p.total
+                            })),
+                            totalPrice: saved.total,
+                            orderId: orderId,
+                            transactionId: data.cf_order_id
+                        });
+                        
+                        await sendConfirmationEmail({
+                            email: user.email,
+                            subject: `Boarding Confirmed: ${saved.kennel.name} - Wag N Wonder`,
+                            html: emailHtml
+                        });
+                        
                         localStorage.removeItem("pending_booking");
                         localStorage.removeItem("bookings");
                     } catch (e) {

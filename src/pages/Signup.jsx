@@ -54,10 +54,9 @@ function Signup() {
         const htmlContent = getVerificationEmailHtml(formData.firstName, code);
         
         const payload = {
-            action: "SEND_VERIFICATION_EMAIL",
+            action: "SEND_EMAIL",
             email: formData.email,
-            code: code,
-            name: formData.firstName,
+            subject: "Verify Your Email - Wag N Wonder",
             html: htmlContent
         };
 
