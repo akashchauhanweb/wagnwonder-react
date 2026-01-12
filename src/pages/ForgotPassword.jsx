@@ -45,10 +45,9 @@ function ForgotPassword() {
         const htmlContent = getVerificationEmailHtml(name, code);
         
         const payload = {
-            action: "SEND_VERIFICATION_EMAIL",
+            action: "SEND_EMAIL",
             email: email,
-            code: code,
-            name: name,
+            subject: "Reset Your Password - Wag N Wonder",
             html: htmlContent
         };
 

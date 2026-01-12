@@ -8,7 +8,7 @@ export async function callServicesApi(requestData) {
                 ...requestData,
                 is_dev: IS_DEV
             }
-      console.log(samp_body);
+      // console.log(samp_body);
         const response = await fetch('https://0oydlyiauf.execute-api.ap-south-1.amazonaws.com/default/wagnwonder-services', {
             method: 'POST',
             headers: {
