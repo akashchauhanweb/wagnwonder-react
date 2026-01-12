@@ -1,9 +1,9 @@
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import boardingIcon from '../assets/icons/boarding.png';
+import eventsIcon from '../assets/icons/events.png';
 import shopIcon from '../assets/icons/shop.png';
 import servicesIcon from '../assets/icons/services.png';
-import healthIcon from '../assets/icons/health.png';
 import { getTokenFromApi } from "../assets/js/getToken";
 import { useState, useEffect } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
@@ -11,9 +11,9 @@ import { useNavigate } from "react-router-dom";
 
 const NAV_ITEMS = [
     { label: 'Boarding', icon: boardingIcon, active: true },
+    { label: 'Events', icon: eventsIcon, comingSoon: true },
     { label: 'Shop', icon: shopIcon, comingSoon: true },
     { label: 'Services', icon: servicesIcon, comingSoon: true },
-    { label: 'Health', icon: healthIcon, comingSoon: true },
 ];
 
 const TRUST_BADGES = ['Verified Partners', 'Live CCTV Access', '24/7 Support'];

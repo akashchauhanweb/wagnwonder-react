@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../images/horizontal-compressed.png';
 import boardingIcon from '../icons/boarding.png';
+import eventsIcon from '../icons/events.png';
 import shopIcon from '../icons/shop.png';
 import servicesIcon from '../icons/services.png';
-import healthIcon from '../icons/health.png';
 
 const NAV_LINKS = [
     { label: 'Boarding', path: '/', icon: boardingIcon },
+    { label: 'Events', path: '/events', icon: eventsIcon },
     { label: 'Shop', path: '/shop', icon: shopIcon, comingSoon: true },
     { label: 'Services', path: '/services', icon: servicesIcon, comingSoon: true },
-    { label: 'Health', path: '/health', icon: healthIcon, comingSoon: true },
 ];
 
 function Header() {

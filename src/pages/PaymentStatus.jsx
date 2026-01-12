@@ -14,8 +14,23 @@ export default function PaymentStatus() {
 
     const params = new URLSearchParams(location.search);
     const orderId = params.get("orderId") || params.get("order_id");
+    const bookingType = params.get("type"); // "event" or undefined (kennel)
 
     const handleRetry = () => {
+        // Check for event booking first
+        const savedEvent = localStorage.getItem("pending_event_booking");
+        if (savedEvent && bookingType === "event") {
+            const booking = JSON.parse(savedEvent);
+            navigate("/event-booking-review", {
+                state: {
+                    ...booking,
+                    errorMessage: "Your payment failed. Please try again."
+                }
+            });
+            return;
+        }
+
+        // Fall back to kennel booking
         const saved = localStorage.getItem("pending_booking");
         if (saved) {
             const booking = JSON.parse(saved);
@@ -44,36 +59,66 @@ export default function PaymentStatus() {
                 setMessage(data.message || "Your booking has been confirmed!");
                 setTransactionId(data.cf_order_id);
 
-                try {
-                    const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
-                    const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+                // Check if this is an event booking
+                const savedEventBooking = localStorage.getItem("pending_event_booking");
+                if (savedEventBooking && bookingType === "event") {
+                    try {
+                        const saved = JSON.parse(savedEventBooking);
+                        const user = JSON.parse(localStorage.getItem("user_data") || "{}");
 
-                    const bookingPayload = {
-                        user_id: user.id,
-                        action: "CREATE_BOOKING_ENTRY",
-                        session_id: localStorage.getItem("session_id"),
-                        kennel_id: saved.kennel.kennel_id,
-                        room_type_id: saved.room_type_id,
-                        check_in_date: saved.checkin,
-                        check_out_date: saved.checkout,
-                        days: saved.days,
-                        total_price: saved.total,
-                        mode: "online",
-                        order_id: orderId,
-                        cf_order_id: data.cf_order_id,
-                        pets: saved.breakdown.map((p) => ({
-                            pet_id: p.id,
-                            price_per_day: p.perDay,
-                            days: p.days,
-                            total_price: p.total,
-                        })),
-                    };
+                        const eventBookingPayload = {
+                            action: "CREATE_EVENT_BOOKING_ENTRY",
+                            session_id: localStorage.getItem("session_id"),
+                            user_id: user.id,
+                            event_id: saved.event.id,
+                            pricing_id: saved.selectedTier.id,
+                            ticket_count: saved.ticketCount,
+                            total_price: saved.total,
+                            form_data: saved.formData || {},
+                            pets: saved.selectedPets || [],
+                            order_id: orderId,
+                            cf_order_id: data.cf_order_id,
+                            mode: "online"
+                        };
 
-                    await callServicesApi(bookingPayload);
-                    localStorage.removeItem("pending_booking");
-                    localStorage.removeItem("bookings");
-                } catch (e) {
-                    console.error("Failed to create booking entry:", e);
+                        await callServicesApi(eventBookingPayload);
+                        localStorage.removeItem("pending_event_booking");
+                    } catch (e) {
+                        console.error("Failed to create event booking entry:", e);
+                    }
+                } else {
+                    // Kennel booking
+                    try {
+                        const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
+                        const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+
+                        const bookingPayload = {
+                            user_id: user.id,
+                            action: "CREATE_BOOKING_ENTRY",
+                            session_id: localStorage.getItem("session_id"),
+                            kennel_id: saved.kennel.kennel_id,
+                            room_type_id: saved.room_type_id,
+                            check_in_date: saved.checkin,
+                            check_out_date: saved.checkout,
+                            days: saved.days,
+                            total_price: saved.total,
+                            mode: "online",
+                            order_id: orderId,
+                            cf_order_id: data.cf_order_id,
+                            pets: saved.breakdown.map((p) => ({
+                                pet_id: p.id,
+                                price_per_day: p.perDay,
+                                days: p.days,
+                                total_price: p.total,
+                            })),
+                        };
+
+                        await callServicesApi(bookingPayload);
+                        localStorage.removeItem("pending_booking");
+                        localStorage.removeItem("bookings");
+                    } catch (e) {
+                        console.error("Failed to create booking entry:", e);
+                    }
                 }
             } else if (data.status === "PENDING") {
                 if (currentRetry < maxRetries) {
@@ -167,7 +212,7 @@ export default function PaymentStatus() {
                         <div className="payment-status-actions">
                             <button 
                                 className="payment-status-btn primary"
-                                onClick={() => navigate("/account/creche-bookings")}
+                                onClick={() => navigate(bookingType === "event" ? "/account/event-bookings" : "/account/creche-bookings")}
                             >
                                 <i className="bi bi-calendar-check"></i>
                                 View My Bookings
