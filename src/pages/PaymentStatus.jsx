@@ -201,7 +201,7 @@ export default function PaymentStatus() {
                         
                         await sendConfirmationEmail({
                             email: user.email,
-                            subject: `Boarding Confirmed: ${saved.kennel.name} - Wag N Wonder`,
+                            subject: `Boarding Confirmed: ${saved.kennel.kennel_name} - Wag N Wonder`,
                             html: emailHtml
                         });
                         
