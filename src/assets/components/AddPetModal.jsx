@@ -13,9 +13,41 @@ export default function AddPetModal({ onClose, onSaved }) {
     const [error, setError] = useState("");
 
     const breeds = {
-        dog: ['Labrador', 'German Shepherd', 'Golden Retriever', 'Poodle', 'Bulldog', 'Beagle'],
-        cat: ['Indian', 'Persian', 'Siamese', 'Maine Coon', 'Ragdoll', 'Bengal', 'Sphynx', 'British Shorthair', 'Scottish Fold', 'Abyssinian', 'Norwegian Forest Cat', 'American Shorthair', 'Russian Blue', 'Devon Rex'],
-    };
+    dog: [
+        'Labrador',
+        'Golden Retriever',
+        'German Shepherd',
+        'Beagle',
+        'Rottweiler',
+        'Shih Tzu',
+        'Pomeranian',
+        'Cocker Spaniel',
+        'Boxer',
+        'Siberian Husky',
+        'Pug',
+        'Indie',
+        'Great Dane',
+        'Dachshund',
+        'Doberman',
+        'Tibetan Mastiff',
+        'Rajapalayam',
+        'Poodle',
+        'Basset Hound',
+        'Gaddi Kutta',
+        'Bullmastiff',
+        'Saint Bernard',
+        'Chow Chow',
+        'Border Collie',
+        'Alaskan Malamute',
+        'Kanni',
+        'Jonangi',
+        'Pandikona',
+        'Chippiparai',
+        'Banjara Hound',
+        'Other'
+    ],
+    cat: ['Indian', 'Persian', 'Siamese', 'Maine Coon', 'Ragdoll', 'Bengal', 'Sphynx', 'British Shorthair', 'Scottish Fold', 'Abyssinian', 'Norwegian Forest Cat', 'American Shorthair', 'Russian Blue', 'Devon Rex'],
+};
 
     const calculateAge = () => {
         if (!formData.birthMonth || !formData.birthYear) return null;
@@ -219,9 +251,6 @@ export default function AddPetModal({ onClose, onSaved }) {
                             <select name="type" value={formData.type} onChange={handleChange} required>
                                 <option value="">Select Type</option>
                                 <option value="dog">Dog</option>
-                                <option value="cat">Cat</option>
-                                <option value="bird">Bird</option>
-                                <option value="other">Other</option>
                             </select>
                         </div>
 
