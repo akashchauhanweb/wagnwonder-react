@@ -10,8 +10,8 @@ import { callServicesApi } from "../assets/js/servicesApi";
 import { useNavigate } from "react-router-dom";
 
 const NAV_ITEMS = [
-    { label: 'Boarding', icon: boardingIcon, active: true },
-    { label: 'Events', icon: eventsIcon, comingSoon: true },
+    { label: 'Boarding', icon: boardingIcon, path: '/' },
+    { label: 'Events', icon: eventsIcon, path: '/events' },
     { label: 'Shop', icon: shopIcon, comingSoon: true },
     { label: 'Services', icon: servicesIcon, comingSoon: true },
 ];
@@ -191,6 +191,9 @@ function HeroForm() {
                                             setTimeout(() => setToastMessage(""), 3000);
                                         } else {
                                             setActiveTab(idx);
+                                            localStorage.setItem("activeNav", item.label);
+                                            window.dispatchEvent(new Event("activeNavChanged"));
+                                            navigate(item.path);
                                         }
                                     }}
                                 >
