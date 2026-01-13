@@ -54,20 +54,14 @@ export default function Events() {
 
         setLoading(true);
         try {
-            const sessionId = localStorage.getItem("session_id");
             let payload = {
                 action: "GET_EVENTS",
                 status: activeFilter
             };
 
-            // Use session_id if logged in, otherwise use JWT token
-            if (sessionId) {
-                payload.session_id = sessionId;
-            } else {
-                const token = await getTokenFromApi(payload);
-                if (token) {
-                    payload.token = token;
-                }
+            const token = await getTokenFromApi(payload);
+            if (token) {
+                payload.token = token;
             }
 
             const response = await callServicesApi(payload);
