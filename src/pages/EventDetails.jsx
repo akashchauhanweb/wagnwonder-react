@@ -88,7 +88,10 @@ export default function EventDetails() {
                 session_id: localStorage.getItem("session_id"),
             });
             const list = res.pet_list ?? res.data ?? [];
-            setPetList(Array.isArray(list) ? list : []);
+            const petArray = Array.isArray(list) ? list : [];
+            setPetList(petArray);
+            // Store in localStorage for use in booking confirmation email
+            localStorage.setItem("pets", JSON.stringify(petArray));
         } catch (err) {
             console.error("Error fetching pets:", err);
         }

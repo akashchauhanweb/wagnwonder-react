@@ -128,6 +128,14 @@ export default function PaymentStatus() {
                         await callServicesApi(eventBookingPayload);
                         
                         // Send confirmation email for event booking
+                        // Get pet details from localStorage
+                        const allPets = JSON.parse(localStorage.getItem("pets") || "[]");
+                        const selectedPetDetails = (saved.selectedPets || []).map(petId => {
+                            const pet = allPets.find(p => String(p.id) === String(petId));
+                            return pet ? { name: pet.name, breed: pet.breed } : { name: `Pet #${petId}`, breed: '-' };
+                        });
+                        
+                        // Send confirmation email for event booking
                         const emailHtml = getEventBookingEmailHtml({
                             userName: user.first_name || "Guest",
                             eventTitle: saved.event.title,
@@ -140,7 +148,7 @@ export default function PaymentStatus() {
                             totalPrice: saved.total,
                             orderId: orderId,
                             transactionId: data.cf_order_id,
-                            pets: saved.selectedPets || []
+                            pets: selectedPetDetails
                         });
                         
                         await sendConfirmationEmail({
