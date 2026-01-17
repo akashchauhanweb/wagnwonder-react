@@ -257,6 +257,7 @@ const ManageEvents = () => {
             "Booked On"
         ];
 
+
         // Build rows - one row per pet
         const rows = registrations.flatMap(reg => {
             const formData = parseFormData(reg.form_data);
