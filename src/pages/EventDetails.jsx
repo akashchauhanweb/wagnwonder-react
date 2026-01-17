@@ -292,11 +292,13 @@ export default function EventDetails() {
     return (
         <div className="event-details-page">
             {/* Header */}
-            <div className="event-details-header">
-                <button className="event-back-btn" onClick={() => navigate("/events")}>
-                    <i className="bi bi-arrow-left"></i>
-                </button>
-                <h1>Event Details</h1>
+            <div className="page-header">
+                <div className="page-header-content">
+                    <button className="page-header-back-btn" onClick={() => navigate("/events")}>
+                        <i className="bi bi-arrow-left"></i>
+                    </button>
+                    <h1>Event Details</h1>
+                </div>
             </div>
 
             <div className="event-details-container">

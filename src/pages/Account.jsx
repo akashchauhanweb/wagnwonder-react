@@ -93,9 +93,9 @@ function Account() {
     return (
         <div className="account-page">
             {/* Header */}
-            <div className="account-header">
-                <div className="account-header-content">
-                    <button className="account-back-btn" onClick={() => navigate("/")}>
+            <div className="page-header">
+                <div className="page-header-content">
+                    <button className="page-header-back-btn" onClick={() => navigate("/")}>
                         <i className="bi bi-arrow-left"></i>
                     </button>
                     <h1>My Account</h1>
