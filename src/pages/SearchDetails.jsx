@@ -55,9 +55,9 @@ export default function SearchDetails() {
     if (!booking) {
         return (
             <div className="search-details-page">
-                <div className="search-results-header">
-                    <div className="search-results-header-content">
-                        <button className="search-back-btn" onClick={() => navigate(-1)}>
+                <div className="page-header">
+                    <div className="page-header-content">
+                        <button className="page-header-back-btn" onClick={() => navigate(-1)}>
                             <i className="bi bi-arrow-left"></i>
                         </button>
                         <h1>Kennel</h1>
@@ -118,9 +118,9 @@ export default function SearchDetails() {
     return (
         <div className="search-details-page">
             {/* Header */}
-            <div className="search-results-header">
-                <div className="search-results-header-content">
-                    <button className="search-back-btn" onClick={() => navigate(-1)}>
+            <div className="page-header">
+                <div className="page-header-content">
+                    <button className="page-header-back-btn" onClick={() => navigate(-1)}>
                         <i className="bi bi-arrow-left"></i>
                     </button>
                     <h1>{kennel.kennel_name}</h1>

@@ -23,9 +23,9 @@ export default function EventBookingReview() {
     if (!event || !selectedTier || !ticketCount || !total) {
         return (
             <div className="booking-review-page">
-                <div className="search-results-header">
-                    <div className="search-results-header-content">
-                        <button className="search-back-btn" onClick={() => navigate(-1)}>
+                <div className="page-header">
+                    <div className="page-header-content">
+                        <button className="page-header-back-btn" onClick={() => navigate(-1)}>
                             <i className="bi bi-arrow-left"></i>
                         </button>
                         <h1>Booking Review</h1>
@@ -120,9 +120,9 @@ export default function EventBookingReview() {
     return (
         <div className="booking-review-page">
             {/* Header */}
-            <div className="search-results-header">
-                <div className="search-results-header-content">
-                    <button className="search-back-btn" onClick={() => navigate(-1)}>
+            <div className="page-header">
+                <div className="page-header-content">
+                    <button className="page-header-back-btn" onClick={() => navigate(-1)}>
                         <i className="bi bi-arrow-left"></i>
                     </button>
                     <h1>Booking Review</h1>

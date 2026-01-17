@@ -60,9 +60,9 @@ export default function SearchResults() {
     return (
         <div className="search-results-page">
             {/* Header Section */}
-            <div className="search-results-header">
-                <div className="search-results-header-content">
-                    <button className="search-back-btn" onClick={() => navigate(-1)}>
+            <div className="page-header">
+                <div className="page-header-content">
+                    <button className="page-header-back-btn" onClick={() => navigate(-1)}>
                         <i className="bi bi-arrow-left"></i>
                     </button>
                     <h1>Results</h1>

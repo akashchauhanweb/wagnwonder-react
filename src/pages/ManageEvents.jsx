@@ -257,12 +257,12 @@ const ManageEvents = () => {
             "Booked On"
         ];
 
-        // Build rows
-        const rows = registrations.map(reg => {
+        // Build rows - one row per pet
+        const rows = registrations.flatMap(reg => {
             const formData = parseFormData(reg.form_data);
-            const pet = reg.pets?.[0] || null;
+            const pets = reg.pets && reg.pets.length > 0 ? reg.pets : [null];
 
-            return [
+            return pets.map(pet => [
                 reg.order_id || `#${reg.id}`,
                 reg.cf_order_id || "",
                 reg.event_title || "",
@@ -283,7 +283,7 @@ const ManageEvents = () => {
                 ...formFieldKeys.map(key => formData[key] || ""),
                 reg.status || "",
                 formatDate(reg.created_at) || ""
-            ];
+            ]);
         });
 
         // Convert to CSV string
@@ -787,11 +787,12 @@ const ManageEvents = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {getFilteredRegistrations().map((reg) => {
+                                        {getFilteredRegistrations().flatMap((reg) => {
                                             const formData = parseFormData(reg.form_data);
-                                            const pet = reg.pets?.[0] || null;
-                                            return (
-                                                <tr key={reg.id}>
+                                            const pets = reg.pets && reg.pets.length > 0 ? reg.pets : [null];
+                                            
+                                            return pets.map((pet, petIndex) => (
+                                                <tr key={`${reg.id}-${petIndex}`}>
                                                     <td className="order-id">{reg.order_id || `#${reg.id}`}</td>
                                                     <td className="cf-order-id">{reg.cf_order_id || "-"}</td>
                                                     <td className="event-name">{reg.event_title}</td>
@@ -814,7 +815,7 @@ const ManageEvents = () => {
                                                     <td><span className={`registration-status ${reg.status}`}>{reg.status}</span></td>
                                                     <td className="date">{formatDate(reg.created_at)}</td>
                                                 </tr>
-                                            );
+                                            ));
                                         })}
                                     </tbody>
                                 </table>
