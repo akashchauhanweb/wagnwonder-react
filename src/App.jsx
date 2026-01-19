@@ -23,6 +23,7 @@ import ManageBookings from './pages/ManageBookings.jsx';
 import SupportTickets from './pages/SupportTickets.jsx';
 import EarningsDashboard from './pages/EarningsDashboard.jsx';
 import ManageEvents from './pages/ManageEvents.jsx';
+import ManagePets from './pages/ManagePets.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import TermsConditions from './pages/TermsConditions.jsx';
 import RefundPolicy from './pages/RefundPolicy.jsx';
@@ -76,6 +77,7 @@ function AppContent() {
           <Route path="earnings" element={<EarningsDashboard />} />
           <Route path="manage-products" element={<ManageProducts />} />
           <Route path="manage-users" element={<ManageUsers />} />
+          <Route path="manage-pets" element={<ManagePets />} />
           <Route path="manage-kennels" element={<ManageKennels />} />
           <Route path="manage-bookings" element={<ManageBookings />} />
           <Route path="manage-events" element={<ManageEvents />} />

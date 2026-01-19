@@ -9,7 +9,13 @@ export default function EventBookings() {
     const [activeFilter, setActiveFilter] = useState("upcoming");
 
     useEffect(() => {
-        fetchBookings();
+        const cachedEventBookings = localStorage.getItem("event_bookings");
+        if (cachedEventBookings) {
+            setBookings(JSON.parse(cachedEventBookings));
+            setLoading(false);
+        } else {
+            fetchBookings();
+        }
     }, []);
 
     const fetchBookings = async () => {
@@ -24,6 +30,7 @@ export default function EventBookings() {
             
             if (response?.success) {
                 setBookings(response.bookings || []);
+                localStorage.setItem("event_bookings", JSON.stringify(response.bookings || []));
             }
         } catch (err) {
             console.error("Error fetching event bookings:", err);
@@ -74,17 +81,6 @@ export default function EventBookings() {
         return { label: "Confirmed", class: "confirmed" };
     };
 
-    if (loading) {
-        return (
-            <div className="event-bookings-page">
-                <div className="event-bookings-loading">
-                    <div className="spinner-border" role="status"></div>
-                    <p>Loading your tickets...</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="event-bookings-page">
             <div className="event-bookings-header">
@@ -108,7 +104,11 @@ export default function EventBookings() {
                 </button>
             </div>
 
-            {filteredBookings.length === 0 ? (
+            {loading ? (
+                <div className="event-bookings-loading">
+                    <div className="spinner-border" role="status" />
+                </div>
+            ) : filteredBookings.length === 0 ? (
                 <div className="event-bookings-empty">
                     <div className="event-bookings-empty-icon">
                         <i className="bi bi-ticket-perforated"></i>
