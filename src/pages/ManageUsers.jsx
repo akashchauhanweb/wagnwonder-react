@@ -24,6 +24,7 @@ const ManageUsers = () => {
         has_clinic_access: false,
     });
     const [fetchingUsers, setFetchingUsers] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const { setLoading } = useLoading();
 
     const fetchUsers = async () => {
@@ -99,7 +100,7 @@ const ManageUsers = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        setSubmitting(true);
         let payload = {
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
@@ -130,7 +131,7 @@ const ManageUsers = () => {
             setSuccessMsg("");
             setErrorMsg("");
         }, 3000);
-        setLoading(false);
+        setSubmitting(false);
     };
 
     const getAccessBadges = (user) => {
@@ -434,9 +435,18 @@ const ManageUsers = () => {
                             </div>
                         )}
 
-                        <button type="submit" className="add-user-submit">
-                            <i className="bi bi-person-plus"></i>
-                            Add User
+                        <button type="submit" className="add-user-submit" disabled={submitting}>
+                            {submitting ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                    Adding...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="bi bi-person-plus"></i>
+                                    Add User
+                                </>
+                            )}
                         </button>
                     </form>
                 </div>
