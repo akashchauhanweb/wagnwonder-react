@@ -171,11 +171,11 @@ const ManagePets = () => {
         setErrorMsg("");
 
         try {
-            let vaccinePath = formData.vaccine_card 
-                ? await uploadImageToS3(await imageCompressor(formData.vaccine_card), 'pets/') 
+            let vaccinePath = formData.vaccine_card
+                ? await uploadImageToS3(await imageCompressor(formData.vaccine_card), 'pets/')
                 : '';
-            let photoPath = formData.photo 
-                ? await uploadImageToS3(await imageCompressor(formData.photo), 'pets/') 
+            let photoPath = formData.photo
+                ? await uploadImageToS3(await imageCompressor(formData.photo), 'pets/')
                 : '';
 
             const payload = {
@@ -220,13 +220,13 @@ const ManagePets = () => {
 
     const filteredPets = pets.filter(pet => {
         const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
             pet.name?.toLowerCase().includes(searchLower) ||
             pet.owner_first_name?.toLowerCase().includes(searchLower) ||
             pet.owner_last_name?.toLowerCase().includes(searchLower) ||
             pet.owner_email?.toLowerCase().includes(searchLower) ||
             pet.owner_phone?.includes(searchTerm);
-        
+
         const matchesBreed = !breedFilter || pet.breed === breedFilter;
         const matchesType = !typeFilter || pet.type === typeFilter;
         const matchesWeight = !weightFilter || pet.weight === weightFilter;
@@ -363,7 +363,7 @@ const ManagePets = () => {
                                     {filteredPets.map((pet) => (
                                         <tr key={pet.id} onClick={() => openPetModal(pet)} style={{ cursor: 'pointer' }}>
                                             <td className="pet-name-cell">
-                                                <div className="pet-avatar">
+                                                <div className={`pet-avatar ${pet.photo_path ? 'has-image' : ''}`}>
                                                     {pet.photo_path ? (
                                                         <img src={pet.photo_path} alt={pet.name} />
                                                     ) : (
@@ -620,7 +620,7 @@ const ManagePets = () => {
                         </div>
                         <div className="pet-modal-body">
                             {/* Pet Photo */}
-                            <div className="pet-modal-photo">
+                            <div className={`pet-modal-photo ${selectedPet.photo_path ? 'has-image' : ''}`}>
                                 {selectedPet.photo_path ? (
                                     <img src={selectedPet.photo_path} alt={selectedPet.name} />
                                 ) : (

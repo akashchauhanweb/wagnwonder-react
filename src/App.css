@@ -16034,6 +16034,10 @@ input[type="date"].hero-input:invalid {
     overflow: hidden;
 }
 
+.pet-avatar.has-image {
+    background: #f1f5f9;
+}
+
 .pet-avatar img {
     width: 100%;
     height: 100%;
@@ -16311,6 +16315,10 @@ input[type="date"].hero-input:invalid {
     overflow: hidden;
     margin: 0 auto 16px;
     background: linear-gradient(135deg, #D84A39, #471915);
+}
+
+.pet-modal-photo.has-image {
+    background: #f1f5f9;
 }
 
 .pet-modal-photo img {
