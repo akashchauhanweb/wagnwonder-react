@@ -58,8 +58,14 @@ const ManageUsers = () => {
             setSuccessMsg("User deleted successfully.");
             setTimeout(() => setSuccessMsg(""), 3000);
         } else {
-            setErrorMsg(res?.message || "Failed to delete user.");
-            setTimeout(() => setErrorMsg(""), 3000);
+            // Check for foreign key constraint error
+            const message = res?.message || "";
+            if (message.includes("foreign key constraint") || message.includes("Cannot delete")) {
+                setErrorMsg("Cannot delete this user. They have existing bookings or pets associated with their account.");
+            } else {
+                setErrorMsg(message || "Failed to delete user.");
+            }
+            setTimeout(() => setErrorMsg(""), 5000);
         }
         setLoading(false);
     };
