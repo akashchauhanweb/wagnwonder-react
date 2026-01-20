@@ -4,6 +4,7 @@ import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useLoading } from "../contexts/LoadingContext";
 import stateCityMap from "../assets/js/stateCityMap";
+import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 
 const ManageKennels = () => {
     const [activeTab, setActiveTab] = useState("list");
@@ -487,12 +488,37 @@ const ManageKennels = () => {
 
     const handleAddNewUser = async () => {
         setAddingUser(true);
+        
+        // Store password before sending (it gets hashed on backend)
+        const plainPassword = newUserForm.password_hashed;
+        
         const res = await callServicesApi({
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
             ...newUserForm
         });
         if (res?.success) {
+            // Send welcome email
+            try {
+                const emailHtml = getWelcomeUserEmailHtml({
+                    firstName: newUserForm.first_name,
+                    lastName: newUserForm.last_name,
+                    email: newUserForm.email,
+                    phoneNumber: newUserForm.phone_number,
+                    password: plainPassword
+                });
+                
+                await callServicesApi({
+                    action: "SEND_EMAIL",
+                    session_id: localStorage.getItem("session_id"),
+                    email: newUserForm.email,
+                    subject: "Welcome to Wag N Wonder - Your Account Details",
+                    html: emailHtml
+                });
+            } catch (emailErr) {
+                console.error("Failed to send welcome email:", emailErr);
+            }
+            
             setSuccessMsg("User added successfully.");
             setNewUserForm({
                 first_name: "",
