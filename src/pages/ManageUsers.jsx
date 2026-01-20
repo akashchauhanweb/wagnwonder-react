@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useLoading } from "../contexts/LoadingContext";
+import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 
 const ManageUsers = () => {
     const [activeTab, setActiveTab] = useState("list");
@@ -102,6 +103,10 @@ const ManageUsers = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
+        
+        // Store password before sending (it gets hashed on backend)
+        const plainPassword = formData.password_hashed;
+        
         let payload = {
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
@@ -110,6 +115,27 @@ const ManageUsers = () => {
         const res = await callServicesApi(payload);
 
         if (res?.success) {
+            // Send welcome email
+            try {
+                const emailHtml = getWelcomeUserEmailHtml({
+                    firstName: formData.first_name,
+                    lastName: formData.last_name,
+                    email: formData.email,
+                    phoneNumber: formData.phone_number,
+                    password: plainPassword
+                });
+                
+                await callServicesApi({
+                    action: "SEND_EMAIL",
+                    session_id: localStorage.getItem("session_id"),
+                    email: formData.email,
+                    subject: "Welcome to Wag N Wonder - Your Account Details",
+                    html: emailHtml
+                });
+            } catch (emailErr) {
+                console.error("Failed to send welcome email:", emailErr);
+            }
+            
             setSuccessMsg("User added successfully.");
             setFormData({
                 first_name: "",
