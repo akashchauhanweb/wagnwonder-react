@@ -25,6 +25,7 @@ const ManageUsers = () => {
     });
     const [fetchingUsers, setFetchingUsers] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { setLoading } = useLoading();
 
     const fetchUsers = async () => {
@@ -359,13 +360,22 @@ const ManageUsers = () => {
                             </div>
                             <div className="form-field">
                                 <label>Password *</label>
-                                <input
-                                    type="password"
-                                    required
-                                    placeholder="Enter password"
-                                    value={formData.password_hashed}
-                                    onChange={(e) => setFormData({ ...formData, password_hashed: e.target.value })}
-                                />
+                                <div className="password-input-wrapper">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        placeholder="Enter password"
+                                        value={formData.password_hashed}
+                                        onChange={(e) => setFormData({ ...formData, password_hashed: e.target.value })}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                                    </button>
+                                </div>
                             </div>
                             <div className="form-field">
                                 <label>User Type *</label>

@@ -7277,6 +7277,36 @@ input[type="date"].hero-input:invalid {
     box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
 }
 
+/* Password Input with Toggle */
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper input {
+    width: 100%;
+    padding-right: 44px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.password-toggle-btn:hover {
+    color: #1e293b;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
     .manage-users-header {
