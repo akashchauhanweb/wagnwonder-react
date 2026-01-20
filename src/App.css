@@ -7762,6 +7762,11 @@ input[type="date"].hero-input:invalid {
     font-size: 1rem;
 }
 
+.modal-status-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 /* Onboard Form */
 .manage-kennels-add {
     padding-top: 8px;

@@ -24,6 +24,7 @@ const ManageKennels = () => {
     const [zoomImages, setZoomImages] = useState([]);
     const [zoomIndex, setZoomIndex] = useState(0);
     const [kennelInfo, setKennelInfo] = useState(null);
+    const [togglingStatus, setTogglingStatus] = useState(false);
     const [showImageOrderModal, setShowImageOrderModal] = useState(false);
     const [pendingImages, setPendingImages] = useState([]);
     const session_id = localStorage.getItem("session_id");
@@ -330,7 +331,7 @@ const ManageKennels = () => {
     };
 
     const handleToggleKennelStatus = async (kennel_id) => {
-        setLoading(true);
+        setTogglingStatus(true);
         setSuccessMsg("");
         setErrorMsg("");
 
@@ -354,7 +355,7 @@ const ManageKennels = () => {
         } else {
             setErrorMsg(res?.message || "Failed to update kennel status.");
         }
-        setLoading(false);
+        setTogglingStatus(false);
     };
 
     const fetchKennelInfo = async (kennel_id) => {
@@ -1349,9 +1350,16 @@ const ManageKennels = () => {
                                                 <button 
                                                     className={`modal-status-btn ${kennelInfo.is_active === 0 ? 'inactive' : 'active'}`}
                                                     onClick={() => handleToggleKennelStatus(kennelInfo.id)}
+                                                    disabled={togglingStatus}
                                                 >
-                                                    <i className={`bi ${kennelInfo.is_active === 0 ? 'bi-toggle-off' : 'bi-toggle-on'}`}></i>
-                                                    {kennelInfo.is_active === 0 ? 'Inactive' : 'Active'}
+                                                    {togglingStatus ? (
+                                                        <span className="spinner-border spinner-border-sm"></span>
+                                                    ) : (
+                                                        <>
+                                                            <i className={`bi ${kennelInfo.is_active === 0 ? 'bi-toggle-off' : 'bi-toggle-on'}`}></i>
+                                                            {kennelInfo.is_active === 0 ? 'Inactive' : 'Active'}
+                                                        </>
+                                                    )}
                                                 </button>
                                                 <button className="modal-delete-btn" onClick={() => handleDeleteKennel(kennelInfo.id)}>
                                                     <i className="bi bi-trash"></i>
