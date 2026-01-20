@@ -318,7 +318,41 @@ const ManageKennels = () => {
             window.location.href = "/login";
             return;
         } else {
-            setErrorMsg(res.message || "Failed to delete kennel.");
+            // Check for booking constraint error
+            const message = res?.message || "";
+            if (message.includes("Cannot delete kennel") || message.includes("booking")) {
+                setErrorMsg("Cannot delete this kennel. It has existing bookings associated with it. Instead, mark it as inactive.");
+            } else {
+                setErrorMsg(message || "Failed to delete kennel.");
+            }
+        }
+        setLoading(false);
+    };
+
+    const handleToggleKennelStatus = async (kennel_id) => {
+        setLoading(true);
+        setSuccessMsg("");
+        setErrorMsg("");
+
+        const res = await callServicesApi({
+            action: "TOGGLE_KENNEL_STATUS",
+            session_id: localStorage.getItem("session_id"),
+            kennel_id: kennel_id
+        });
+
+        if (res?.success) {
+            setSuccessMsg(res.message);
+            fetchKennels();
+            // Update modal info if open
+            if (kennelInfo && kennelInfo.id === kennel_id) {
+                setKennelInfo({ ...kennelInfo, is_active: res.is_active });
+            }
+        } else if (res?.status_code === 498) {
+            localStorage.clear();
+            window.location.href = "/login";
+            return;
+        } else {
+            setErrorMsg(res?.message || "Failed to update kennel status.");
         }
         setLoading(false);
     };
@@ -631,7 +665,7 @@ const ManageKennels = () => {
                             {filteredKennels.map((kennel) => (
                                 <div 
                                     key={kennel.id} 
-                                    className="kennel-card"
+                                    className={`kennel-card ${kennel.is_active === 0 ? 'inactive' : ''}`}
                                     onClick={() => fetchKennelInfo(kennel.id)}
                                 >
                                     <div className="kennel-card-header">
@@ -640,7 +674,12 @@ const ManageKennels = () => {
                                         </div>
                                         <div className="kennel-info">
                                             <h3>{kennel.name}</h3>
-                                            <span className="kennel-id">#{kennel.id}</span>
+                                            <div className="kennel-meta">
+                                                <span className="kennel-id">#{kennel.id}</span>
+                                                <span className={`kennel-status-badge ${kennel.is_active === 0 ? 'inactive' : 'active'}`}>
+                                                    {kennel.is_active === 0 ? 'Inactive' : 'Active'}
+                                                </span>
+                                            </div>
                                         </div>
                                         <button 
                                             className="kennel-delete-btn"
@@ -1306,10 +1345,19 @@ const ManageKennels = () => {
                                     <div className="kennel-modal-section">
                                         <div className="modal-kennel-header">
                                             <h4>{kennelInfo.name}</h4>
-                                            <button className="modal-delete-btn" onClick={() => handleDeleteKennel(kennelInfo.id)}>
-                                                <i className="bi bi-trash"></i>
-                                                Delete Kennel
-                                            </button>
+                                            <div className="modal-kennel-actions">
+                                                <button 
+                                                    className={`modal-status-btn ${kennelInfo.is_active === 0 ? 'inactive' : 'active'}`}
+                                                    onClick={() => handleToggleKennelStatus(kennelInfo.id)}
+                                                >
+                                                    <i className={`bi ${kennelInfo.is_active === 0 ? 'bi-toggle-off' : 'bi-toggle-on'}`}></i>
+                                                    {kennelInfo.is_active === 0 ? 'Inactive' : 'Active'}
+                                                </button>
+                                                <button className="modal-delete-btn" onClick={() => handleDeleteKennel(kennelInfo.id)}>
+                                                    <i className="bi bi-trash"></i>
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </div>
                                         <p className="kennel-address">
                                             <i className="bi bi-geo-alt"></i>

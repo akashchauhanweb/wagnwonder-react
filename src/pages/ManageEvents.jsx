@@ -3,6 +3,8 @@ import { imageCompressor } from "../assets/js/imageCompressor";
 import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { callServicesApi } from "../assets/js/servicesApi";
 import stateCityMap from "../assets/js/stateCityMap";
+import AddPetModal from "../assets/components/AddPetModal";
+import { getEventBookingEmailHtml } from "../assets/js/eventBookingEmail";
 
 const ManageEvents = () => {
     const [activeTab, setActiveTab] = useState("list");
@@ -31,9 +33,44 @@ const ManageEvents = () => {
     // Delete confirmation
     const [deletingEventId, setDeletingEventId] = useState(null);
 
+    // Manual entry states
+    const [manualEntryEvent, setManualEntryEvent] = useState(null);
+    const [manualEntryUser, setManualEntryUser] = useState(null);
+    const [manualEntryUsers, setManualEntryUsers] = useState([]);
+    const [manualEntryPets, setManualEntryPets] = useState([]);
+    const [manualEntrySelectedPets, setManualEntrySelectedPets] = useState([]);
+    const [manualEntryTier, setManualEntryTier] = useState(null);
+    const [manualEntryTicketCount, setManualEntryTicketCount] = useState(1);
+    const [manualEntryFormData, setManualEntryFormData] = useState({});
+    const [manualEntryLoading, setManualEntryLoading] = useState(false);
+    const [manualEntrySubmitting, setManualEntrySubmitting] = useState(false);
+    const [loadingManualUsers, setLoadingManualUsers] = useState(false);
+    const [loadingManualPets, setLoadingManualPets] = useState(false);
+    const [showManualAddPetModal, setShowManualAddPetModal] = useState(false);
+
     const session_id = localStorage.getItem("session_id");
     const fileInputRef = useRef(null);
     const stateCityMapJson = stateCityMap();
+
+    // Helper to format date for email
+    const formatDateForEmail = (dateStr) => {
+        if (!dateStr) return "";
+        return new Date(dateStr).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+        });
+    };
+
+    // Helper to format time for email
+    const formatTimeForEmail = (timeStr) => {
+        if (!timeStr) return "";
+        const [hours, minutes] = timeStr.split(":");
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? "PM" : "AM";
+        const hour12 = h % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    };
 
     // Form state
     const [eventForm, setEventForm] = useState({
@@ -92,6 +129,217 @@ const ManageEvents = () => {
             fetchAllRegistrations();
         }
     }, [activeTab]);
+
+    // Fetch users for manual entry
+    const fetchManualEntryUsers = async () => {
+        setLoadingManualUsers(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ALL_USERS",
+                session_id
+            });
+            if (response?.success) {
+                setManualEntryUsers(response.data || []);
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
+        } finally {
+            setLoadingManualUsers(false);
+        }
+    };
+
+    // Fetch pets for selected user
+    const fetchManualEntryPets = async (userId) => {
+        setLoadingManualPets(true);
+        setManualEntryPets([]);
+        setManualEntrySelectedPets([]);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ALL_PETS",
+                session_id
+            });
+            if (response?.success) {
+                // Filter pets by owner_id
+                const userPets = (response.data || []).filter(pet => pet.owner_id === userId);
+                setManualEntryPets(userPets);
+            }
+        } catch (err) {
+            console.error("Error fetching pets:", err);
+        } finally {
+            setLoadingManualPets(false);
+        }
+    };
+
+    // Handle user selection for manual entry
+    const handleManualUserSelect = (userId) => {
+        const user = manualEntryUsers.find(u => u.id === parseInt(userId));
+        setManualEntryUser(user || null);
+        setManualEntrySelectedPets([]);
+        if (user && manualEntryEvent?.requires_pet) {
+            fetchManualEntryPets(user.id);
+        }
+    };
+
+    // Handle event selection for manual entry
+    const handleManualEventSelect = async (eventId) => {
+        if (!eventId) {
+            setManualEntryEvent(null);
+            setManualEntryTier(null);
+            return;
+        }
+        setManualEntryLoading(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_EVENT_INFO",
+                session_id,
+                event_id: parseInt(eventId)
+            });
+            if (response?.success) {
+                setManualEntryEvent(response.event);
+                // Auto-select first pricing tier
+                if (response.event.pricing?.length > 0) {
+                    setManualEntryTier(response.event.pricing[0]);
+                }
+                // Reset form data for custom fields
+                setManualEntryFormData({});
+            }
+        } catch (err) {
+            console.error("Error fetching event info:", err);
+        } finally {
+            setManualEntryLoading(false);
+        }
+    };
+
+    // Handle pet selection for manual entry
+    const handleManualPetSelect = (petId) => {
+        if (manualEntrySelectedPets.includes(petId)) {
+            setManualEntrySelectedPets(manualEntrySelectedPets.filter(id => id !== petId));
+        } else if (manualEntrySelectedPets.length < manualEntryTicketCount) {
+            setManualEntrySelectedPets([...manualEntrySelectedPets, petId]);
+        }
+    };
+
+    // Reset manual entry form
+    const resetManualEntryForm = () => {
+        setManualEntryEvent(null);
+        setManualEntryUser(null);
+        setManualEntryPets([]);
+        setManualEntrySelectedPets([]);
+        setManualEntryTier(null);
+        setManualEntryTicketCount(1);
+        setManualEntryFormData({});
+    };
+
+    // Handle pet added in manual entry
+    const handleManualPetAdded = () => {
+        setShowManualAddPetModal(false);
+        if (manualEntryUser) {
+            fetchManualEntryPets(manualEntryUser.id);
+        }
+    };
+
+    // Submit manual entry booking
+    const handleManualEntrySubmit = async () => {
+        if (!manualEntryEvent || !manualEntryUser || !manualEntryTier) {
+            setErrorMsg("Please select event, user, and ticket type.");
+            return;
+        }
+
+        if (manualEntryEvent.requires_pet && manualEntrySelectedPets.length !== manualEntryTicketCount) {
+            setErrorMsg(`Please select ${manualEntryTicketCount} pet(s) for ${manualEntryTicketCount} ticket(s).`);
+            return;
+        }
+
+        // Validate required form fields
+        if (manualEntryEvent.form_fields?.length > 0) {
+            for (const field of manualEntryEvent.form_fields) {
+                if (field.is_required && !manualEntryFormData[field.field_name]) {
+                    setErrorMsg(`Please fill in required field: ${field.field_name}`);
+                    return;
+                }
+            }
+        }
+
+        setManualEntrySubmitting(true);
+        try {
+            const orderId = `MANUAL_${Date.now()}`;
+            const response = await callServicesApi({
+                action: "BOOK_EVENT",
+                session_id,
+                event_id: manualEntryEvent.id,
+                user_id: manualEntryUser.id,
+                pricing_id: manualEntryTier.id,
+                ticket_count: manualEntryTicketCount,
+                form_data: manualEntryFormData,
+                pets: manualEntrySelectedPets,
+                order_id: orderId,
+                cf_order_id: null,
+                mode: "offline"
+            });
+
+            if (response?.success) {
+                // Send confirmation email
+                try {
+                    // Get pet details for email
+                    const selectedPetDetails = manualEntrySelectedPets.map(petId => {
+                        const pet = manualEntryPets.find(p => p.id === petId);
+                        return pet ? { name: pet.name, breed: pet.breed } : { name: `Pet #${petId}`, breed: '-' };
+                    });
+
+                    const emailHtml = getEventBookingEmailHtml({
+                        userName: manualEntryUser.first_name || "Guest",
+                        eventTitle: manualEntryEvent.title,
+                        eventDate: formatDateForEmail(manualEntryEvent.event_date),
+                        eventTime: formatTimeForEmail(manualEntryEvent.event_time),
+                        venue: manualEntryEvent.venue,
+                        city: manualEntryEvent.city,
+                        ticketType: manualEntryTier.label,
+                        ticketCount: manualEntryTicketCount,
+                        totalPrice: (manualEntryTier.price || 0) * manualEntryTicketCount,
+                        orderId: orderId,
+                        transactionId: "MANUAL",
+                        pets: selectedPetDetails
+                    });
+
+                    await callServicesApi({
+                        action: "SEND_EMAIL",
+                        session_id,
+                        email: manualEntryUser.email,
+                        subject: `Booking Confirmed: ${manualEntryEvent.title} - Wag N Wonder`,
+                        html: emailHtml
+                    });
+                } catch (emailErr) {
+                    console.error("Failed to send confirmation email:", emailErr);
+                }
+
+                setSuccessMsg(`Booking created successfully! Booking ID: ${response.booking_id}`);
+                resetManualEntryForm();
+                // Refresh registrations if on that tab
+                if (activeTab === "registrations") {
+                    fetchAllRegistrations();
+                }
+            } else {
+                setErrorMsg(response?.message || "Failed to create booking.");
+            }
+        } catch (err) {
+            console.error("Error creating manual booking:", err);
+            setErrorMsg("Error creating booking. Please try again.");
+        } finally {
+            setManualEntrySubmitting(false);
+        }
+    };
+
+    // Load users when manual entry tab is selected
+    useEffect(() => {
+        if (activeTab === "manual" && manualEntryUsers.length === 0) {
+            fetchManualEntryUsers();
+        }
+    }, [activeTab]);
+
+    // Reset selected pets when ticket count changes
+    useEffect(() => {
+        setManualEntrySelectedPets([]);
+    }, [manualEntryTicketCount]);
 
     // Fetch single event details
     const fetchEventInfo = async (eventId) => {
@@ -582,6 +830,13 @@ const ManageEvents = () => {
                 >
                     <i className="bi bi-people"></i>
                     Registrations
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "manual" ? "active" : ""}`}
+                    onClick={() => setActiveTab("manual")}
+                >
+                    <i className="bi bi-pencil-square"></i>
+                    Manual Entry
                 </button>
             </div>
 
@@ -1288,6 +1543,270 @@ const ManageEvents = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Manual Entry Tab */}
+            {activeTab === "manual" && (
+                <div className="manual-entry-section">
+                    <div className="manual-entry-form">
+                        {/* Step 1: Select Event */}
+                        <div className="manual-entry-step">
+                            <div className="step-header">
+                                <span className="step-number">1</span>
+                                <h4>Select Event</h4>
+                            </div>
+                            <div className="step-content">
+                                <select
+                                    value={manualEntryEvent?.id || ""}
+                                    onChange={(e) => handleManualEventSelect(e.target.value)}
+                                    className="manual-entry-select"
+                                    disabled={manualEntryLoading}
+                                >
+                                    <option value="">Choose an event...</option>
+                                    {eventsList.filter(e => e.status === "upcoming").map(evt => (
+                                        <option key={evt.id} value={evt.id}>{evt.title} - {new Date(evt.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Step 2: Select User */}
+                        {(manualEntryEvent || manualEntryLoading) && (
+                            <div className="manual-entry-step">
+                                <div className="step-header">
+                                    <span className="step-number">2</span>
+                                    <h4>Select User</h4>
+                                </div>
+                                <div className="step-content">
+                                    {loadingManualUsers ? (
+                                        <div className="manual-entry-loading">
+                                            <div className="spinner-border spinner-border-sm"></div>
+                                        </div>
+                                    ) : (
+                                        <select
+                                            value={manualEntryUser?.id || ""}
+                                            onChange={(e) => handleManualUserSelect(e.target.value)}
+                                            className="manual-entry-select"
+                                        >
+                                            <option value="">Choose a user...</option>
+                                            {manualEntryUsers.map(user => (
+                                                <option key={user.id} value={user.id}>
+                                                    {user.first_name} {user.last_name} ({user.email})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 3: Select Ticket Type */}
+                        {manualEntryUser && manualEntryEvent && (
+                            <div className="manual-entry-step">
+                                <div className="step-header">
+                                    <span className="step-number">3</span>
+                                    <h4>Select Ticket Type</h4>
+                                </div>
+                                <div className="step-content">
+                                    <div className="manual-entry-tiers">
+                                        {manualEntryEvent.pricing?.map(tier => (
+                                            <button
+                                                key={tier.id}
+                                                className={`tier-btn ${manualEntryTier?.id === tier.id ? 'selected' : ''}`}
+                                                onClick={() => setManualEntryTier(tier)}
+                                            >
+                                                <span className="tier-label">{tier.label}</span>
+                                                <span className="tier-price">₹{tier.price}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 4: Ticket Count */}
+                        {manualEntryTier && (
+                            <div className="manual-entry-step">
+                                <div className="step-header">
+                                    <span className="step-number">4</span>
+                                    <h4>Number of Tickets</h4>
+                                </div>
+                                <div className="step-content">
+                                    <div className="manual-entry-counter">
+                                        <button
+                                            onClick={() => setManualEntryTicketCount(Math.max(1, manualEntryTicketCount - 1))}
+                                            disabled={manualEntryTicketCount <= 1}
+                                        >
+                                            <i className="bi bi-dash"></i>
+                                        </button>
+                                        <span>{manualEntryTicketCount}</span>
+                                        <button
+                                            onClick={() => setManualEntryTicketCount(manualEntryTicketCount + 1)}
+                                        >
+                                            <i className="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 5: Pet Selection (if required) */}
+                        {manualEntryTier && manualEntryEvent.requires_pet === 1 && (
+                            <div className="manual-entry-step">
+                                <div className="step-header">
+                                    <span className="step-number">5</span>
+                                    <h4>Select Pets ({manualEntrySelectedPets.length}/{manualEntryTicketCount})</h4>
+                                </div>
+                                <div className="step-content">
+                                    {loadingManualPets ? (
+                                        <div className="manual-entry-loading">
+                                            <div className="spinner-border spinner-border-sm"></div>
+                                        </div>
+                                    ) : manualEntryPets.length === 0 ? (
+                                        <div className="manual-entry-no-pets">
+                                            <p>No pets found for this user.</p>
+                                            <button onClick={() => setShowManualAddPetModal(true)}>
+                                                <i className="bi bi-plus"></i> Add Pet
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="manual-entry-pets">
+                                            {manualEntryPets.map(pet => (
+                                                <button
+                                                    key={pet.id}
+                                                    className={`pet-select-btn ${manualEntrySelectedPets.includes(pet.id) ? 'selected' : ''}`}
+                                                    onClick={() => handleManualPetSelect(pet.id)}
+                                                    disabled={!manualEntrySelectedPets.includes(pet.id) && manualEntrySelectedPets.length >= manualEntryTicketCount}
+                                                >
+                                                    <i className={`bi ${manualEntrySelectedPets.includes(pet.id) ? 'bi-check-circle-fill' : 'bi-circle'}`}></i>
+                                                    <div className="pet-info">
+                                                        <span className="pet-name">{pet.name}</span>
+                                                        <span className="pet-breed">{pet.breed}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            <button className="pet-add-btn" onClick={() => setShowManualAddPetModal(true)}>
+                                                <i className="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 6: Custom Form Fields (if any) */}
+                        {manualEntryTier && manualEntryEvent.form_fields?.length > 0 && (
+                            <div className="manual-entry-step">
+                                <div className="step-header">
+                                    <span className="step-number">{manualEntryEvent.requires_pet === 1 ? '6' : '5'}</span>
+                                    <h4>Additional Information</h4>
+                                </div>
+                                <div className="step-content">
+                                    <div className="manual-entry-fields">
+                                        {manualEntryEvent.form_fields.map(field => (
+                                            <div key={field.id} className="manual-field">
+                                                <label>
+                                                    {field.field_name}
+                                                    {field.is_required === 1 && <span className="required">*</span>}
+                                                </label>
+                                                {field.field_type === "select" ? (
+                                                    <select
+                                                        value={manualEntryFormData[field.field_name] || ""}
+                                                        onChange={(e) => setManualEntryFormData({
+                                                            ...manualEntryFormData,
+                                                            [field.field_name]: e.target.value
+                                                        })}
+                                                    >
+                                                        <option value="">Select...</option>
+                                                        {(typeof field.field_options === 'string'
+                                                            ? JSON.parse(field.field_options)
+                                                            : field.field_options || []
+                                                        ).map((opt, idx) => (
+                                                            <option key={idx} value={opt}>{opt}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : field.field_type === "textarea" ? (
+                                                    <textarea
+                                                        value={manualEntryFormData[field.field_name] || ""}
+                                                        onChange={(e) => setManualEntryFormData({
+                                                            ...manualEntryFormData,
+                                                            [field.field_name]: e.target.value
+                                                        })}
+                                                        placeholder={`Enter ${field.field_name.toLowerCase()}`}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type={field.field_type || "text"}
+                                                        value={manualEntryFormData[field.field_name] || ""}
+                                                        onChange={(e) => setManualEntryFormData({
+                                                            ...manualEntryFormData,
+                                                            [field.field_name]: e.target.value
+                                                        })}
+                                                        placeholder={`Enter ${field.field_name.toLowerCase()}`}
+                                                    />
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Summary & Submit */}
+                        {manualEntryTier && (
+                            <div className="manual-entry-summary">
+                                <div className="summary-details">
+                                    <div className="summary-row">
+                                        <span>Event</span>
+                                        <span>{manualEntryEvent?.title}</span>
+                                    </div>
+                                    <div className="summary-row">
+                                        <span>User</span>
+                                        <span>{manualEntryUser?.first_name} {manualEntryUser?.last_name}</span>
+                                    </div>
+                                    <div className="summary-row">
+                                        <span>Ticket Type</span>
+                                        <span>{manualEntryTier?.label}</span>
+                                    </div>
+                                    <div className="summary-row">
+                                        <span>Quantity</span>
+                                        <span>{manualEntryTicketCount}</span>
+                                    </div>
+                                    <div className="summary-row total">
+                                        <span>Total</span>
+                                        <span>₹{(manualEntryTier?.price || 0) * manualEntryTicketCount}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    className="manual-entry-submit"
+                                    onClick={handleManualEntrySubmit}
+                                    disabled={manualEntrySubmitting}
+                                >
+                                    {manualEntrySubmitting ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm"></span>
+                                            Creating Booking...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-check-circle"></i>
+                                            Create Booking
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Add Pet Modal for Manual Entry */}
+            {showManualAddPetModal && manualEntryUser && (
+                <AddPetModal
+                    onClose={() => setShowManualAddPetModal(false)}
+                    onSaved={handleManualPetAdded}
+                    userId={manualEntryUser.id}
+                />
             )}
         </div>
     );

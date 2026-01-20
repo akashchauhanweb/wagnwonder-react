@@ -70,14 +70,68 @@ const BookingDetailModal = ({ booking, onClose }) => {
                             <h5>Pets ({booking.pets.length})</h5>
                             <div className="modal-pets-list">
                                 {booking.pets.map((pet, idx) => (
-                                    <div key={idx} className="modal-pet-item">
-                                        <div className="pet-avatar">
-                                            <i className="bi bi-paw"></i>
+                                    <div key={idx} className="modal-pet-card">
+                                        <div className="modal-pet-header">
+                                            <div className="pet-avatar">
+                                                {pet.pet_photo ? (
+                                                    <img src={pet.pet_photo} alt={pet.pet_name} />
+                                                ) : (
+                                                    <i className="bi bi-heart-pulse-fill"></i>
+                                                )}
+                                            </div>
+                                            <div className="pet-header-info">
+                                                <span className="pet-name">{pet.pet_name}</span>
+                                                <div className="pet-badges">
+                                                    <span className={`type-badge ${pet.pet_type}`}>
+                                                        {pet.pet_type?.charAt(0).toUpperCase() + pet.pet_type?.slice(1)}
+                                                    </span>
+                                                    <span className={`aggression-badge ${pet.pet_aggression}`}>
+                                                        {pet.pet_aggression?.charAt(0).toUpperCase() + pet.pet_aggression?.slice(1)}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="pet-info">
-                                            <span className="pet-name">{pet.pet_name}</span>
-                                            <span className="pet-price">₹{pet.total_price} ({pet.days} days × ₹{pet.price_per_day}/day)</span>
+                                        <div className="modal-pet-details">
+                                            <div className="pet-detail-item">
+                                                <span className="label">Breed</span>
+                                                <span className="value">{pet.pet_breed}</span>
+                                            </div>
+                                            <div className="pet-detail-item">
+                                                <span className="label">Age</span>
+                                                <span className="value">{pet.pet_age} yr{pet.pet_age !== 1 ? 's' : ''}</span>
+                                            </div>
+                                            <div className="pet-detail-item">
+                                                <span className="label">Weight</span>
+                                                <span className="value">
+                                                    {pet.pet_weight === "below 15kgs" ? "< 15 kg" : 
+                                                     pet.pet_weight === "above 15kgs and below 40kgs" ? "15-40 kg" : 
+                                                     pet.pet_weight === "above 40kgs" ? "> 40 kg" : pet.pet_weight}
+                                                </span>
+                                            </div>
+                                            <div className="pet-detail-item">
+                                                <span className="label">Gender</span>
+                                                <span className="value">{pet.pet_gender?.charAt(0).toUpperCase() + pet.pet_gender?.slice(1)}</span>
+                                            </div>
                                         </div>
+                                        <div className="modal-pet-pricing">
+                                            <span className="pet-price">₹{pet.total_price}</span>
+                                            <span className="pet-price-breakdown">({booking.days} days × ₹{pet.price_per_day}/day)</span>
+                                        </div>
+                                        {pet.pet_vaccine_card && (
+                                            <div className="modal-pet-vaccine">
+                                                <span className="vaccine-label">
+                                                    <i className="bi bi-file-medical"></i>
+                                                    Vaccine Card
+                                                </span>
+                                                <a href={pet.pet_vaccine_card} target="_blank" rel="noopener noreferrer" className="vaccine-link">
+                                                    <img src={pet.pet_vaccine_card} alt="Vaccine Card" />
+                                                    <span className="vaccine-view">
+                                                        <i className="bi bi-eye"></i>
+                                                        View Full
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

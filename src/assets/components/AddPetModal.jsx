@@ -3,7 +3,7 @@ import { callServicesApi } from '../js/servicesApi';
 import { uploadImageToS3 } from '../js/uploadImageToS3';
 import { imageCompressor } from '../js/imageCompressor';
 
-export default function AddPetModal({ onClose, onSaved }) {
+export default function AddPetModal({ onClose, onSaved, userId = null }) {
     const [formData, setFormData] = useState({
         name: '', age: '', birthMonth: '', birthYear: '', type: '', breed: '', weight: '', gender: '', aggression: '', vaccine_card: null, photo: null
     });
@@ -121,7 +121,7 @@ export default function AddPetModal({ onClose, onSaved }) {
             const payload = {
                 action: 'ADD_PET',
                 session_id: localStorage.getItem('session_id'),
-                user_id: JSON.parse(localStorage.getItem('user_data')).id,
+                user_id: userId || JSON.parse(localStorage.getItem('user_data')).id,
                 name: form.name,
                 age: getAgeInYears(),
                 type: form.type,

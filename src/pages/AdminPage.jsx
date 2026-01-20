@@ -8,6 +8,7 @@ const MENU_ITEMS = [
     { path: "/admin/earnings", icon: "bi-bar-chart-line-fill", label: "Earnings Dashboard" },
     { path: "/admin/manage-products", icon: "bi-box-seam-fill", label: "Manage Products" },
     { path: "/admin/manage-users", icon: "bi-people-fill", label: "Manage Users" },
+    { path: "/admin/manage-pets", icon: "bi-heart-pulse-fill", label: "Manage Pets" },
     { path: "/admin/manage-kennels", icon: "bi-house-door-fill", label: "Manage Kennels" },
     { path: "/admin/manage-bookings", icon: "bi-calendar-check-fill", label: "Manage Bookings" },
     { path: "/admin/manage-events", icon: "bi-calendar-event", label: "Manage Events" },

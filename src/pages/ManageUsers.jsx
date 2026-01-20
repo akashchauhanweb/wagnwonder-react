@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useLoading } from "../contexts/LoadingContext";
+import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 
 const ManageUsers = () => {
     const [activeTab, setActiveTab] = useState("list");
@@ -24,6 +25,8 @@ const ManageUsers = () => {
         has_clinic_access: false,
     });
     const [fetchingUsers, setFetchingUsers] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { setLoading } = useLoading();
 
     const fetchUsers = async () => {
@@ -55,8 +58,14 @@ const ManageUsers = () => {
             setSuccessMsg("User deleted successfully.");
             setTimeout(() => setSuccessMsg(""), 3000);
         } else {
-            setErrorMsg(res?.message || "Failed to delete user.");
-            setTimeout(() => setErrorMsg(""), 3000);
+            // Check for foreign key constraint error
+            const message = res?.message || "";
+            if (message.includes("foreign key constraint") || message.includes("Cannot delete")) {
+                setErrorMsg("Cannot delete this user. They have existing bookings or pets associated with their account.");
+            } else {
+                setErrorMsg(message || "Failed to delete user.");
+            }
+            setTimeout(() => setErrorMsg(""), 5000);
         }
         setLoading(false);
     };
@@ -99,7 +108,11 @@ const ManageUsers = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        setSubmitting(true);
+        
+        // Store password before sending (it gets hashed on backend)
+        const plainPassword = formData.password_hashed;
+        
         let payload = {
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
@@ -108,6 +121,27 @@ const ManageUsers = () => {
         const res = await callServicesApi(payload);
 
         if (res?.success) {
+            // Send welcome email
+            try {
+                const emailHtml = getWelcomeUserEmailHtml({
+                    firstName: formData.first_name,
+                    lastName: formData.last_name,
+                    email: formData.email,
+                    phoneNumber: formData.phone_number,
+                    password: plainPassword
+                });
+                
+                await callServicesApi({
+                    action: "SEND_EMAIL",
+                    session_id: localStorage.getItem("session_id"),
+                    email: formData.email,
+                    subject: "Welcome to Wag N Wonder - Your Account Details",
+                    html: emailHtml
+                });
+            } catch (emailErr) {
+                console.error("Failed to send welcome email:", emailErr);
+            }
+            
             setSuccessMsg("User added successfully.");
             setFormData({
                 first_name: "",
@@ -130,7 +164,7 @@ const ManageUsers = () => {
             setSuccessMsg("");
             setErrorMsg("");
         }, 3000);
-        setLoading(false);
+        setSubmitting(false);
     };
 
     const getAccessBadges = (user) => {
@@ -358,13 +392,22 @@ const ManageUsers = () => {
                             </div>
                             <div className="form-field">
                                 <label>Password *</label>
-                                <input
-                                    type="password"
-                                    required
-                                    placeholder="Enter password"
-                                    value={formData.password_hashed}
-                                    onChange={(e) => setFormData({ ...formData, password_hashed: e.target.value })}
-                                />
+                                <div className="password-input-wrapper">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        placeholder="Enter password"
+                                        value={formData.password_hashed}
+                                        onChange={(e) => setFormData({ ...formData, password_hashed: e.target.value })}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="password-toggle-btn"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                                    </button>
+                                </div>
                             </div>
                             <div className="form-field">
                                 <label>User Type *</label>
@@ -434,9 +477,18 @@ const ManageUsers = () => {
                             </div>
                         )}
 
-                        <button type="submit" className="add-user-submit">
-                            <i className="bi bi-person-plus"></i>
-                            Add User
+                        <button type="submit" className="add-user-submit" disabled={submitting}>
+                            {submitting ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                    Adding...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="bi bi-person-plus"></i>
+                                    Add User
+                                </>
+                            )}
                         </button>
                     </form>
                 </div>

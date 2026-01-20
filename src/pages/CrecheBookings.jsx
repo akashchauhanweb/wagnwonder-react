@@ -53,31 +53,23 @@ export default function CrecheBookings() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="bookings-loading">
-                <div className="spinner-border" role="status" />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="bookings-error">
-                <i className="bi bi-exclamation-circle"></i>
-                <p>{error}</p>
-            </div>
-        );
-    }
-
     return (
         <div className="creche-bookings">
             <div className="bookings-header">
                 <h2>Your Bookings</h2>
-                <span className="bookings-count">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</span>
+                {!loading && <span className="bookings-count">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</span>}
             </div>
 
-            {bookings.length === 0 ? (
+            {loading ? (
+                <div className="bookings-loading">
+                    <div className="spinner-border" role="status" />
+                </div>
+            ) : error ? (
+                <div className="bookings-error">
+                    <i className="bi bi-exclamation-circle"></i>
+                    <p>{error}</p>
+                </div>
+            ) : bookings.length === 0 ? (
                 <div className="bookings-empty">
                     <div className="bookings-empty-icon">
                         <i className="bi bi-calendar-x"></i>

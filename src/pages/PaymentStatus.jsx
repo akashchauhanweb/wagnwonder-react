@@ -158,6 +158,7 @@ export default function PaymentStatus() {
                         });
                         
                         localStorage.removeItem("pending_event_booking");
+                        localStorage.removeItem("event_bookings");
                     } catch (e) {
                         console.error("Failed to create event booking entry:", e);
                     }
