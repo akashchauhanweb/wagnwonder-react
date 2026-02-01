@@ -4,6 +4,7 @@ import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useLoading } from "../contexts/LoadingContext";
 import stateCityMap from "../assets/js/stateCityMap";
+import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 
 const ManageKennels = () => {
     const [activeTab, setActiveTab] = useState("list");
@@ -24,6 +25,7 @@ const ManageKennels = () => {
     const [zoomImages, setZoomImages] = useState([]);
     const [zoomIndex, setZoomIndex] = useState(0);
     const [kennelInfo, setKennelInfo] = useState(null);
+    const [togglingStatus, setTogglingStatus] = useState(false);
     const [showImageOrderModal, setShowImageOrderModal] = useState(false);
     const [pendingImages, setPendingImages] = useState([]);
     const session_id = localStorage.getItem("session_id");
@@ -330,7 +332,7 @@ const ManageKennels = () => {
     };
 
     const handleToggleKennelStatus = async (kennel_id) => {
-        setLoading(true);
+        setTogglingStatus(true);
         setSuccessMsg("");
         setErrorMsg("");
 
@@ -354,7 +356,7 @@ const ManageKennels = () => {
         } else {
             setErrorMsg(res?.message || "Failed to update kennel status.");
         }
-        setLoading(false);
+        setTogglingStatus(false);
     };
 
     const fetchKennelInfo = async (kennel_id) => {
@@ -486,12 +488,37 @@ const ManageKennels = () => {
 
     const handleAddNewUser = async () => {
         setAddingUser(true);
+        
+        // Store password before sending (it gets hashed on backend)
+        const plainPassword = newUserForm.password_hashed;
+        
         const res = await callServicesApi({
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
             ...newUserForm
         });
         if (res?.success) {
+            // Send welcome email
+            try {
+                const emailHtml = getWelcomeUserEmailHtml({
+                    firstName: newUserForm.first_name,
+                    lastName: newUserForm.last_name,
+                    email: newUserForm.email,
+                    phoneNumber: newUserForm.phone_number,
+                    password: plainPassword
+                });
+                
+                await callServicesApi({
+                    action: "SEND_EMAIL",
+                    session_id: localStorage.getItem("session_id"),
+                    email: newUserForm.email,
+                    subject: "Welcome to Wag N Wonder - Your Account Details",
+                    html: emailHtml
+                });
+            } catch (emailErr) {
+                console.error("Failed to send welcome email:", emailErr);
+            }
+            
             setSuccessMsg("User added successfully.");
             setNewUserForm({
                 first_name: "",
@@ -1349,9 +1376,16 @@ const ManageKennels = () => {
                                                 <button 
                                                     className={`modal-status-btn ${kennelInfo.is_active === 0 ? 'inactive' : 'active'}`}
                                                     onClick={() => handleToggleKennelStatus(kennelInfo.id)}
+                                                    disabled={togglingStatus}
                                                 >
-                                                    <i className={`bi ${kennelInfo.is_active === 0 ? 'bi-toggle-off' : 'bi-toggle-on'}`}></i>
-                                                    {kennelInfo.is_active === 0 ? 'Inactive' : 'Active'}
+                                                    {togglingStatus ? (
+                                                        <span className="spinner-border spinner-border-sm"></span>
+                                                    ) : (
+                                                        <>
+                                                            <i className={`bi ${kennelInfo.is_active === 0 ? 'bi-toggle-off' : 'bi-toggle-on'}`}></i>
+                                                            {kennelInfo.is_active === 0 ? 'Inactive' : 'Active'}
+                                                        </>
+                                                    )}
                                                 </button>
                                                 <button className="modal-delete-btn" onClick={() => handleDeleteKennel(kennelInfo.id)}>
                                                     <i className="bi bi-trash"></i>

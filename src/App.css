@@ -7762,6 +7762,11 @@ input[type="date"].hero-input:invalid {
     font-size: 1rem;
 }
 
+.modal-status-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 /* Onboard Form */
 .manage-kennels-add {
     padding-top: 8px;
@@ -15993,7 +15998,8 @@ input[type="date"].hero-input:invalid {
 }
 
 .manual-entry-form {
-    max-width: 600px;
+    max-width: 700px;
+    width: 100%;
 }
 
 .manual-entry-step {
@@ -16035,6 +16041,7 @@ input[type="date"].hero-input:invalid {
 
 .step-content {
     padding-left: 40px;
+    padding-right: 8px;
 }
 
 .manual-entry-select {
@@ -16343,6 +16350,60 @@ input[type="date"].hero-input:invalid {
 }
 
 .manual-entry-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Manual Entry - Add User Section */
+.manual-add-user-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.manual-add-user-section h5 {
+    margin: 0 0 16px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.manual-add-user-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.manual-add-user-grid .manual-field.full-width {
+    grid-column: span 2;
+}
+
+.manual-add-user-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.manual-add-user-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 41, 59, 0.3);
+}
+
+.manual-add-user-btn:disabled {
     opacity: 0.7;
     cursor: not-allowed;
 }
