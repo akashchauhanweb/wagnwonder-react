@@ -47,6 +47,15 @@ function AppContent() {
     setGlobalSessionHandler(handleSessionExpired);
   }, [handleSessionExpired]);
 
+  // Track page views in Google Analytics on route change
+  React.useEffect(() => {
+    if (window.gtag) {
+      window.gtag('event', 'page_view', {
+        page_path: location.pathname + location.search,
+      });
+    }
+  }, [location]);
+
   return (
     <div className={isAdminRoute ? 'admin-layout' : ''}>
       {!isAdminRoute && <Header />}
