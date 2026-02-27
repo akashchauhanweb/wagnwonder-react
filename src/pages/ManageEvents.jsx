@@ -423,11 +423,66 @@ const ManageEvents = () => {
                 }
 
                 setSuccessMsg(`Booking created successfully! Booking ID: ${response.booking_id}`);
-                resetManualEntryForm();
-                // Refresh registrations if on that tab
-                if (activeTab === "registrations") {
-                    fetchAllRegistrations();
+
+                // Add to registrations cache without re-fetching
+                if (Object.keys(allRegistrationsCache).length > 0) {
+                    const newReg = {
+                        id: response.booking_id,
+                        event_id: manualEntryEvent.id,
+                        event_title: manualEntryEvent.title,
+                        user_id: manualEntryUser.id,
+                        first_name: manualEntryUser.first_name,
+                        last_name: manualEntryUser.last_name,
+                        email: manualEntryUser.email,
+                        phone_number: manualEntryUser.phone_number,
+                        ticket_type: manualEntryTier.label,
+                        ticket_price: manualEntryTier.price,
+                        ticket_count: manualEntryTicketCount,
+                        total_price: (manualEntryTier.price || 0) * manualEntryTicketCount,
+                        status: "booked",
+                        mode: "offline",
+                        order_id: orderId,
+                        cf_order_id: null,
+                        form_data: Object.keys(manualEntryFormData).length > 0 ? JSON.stringify(manualEntryFormData) : null,
+                        created_at: new Date().toISOString(),
+                        pets: manualEntrySelectedPets.map(petId => {
+                            const pet = manualEntryPets.find(p => p.id === petId);
+                            return pet ? { name: pet.name, breed: pet.breed, age: pet.age, weight: pet.weight } : null;
+                        }).filter(Boolean)
+                    };
+
+                    const eventId = manualEntryEvent.id;
+                    const updatedCache = { ...allRegistrationsCache };
+
+                    if (updatedCache[eventId]) {
+                        updatedCache[eventId] = {
+                            ...updatedCache[eventId],
+                            registrations: [newReg, ...updatedCache[eventId].registrations],
+                            stats: {
+                                ...updatedCache[eventId].stats,
+                                total_bookings: (updatedCache[eventId].stats?.total_bookings || 0) + 1,
+                                total_tickets: (updatedCache[eventId].stats?.total_tickets || 0) + manualEntryTicketCount,
+                                total_revenue: (updatedCache[eventId].stats?.total_revenue || 0) + (manualEntryTier.price || 0) * manualEntryTicketCount
+                            }
+                        };
+                    } else {
+                        updatedCache[eventId] = {
+                            event: { id: eventId, title: manualEntryEvent.title },
+                            registrations: [newReg],
+                            stats: {
+                                total_bookings: 1,
+                                total_tickets: manualEntryTicketCount,
+                                total_revenue: (manualEntryTier.price || 0) * manualEntryTicketCount
+                            },
+                            ticket_breakdown: []
+                        };
+                    }
+
+                    setAllRegistrationsCache(updatedCache);
+                    setAllRegistrations(prev => [newReg, ...prev]);
                 }
+
+                resetManualEntryForm();
             } else {
                 setErrorMsg(response?.message || "Failed to create booking.");
             }
@@ -1036,7 +1091,7 @@ const ManageEvents = () => {
                                         </div>
                                         <div className="event-stats">
                                             <span>
-                                                <i className="bi bi-ticket"></i>
+                                                <i className="bi bi-ticket me-1"></i>
                                                 {evt.booked_tickets} booked
                                                 {evt.total_capacity && ` / ${evt.total_capacity}`}
                                             </span>
