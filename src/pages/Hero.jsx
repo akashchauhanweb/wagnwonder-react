@@ -13,9 +13,9 @@ function Hero() {
     }, []);
 
     const bannerMessages = [
-        { icon: "🎉", text: "New! Discover exciting pet events near you", cta: "Explore Events", path: "/events" },
-        { icon: "🏆", text: "Registrations for 3rd All Breed Open Championship is now open!", cta: "Register Now", path: "/events" },
-    ];
+        { icon: "🎉", text: "New! Discover exciting pet events near you", cta: "Explore Events", path: "/events", expiresOn: "2026-01-31" },
+        { icon: "🏆", text: "Registrations for 3rd All Breed Open Championship is now open!", cta: "Register Now", path: "/events", expiresOn: "2026-01-31" },
+    ].filter(msg => !msg.expiresOn || new Date(msg.expiresOn) >= new Date());
 
     const handleBannerClick = (path) => {
         if (path === "/events") {
