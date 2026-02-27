@@ -441,8 +441,13 @@ const ManageEvents = () => {
 
     // Load users when manual entry tab is selected
     useEffect(() => {
-        if (activeTab === "manual" && manualEntryUsers.length === 0) {
-            fetchManualEntryUsers();
+        if (activeTab === "manual") {
+            if (manualEntryUsers.length === 0) {
+                fetchManualEntryUsers();
+            }
+            if (!allEventsCache) {
+                fetchEvents();
+            }
         }
     }, [activeTab]);
 
@@ -1675,9 +1680,16 @@ const ManageEvents = () => {
                                     disabled={manualEntryLoading}
                                 >
                                     <option value="">Choose an event...</option>
-                                    {eventsList.filter(e => e.status === "upcoming").map(evt => (
-                                        <option key={evt.id} value={evt.id}>{evt.title} - {new Date(evt.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</option>
-                                    ))}
+                                    {(allEventsCache || []).filter(e => e.status === "upcoming").length > 0 && <optgroup label="Upcoming">
+                                        {(allEventsCache || []).filter(e => e.status === "upcoming").map(evt => (
+                                            <option key={evt.id} value={evt.id}>{evt.title} - {new Date(evt.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</option>
+                                        ))}
+                                    </optgroup>}
+                                    {(allEventsCache || []).filter(e => e.status === "past").length > 0 && <optgroup label="Past Events">
+                                        {(allEventsCache || []).filter(e => e.status === "past").map(evt => (
+                                            <option key={evt.id} value={evt.id}>{evt.title} - {new Date(evt.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</option>
+                                        ))}
+                                    </optgroup>}
                                 </select>
                             </div>
                         </div>
