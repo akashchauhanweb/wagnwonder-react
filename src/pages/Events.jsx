@@ -3,36 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { getTokenFromApi } from "../assets/js/getToken";
 
-const CACHE_KEY = "events_cache";
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-const getCache = (filter) => {
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (!cached) return null;
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp > CACHE_DURATION) return null;
-        return data[filter] || null;
-    } catch {
-        return null;
-    }
-};
-
-const setCache = (filter, events) => {
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        const existing = cached ? JSON.parse(cached) : { data: {}, timestamp: Date.now() };
-        existing.data[filter] = events;
-        existing.timestamp = Date.now();
-        localStorage.setItem(CACHE_KEY, JSON.stringify(existing));
-    } catch {
-        // Ignore cache errors
-    }
-};
 
 export default function Events() {
     const navigate = useNavigate();
     const [events, setEvents] = useState([]);
+    const [allEventsCache, setAllEventsCache] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState("upcoming");
 
@@ -41,22 +16,21 @@ export default function Events() {
         fetchEvents();
     }, [activeFilter]);
 
-    const fetchEvents = async (forceRefresh = false) => {
-        // Check cache first
-        if (!forceRefresh) {
-            const cachedEvents = getCache(activeFilter);
-            if (cachedEvents) {
-                setEvents(cachedEvents);
-                setLoading(false);
-                return;
-            }
+    const fetchEvents = async () => {
+        // If cache exists, just filter from it
+        if (allEventsCache) {
+            const filtered = activeFilter === "all"
+                ? allEventsCache
+                : allEventsCache.filter(evt => evt.status === activeFilter);
+            setEvents(filtered);
+            return;
         }
 
         setLoading(true);
         try {
             let payload = {
                 action: "GET_EVENTS",
-                status: activeFilter
+                status: "all"
             };
 
             const token = await getTokenFromApi(payload);
@@ -66,9 +40,12 @@ export default function Events() {
 
             const response = await callServicesApi(payload);
             if (response?.success) {
-                const eventData = response.events || [];
-                setEvents(eventData);
-                setCache(activeFilter, eventData);
+                const allEvents = response.events || [];
+                setAllEventsCache(allEvents);
+                const filtered = activeFilter === "all"
+                    ? allEvents
+                    : allEvents.filter(evt => evt.status === activeFilter);
+                setEvents(filtered);
             }
         } catch (err) {
             console.error("Error fetching events:", err);
@@ -76,15 +53,6 @@ export default function Events() {
             setLoading(false);
         }
     };
-
-    // const formatDate = (dateStr) => {
-    //     if (!dateStr) return "";
-    //     return new Date(dateStr).toLocaleDateString("en-IN", {
-    //         day: "numeric",
-    //         month: "short",
-    //         year: "numeric"
-    //     });
-    // };
 
     const formatTime = (timeStr) => {
         if (!timeStr) return "";

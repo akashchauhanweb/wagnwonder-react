@@ -10,6 +10,7 @@ import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 const ManageEvents = () => {
     const [activeTab, setActiveTab] = useState("list");
     const [eventsList, setEventsList] = useState([]);
+    const [allEventsCache, setAllEventsCache] = useState(null);
     const [loadingEvents, setLoadingEvents] = useState(true);
     const [searchEvent, setSearchEvent] = useState("");
     const [statusFilter, setStatusFilter] = useState("upcoming");
@@ -114,17 +115,31 @@ const ManageEvents = () => {
         ? Object.keys(stateCityMapJson[eventForm.state] || {})
         : [];
 
-    // Fetch events
-    const fetchEvents = async () => {
+    // Fetch all events once and cache
+    const fetchEvents = async (forceRefresh = false) => {
+        // If cache exists and no force refresh, just filter from cache
+        if (allEventsCache && !forceRefresh) {
+            const filtered = statusFilter === "all"
+                ? allEventsCache
+                : allEventsCache.filter(evt => evt.status === statusFilter);
+            setEventsList(filtered);
+            return;
+        }
+
         setLoadingEvents(true);
         try {
             const response = await callServicesApi({
                 action: "GET_EVENTS",
                 session_id,
-                status: statusFilter
+                status: "all"
             });
             if (response?.success) {
-                setEventsList(response.events || []);
+                const allEvents = response.events || [];
+                setAllEventsCache(allEvents);
+                const filtered = statusFilter === "all"
+                    ? allEvents
+                    : allEvents.filter(evt => evt.status === statusFilter);
+                setEventsList(filtered);
             }
         } catch (err) {
             console.error("Error fetching events:", err);
@@ -673,7 +688,8 @@ const ManageEvents = () => {
                 setSuccessMsg(response.message);
                 setShowEventModal(false);
                 setEventInfo(null);
-                fetchEvents();
+                setAllEventsCache(null);
+                fetchEvents(true);
             } else {
                 setErrorMsg(response?.message || "Failed to delete event.");
             }
@@ -839,7 +855,8 @@ const ManageEvents = () => {
                 setSuccessMsg("Event created successfully!");
                 resetForm();
                 setActiveTab("list");
-                fetchEvents();
+                setAllEventsCache(null);
+                fetchEvents(true);
             } else {
                 setErrorMsg(response?.message || "Failed to create event.");
             }
