@@ -423,9 +423,6 @@ const ManageEvents = () => {
                 }
 
                 setSuccessMsg(`Booking created successfully! Booking ID: ${response.booking_id}`);
-                // Clear registrations cache so it re-fetches when tab is visited
-                setAllRegistrationsCache({});
-                setAllRegistrations([]);
                 resetManualEntryForm();
             } else {
                 setErrorMsg(response?.message || "Failed to create booking.");
@@ -473,7 +470,7 @@ const ManageEvents = () => {
         }
     };
 
-    // Fetch all registrations for all events
+    // Fetch all registrations in a single API call
     const fetchAllRegistrations = async () => {
         if (Object.keys(allRegistrationsCache).length > 0) {
             // Use cached data
@@ -482,57 +479,72 @@ const ManageEvents = () => {
 
         setLoadingAllRegistrations(true);
         try {
-            // First, fetch all events (both upcoming and past)
-            const eventsResponse = await callServicesApi({
-                action: "GET_EVENTS",
-                session_id,
-                status: "all"
+            const response = await callServicesApi({
+                action: "GET_EVENT_REGISTRATIONS",
+                session_id
             });
 
-            if (!eventsResponse?.success || !eventsResponse.events?.length) {
+            if (!response?.success) {
                 setLoadingAllRegistrations(false);
                 return;
             }
 
-            const events = eventsResponse.events;
+            const regs = response.registrations || [];
+
+            // Group registrations by event_id for cache
             const cache = {};
-            const allRegs = [];
-
-            // Fetch registrations for each event
-            for (const event of events) {
-                try {
-                    const regResponse = await callServicesApi({
-                        action: "GET_EVENT_REGISTRATIONS",
-                        session_id,
-                        event_id: event.id
-                    });
-
-                    if (regResponse?.success && regResponse.registrations?.length > 0) {
-                        // Add event info to each registration
-                        const regsWithEventInfo = regResponse.registrations.map(reg => ({
-                            ...reg,
-                            event_id: event.id,
-                            event_title: event.title
-                        }));
-
-                        cache[event.id] = {
-                            event: { id: event.id, title: event.title },
-                            registrations: regsWithEventInfo,
-                            stats: regResponse.stats,
-                            ticket_breakdown: regResponse.ticket_breakdown
-                        };
-
-                        allRegs.push(...regsWithEventInfo);
-                    }
-                } catch (err) {
-                    console.error(`Error fetching registrations for event ${event.id}:`, err);
+            for (const reg of regs) {
+                const eid = reg.event_id;
+                if (!cache[eid]) {
+                    cache[eid] = {
+                        event: { id: eid, title: reg.event_title },
+                        registrations: [],
+                        stats: null,
+                        ticket_breakdown: null
+                    };
                 }
+                cache[eid].registrations.push(reg);
             }
 
             setAllRegistrationsCache(cache);
-            setAllRegistrations(allRegs);
+            setAllRegistrations(regs);
         } catch (err) {
             console.error("Error fetching all registrations:", err);
+        } finally {
+            setLoadingAllRegistrations(false);
+        }
+    };
+
+    const refreshRegistrations = async () => {
+        setAllRegistrationsCache({});
+        setAllRegistrations([]);
+        setLoadingAllRegistrations(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_EVENT_REGISTRATIONS",
+                session_id
+            });
+
+            if (response?.success) {
+                const regs = response.registrations || [];
+                const cache = {};
+                for (const reg of regs) {
+                    const eid = reg.event_id;
+                    if (!cache[eid]) {
+                        cache[eid] = {
+                            event: { id: eid, title: reg.event_title },
+                            registrations: [],
+                            stats: null,
+                            ticket_breakdown: null
+                        };
+                    }
+                    cache[eid].registrations.push(reg);
+                }
+                setAllRegistrationsCache(cache);
+                setAllRegistrations(regs);
+            }
+        } catch (err) {
+            console.error("Error refreshing registrations:", err);
         } finally {
             setLoadingAllRegistrations(false);
         }
@@ -1077,6 +1089,14 @@ const ManageEvents = () => {
                                 ))}
                             </select>
                         </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={refreshRegistrations}
+                            disabled={loadingAllRegistrations}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${loadingAllRegistrations ? 'spinning' : ''}`}></i>
+                        </button>
                     </div>
 
                     {/* Stats Summary */}

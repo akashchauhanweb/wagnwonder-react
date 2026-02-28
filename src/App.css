@@ -8389,6 +8389,27 @@ input[type="date"].hero-input:invalid {
     letter-spacing: 0.03em;
 }
 
+.kennel-modal-owner {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.kennel-modal-owner h5 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1a1a1a;
+}
+
+.kennel-modal-owner p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #4b5563;
+}
+
 .modal-images {
     display: flex;
     flex-wrap: wrap;
@@ -15542,10 +15563,6 @@ input[type="date"].hero-input:invalid {
 
 /* ==================== REGISTRATIONS TAB ==================== */
 .registrations-tab-section {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     max-width: 100%;
     overflow: hidden;
 }
@@ -16985,4 +17002,26 @@ input[type="date"].hero-input:invalid {
     object-fit: cover;
     border-radius: 10px;
     border: 1px solid #e2e8f0;
+}
+
+.admin-nav-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 16px 8px;
+}
+
+.admin-nav-divider span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+}
+
+.admin-nav-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background-color: #e5e7eb;
 }

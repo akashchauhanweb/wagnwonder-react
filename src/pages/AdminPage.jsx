@@ -114,6 +114,9 @@ const AdminPage = () => {
                         </div>
 
                         <nav className="admin-nav">
+                            <div className="admin-nav-divider">
+                                <span>SUPER ADMIN</span>
+                            </div>
                             {MENU_ITEMS.map((item) => (
                                 <Link
                                     key={item.path}
