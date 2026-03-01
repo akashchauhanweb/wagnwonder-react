@@ -34,6 +34,7 @@ import EventBookingReview from './pages/EventBookingReview.jsx';
 import EventBookings from './pages/EventBookings.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import WhatsAppButton from './assets/components/WhatsAppButton.jsx';
+import EventsAdminPage from './pages/EventsAdminPage.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
 
@@ -91,6 +92,7 @@ function AppContent() {
           <Route path="manage-bookings" element={<ManageBookings />} />
           <Route path="manage-events" element={<ManageEvents />} />
           <Route path="support-tickets" element={<SupportTickets />} />
+          <Route path="events-admin" element={<EventsAdminPage />} />
         </Route>
       </Routes>
 

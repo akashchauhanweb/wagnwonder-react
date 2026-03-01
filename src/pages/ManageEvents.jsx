@@ -32,6 +32,17 @@ const ManageEvents = () => {
     const [registrationsEventFilter, setRegistrationsEventFilter] = useState("all");
     const [registrationsSearch, setRegistrationsSearch] = useState("");
 
+    // Manage Roles tab
+    const [roleAssignments, setRoleAssignments] = useState([]);
+    const [loadingRoles, setLoadingRoles] = useState(false);
+    const [roleUsers, setRoleUsers] = useState([]);
+    const [loadingRoleUsers, setLoadingRoleUsers] = useState(false);
+    const [roleSelectedUser, setRoleSelectedUser] = useState("");
+    const [roleSelectedEvent, setRoleSelectedEvent] = useState("");
+    const [assigningRole, setAssigningRole] = useState(false);
+    const [removingRoleId, setRemovingRoleId] = useState(null);
+    const [rolesSearch, setRolesSearch] = useState("");
+
     // Delete confirmation
     const [deletingEventId, setDeletingEventId] = useState(null);
 
@@ -423,65 +434,6 @@ const ManageEvents = () => {
                 }
 
                 setSuccessMsg(`Booking created successfully! Booking ID: ${response.booking_id}`);
-
-                // Add to registrations cache without re-fetching
-                if (Object.keys(allRegistrationsCache).length > 0) {
-                    const newReg = {
-                        id: response.booking_id,
-                        event_id: manualEntryEvent.id,
-                        event_title: manualEntryEvent.title,
-                        user_id: manualEntryUser.id,
-                        first_name: manualEntryUser.first_name,
-                        last_name: manualEntryUser.last_name,
-                        email: manualEntryUser.email,
-                        phone_number: manualEntryUser.phone_number,
-                        ticket_type: manualEntryTier.label,
-                        ticket_price: manualEntryTier.price,
-                        ticket_count: manualEntryTicketCount,
-                        total_price: (manualEntryTier.price || 0) * manualEntryTicketCount,
-                        status: "booked",
-                        mode: "offline",
-                        order_id: orderId,
-                        cf_order_id: null,
-                        form_data: Object.keys(manualEntryFormData).length > 0 ? JSON.stringify(manualEntryFormData) : null,
-                        created_at: new Date().toISOString(),
-                        pets: manualEntrySelectedPets.map(petId => {
-                            const pet = manualEntryPets.find(p => p.id === petId);
-                            return pet ? { name: pet.name, breed: pet.breed, age: pet.age, weight: pet.weight } : null;
-                        }).filter(Boolean)
-                    };
-
-                    const eventId = manualEntryEvent.id;
-                    const updatedCache = { ...allRegistrationsCache };
-
-                    if (updatedCache[eventId]) {
-                        updatedCache[eventId] = {
-                            ...updatedCache[eventId],
-                            registrations: [newReg, ...updatedCache[eventId].registrations],
-                            stats: {
-                                ...updatedCache[eventId].stats,
-                                total_bookings: (updatedCache[eventId].stats?.total_bookings || 0) + 1,
-                                total_tickets: (updatedCache[eventId].stats?.total_tickets || 0) + manualEntryTicketCount,
-                                total_revenue: (updatedCache[eventId].stats?.total_revenue || 0) + (manualEntryTier.price || 0) * manualEntryTicketCount
-                            }
-                        };
-                    } else {
-                        updatedCache[eventId] = {
-                            event: { id: eventId, title: manualEntryEvent.title },
-                            registrations: [newReg],
-                            stats: {
-                                total_bookings: 1,
-                                total_tickets: manualEntryTicketCount,
-                                total_revenue: (manualEntryTier.price || 0) * manualEntryTicketCount
-                            },
-                            ticket_breakdown: []
-                        };
-                    }
-
-                    setAllRegistrationsCache(updatedCache);
-                    setAllRegistrations(prev => [newReg, ...prev]);
-                }
-
                 resetManualEntryForm();
             } else {
                 setErrorMsg(response?.message || "Failed to create booking.");
@@ -503,6 +455,11 @@ const ManageEvents = () => {
             if (!allEventsCache) {
                 fetchEvents();
             }
+        }
+        if (activeTab === "roles") {
+            if (roleAssignments.length === 0) fetchRoleAssignments(true);
+            if (roleUsers.length === 0) fetchRoleUsers();
+            if (!allEventsCache) fetchEvents();
         }
     }, [activeTab]);
 
@@ -529,7 +486,7 @@ const ManageEvents = () => {
         }
     };
 
-    // Fetch all registrations for all events
+    // Fetch all registrations in a single API call
     const fetchAllRegistrations = async () => {
         if (Object.keys(allRegistrationsCache).length > 0) {
             // Use cached data
@@ -538,59 +495,163 @@ const ManageEvents = () => {
 
         setLoadingAllRegistrations(true);
         try {
-            // First, fetch all events (both upcoming and past)
-            const eventsResponse = await callServicesApi({
-                action: "GET_EVENTS",
-                session_id,
-                status: "all"
+            const response = await callServicesApi({
+                action: "GET_EVENT_REGISTRATIONS",
+                session_id
             });
 
-            if (!eventsResponse?.success || !eventsResponse.events?.length) {
+            if (!response?.success) {
                 setLoadingAllRegistrations(false);
                 return;
             }
 
-            const events = eventsResponse.events;
+            const regs = response.registrations || [];
+
+            // Group registrations by event_id for cache
             const cache = {};
-            const allRegs = [];
-
-            // Fetch registrations for each event
-            for (const event of events) {
-                try {
-                    const regResponse = await callServicesApi({
-                        action: "GET_EVENT_REGISTRATIONS",
-                        session_id,
-                        event_id: event.id
-                    });
-
-                    if (regResponse?.success && regResponse.registrations?.length > 0) {
-                        // Add event info to each registration
-                        const regsWithEventInfo = regResponse.registrations.map(reg => ({
-                            ...reg,
-                            event_id: event.id,
-                            event_title: event.title
-                        }));
-
-                        cache[event.id] = {
-                            event: { id: event.id, title: event.title },
-                            registrations: regsWithEventInfo,
-                            stats: regResponse.stats,
-                            ticket_breakdown: regResponse.ticket_breakdown
-                        };
-
-                        allRegs.push(...regsWithEventInfo);
-                    }
-                } catch (err) {
-                    console.error(`Error fetching registrations for event ${event.id}:`, err);
+            for (const reg of regs) {
+                const eid = reg.event_id;
+                if (!cache[eid]) {
+                    cache[eid] = {
+                        event: { id: eid, title: reg.event_title },
+                        registrations: [],
+                        stats: null,
+                        ticket_breakdown: null
+                    };
                 }
+                cache[eid].registrations.push(reg);
             }
 
             setAllRegistrationsCache(cache);
-            setAllRegistrations(allRegs);
+            setAllRegistrations(regs);
         } catch (err) {
             console.error("Error fetching all registrations:", err);
         } finally {
             setLoadingAllRegistrations(false);
+        }
+    };
+
+    const refreshRegistrations = async () => {
+        setAllRegistrationsCache({});
+        setAllRegistrations([]);
+        setLoadingAllRegistrations(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_EVENT_REGISTRATIONS",
+                session_id
+            });
+
+            if (response?.success) {
+                const regs = response.registrations || [];
+                const cache = {};
+                for (const reg of regs) {
+                    const eid = reg.event_id;
+                    if (!cache[eid]) {
+                        cache[eid] = {
+                            event: { id: eid, title: reg.event_title },
+                            registrations: [],
+                            stats: null,
+                            ticket_breakdown: null
+                        };
+                    }
+                    cache[eid].registrations.push(reg);
+                }
+                setAllRegistrationsCache(cache);
+                setAllRegistrations(regs);
+            }
+        } catch (err) {
+            console.error("Error refreshing registrations:", err);
+        } finally {
+            setLoadingAllRegistrations(false);
+        }
+    };
+
+    // Manage Roles functions
+    const [rolesCached, setRolesCached] = useState(false);
+
+    const fetchRoleAssignments = async (forceRefresh = false) => {
+        if (rolesCached && !forceRefresh) return;
+        setLoadingRoles(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_EVENT_MANAGERS",
+                session_id
+            });
+            if (response?.success) {
+                setRoleAssignments(response.assignments || []);
+                setRolesCached(true);
+            }
+        } catch (err) {
+            console.error("Error fetching role assignments:", err);
+        } finally {
+            setLoadingRoles(false);
+        }
+    };
+
+    const fetchRoleUsers = async () => {
+        setLoadingRoleUsers(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ALL_USERS",
+                session_id
+            });
+            if (response?.success) {
+                setRoleUsers(response.data || []);
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
+        } finally {
+            setLoadingRoleUsers(false);
+        }
+    };
+
+    const handleAssignRole = async () => {
+        if (!roleSelectedUser || !roleSelectedEvent) {
+            setErrorMsg("Please select both a user and an event.");
+            return;
+        }
+        setAssigningRole(true);
+        try {
+            const response = await callServicesApi({
+                action: "ASSIGN_EVENT_MANAGER",
+                session_id,
+                user_id: parseInt(roleSelectedUser),
+                event_id: parseInt(roleSelectedEvent)
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                setRoleSelectedUser("");
+                setRoleSelectedEvent("");
+                fetchRoleAssignments();
+            } else {
+                setErrorMsg(response?.message || "Failed to assign role.");
+            }
+        } catch {
+            setErrorMsg("Error assigning role.");
+        } finally {
+            setAssigningRole(false);
+        }
+    };
+
+    const handleRemoveRole = async (assignmentId) => {
+        if (!window.confirm("Remove this user's access to this event?")) return;
+        setRemovingRoleId(assignmentId);
+        try {
+            const response = await callServicesApi({
+                action: "REMOVE_EVENT_MANAGER",
+                session_id,
+                assignment_id: assignmentId
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                fetchRoleAssignments(true);
+            } else {
+                setErrorMsg(response?.message || "Failed to remove role.");
+            }
+        } catch {
+            setErrorMsg("Error removing role.");
+        } finally {
+            setRemovingRoleId(null);
         }
     };
 
@@ -1010,6 +1071,13 @@ const ManageEvents = () => {
                     <i className="bi bi-pencil-square"></i>
                     Manual Entry
                 </button>
+                <button
+                    className={`submenu-item ${activeTab === "roles" ? "active" : ""}`}
+                    onClick={() => setActiveTab("roles")}
+                >
+                    <i className="bi bi-person-gear"></i>
+                    Manage Roles
+                </button>
             </div>
 
             {/* Messages */}
@@ -1049,6 +1117,14 @@ const ManageEvents = () => {
                                 <option value="all">All Events</option>
                             </select>
                         </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={() => fetchEvents(true)}
+                            disabled={loadingEvents}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${loadingEvents ? 'spinning' : ''}`}></i>
+                        </button>
                     </div>
 
                     {loadingEvents ? (
@@ -1133,6 +1209,14 @@ const ManageEvents = () => {
                                 ))}
                             </select>
                         </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={refreshRegistrations}
+                            disabled={loadingAllRegistrations}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${loadingAllRegistrations ? 'spinning' : ''}`}></i>
+                        </button>
                     </div>
 
                     {/* Stats Summary */}
@@ -1863,7 +1947,7 @@ const ManageEvents = () => {
                         )}
 
                         {/* Step 3: Select Ticket Type */}
-                        {manualEntryUser && manualEntryEvent && (
+                        {manualEntryEvent && (
                             <div className="manual-entry-step">
                                 <div className="step-header">
                                     <span className="step-number">3</span>
@@ -2056,6 +2140,142 @@ const ManageEvents = () => {
                                         </>
                                     )}
                                 </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Manage Roles Tab */}
+            {activeTab === "roles" && (
+                <div>
+                    {/* Assign Form */}
+                    <div className="roles-assign-section">
+                        <h4>Assign Event Manager</h4>
+                        <div className="roles-assign-form">
+                            <select
+                                value={roleSelectedUser}
+                                onChange={(e) => setRoleSelectedUser(e.target.value)}
+                                className="manual-entry-select"
+                                disabled={loadingRoleUsers}
+                            >
+                                <option value="">Select User...</option>
+                                {roleUsers.map(u => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.first_name} {u.last_name} ({u.email})
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                value={roleSelectedEvent}
+                                onChange={(e) => setRoleSelectedEvent(e.target.value)}
+                                className="manual-entry-select"
+                            >
+                                <option value="">Select Event...</option>
+                                {(allEventsCache || []).map(evt => (
+                                    <option key={evt.id} value={evt.id}>
+                                        {evt.title}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                className="manual-entry-submit"
+                                onClick={handleAssignRole}
+                                disabled={assigningRole || !roleSelectedUser || !roleSelectedEvent}
+                            >
+                                {assigningRole ? (
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                    <>
+                                        <i className="bi bi-plus-circle"></i>
+                                        Assign
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Current Assignments */}
+                    <div className="roles-list-section">
+                        <div className="events-filters">
+                            <div className="search-box">
+                                <i className="bi bi-search"></i>
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, email, event..."
+                                    value={rolesSearch}
+                                    onChange={(e) => setRolesSearch(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                className="earnings-refresh-btn"
+                                onClick={() => fetchRoleAssignments(true)}
+                                disabled={loadingRoles}
+                                style={{ marginLeft: "auto", minWidth: "unset" }}
+                            >
+                                <i className={`bi bi-arrow-clockwise ${loadingRoles ? 'spinning' : ''}`}></i>
+                            </button>
+                        </div>
+                        {loadingRoles ? (
+                            <div className="loading-spinner">
+                                <div className="spinner-border" role="status"></div>
+                            </div>
+                        ) : roleAssignments.length === 0 ? (
+                            <div className="empty-state">
+                                <i className="bi bi-person-gear"></i>
+                                <p>No assignments yet</p>
+                            </div>
+                        ) : (
+                            <div className="registrations-table-wrapper">
+                                <table className="registrations-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Event</th>
+                                            <th>Assigned On</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roleAssignments
+                                            .filter(a => {
+                                                if (!rolesSearch.trim()) return true;
+                                                const s = rolesSearch.toLowerCase();
+                                                return (
+                                                    a.first_name?.toLowerCase().includes(s) ||
+                                                    a.last_name?.toLowerCase().includes(s) ||
+                                                    a.email?.toLowerCase().includes(s) ||
+                                                    a.event_title?.toLowerCase().includes(s) ||
+                                                    a.phone_number?.includes(s)
+                                                );
+                                            })
+                                            .map(a => (
+                                            <tr key={a.id}>
+                                                <td>{a.first_name} {a.last_name}</td>
+                                                <td>{a.email}</td>
+                                                <td>{a.phone_number || "-"}</td>
+                                                <td>{a.event_title}</td>
+                                                <td>{formatDate(a.created_at)}</td>
+                                                <td>
+                                                    <button
+                                                        className="btn-delete-event"
+                                                        onClick={() => handleRemoveRole(a.id)}
+                                                        disabled={removingRoleId === a.id}
+                                                        style={{ padding: "4px 12px", fontSize: "13px" }}
+                                                    >
+                                                        {removingRoleId === a.id ? (
+                                                            <span className="spinner-border spinner-border-sm"></span>
+                                                        ) : (
+                                                            <i className="bi bi-trash"></i>
+                                                        )}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>

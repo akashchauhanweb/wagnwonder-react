@@ -1404,6 +1404,14 @@ const ManageKennels = () => {
                                         <p className="kennel-modal-markup">
                                             <span>Markup:</span> {kennelInfo.markup}%
                                         </p>
+                                        {kennelInfo.owner && (
+                                            <div className="kennel-modal-owner">
+                                                <h5>Owner</h5>
+                                                <p><i className="bi bi-person-fill me-1"></i>{kennelInfo.owner.first_name} {kennelInfo.owner.last_name}</p>
+                                                {kennelInfo.owner.email && <p><i className="bi bi-envelope-fill me-1"></i>{kennelInfo.owner.email}</p>}
+                                                {kennelInfo.owner.phone_number && <p><i className="bi bi-telephone-fill me-1"></i>{kennelInfo.owner.phone_number}</p>}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {kennelInfo.images?.length > 0 && (

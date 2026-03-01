@@ -52,17 +52,16 @@ const AdminPage = () => {
         }
     };
 
+    const isSuperAdmin = userData?.permissions?.includes("master_console");
+    const isEventsAdmin = userData?.permissions?.includes("events");
+
     useEffect(() => {
-        if (userData && userData.user_type === 'admin') {
+        if (isSuperAdmin) {
             fetchSupportTickets();
         }
     }, []);
 
-    if (
-        !userData ||
-        userData.user_type !== "admin" ||
-        !userData.permissions
-    ) {
+    if (!userData || (!isSuperAdmin && !isEventsAdmin)) {
         localStorage.clear();
         return <Navigate to="/login" />;
     }
@@ -109,24 +108,46 @@ const AdminPage = () => {
                             </div>
                             <div className="admin-user-info">
                                 <h3>{userData.first_name} {userData.last_name}</h3>
-                                <p>Administrator</p>
+                                <p>{isSuperAdmin ? "Administrator" : "Events Manager"}</p>
                             </div>
                         </div>
 
                         <nav className="admin-nav">
-                            {MENU_ITEMS.map((item) => (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    className={`admin-nav-item ${location.pathname === item.path ? "active" : ""}`}
-                                >
-                                    <i className={`bi ${item.icon}`}></i>
-                                    <span>{item.label}</span>
-                                    {item.path === "/admin/support-tickets" && pendingTicketCount > 0 && (
-                                        <span className="admin-unread-badge">{pendingTicketCount}</span>
-                                    )}
-                                </Link>
-                            ))}
+                            {isSuperAdmin && (
+                                <>
+                                    <div className="admin-nav-divider">
+                                        <span>SUPER ADMIN</span>
+                                    </div>
+                                    {MENU_ITEMS.map((item) => (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            className={`admin-nav-item ${location.pathname === item.path ? "active" : ""}`}
+                                        >
+                                            <i className={`bi ${item.icon}`}></i>
+                                            <span>{item.label}</span>
+                                            {item.path === "/admin/support-tickets" && pendingTicketCount > 0 && (
+                                                <span className="admin-unread-badge">{pendingTicketCount}</span>
+                                            )}
+                                        </Link>
+                                    ))}
+                                </>
+                            )}
+
+                            {isEventsAdmin && (
+                                <>
+                                    <div className="admin-nav-divider">
+                                        <span>EVENTS ADMIN</span>
+                                    </div>
+                                    <Link
+                                        to="/admin/events-admin"
+                                        className={`admin-nav-item ${location.pathname === "/admin/events-admin" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-calendar-event-fill"></i>
+                                        <span>My Events</span>
+                                    </Link>
+                                </>
+                            )}
 
                             <Link to="/account" className="admin-nav-item back-to-account">
                                 <i className="bi bi-person-fill"></i>
@@ -153,12 +174,18 @@ const AdminPage = () => {
                                 <p>Manage your dashboard using the menu on the left or get started below.</p>
                                 
                                 <div className="admin-quick-stats">
-                                    {MENU_ITEMS.map((item) => (
+                                    {isSuperAdmin && MENU_ITEMS.map((item) => (
                                         <Link key={item.path} to={item.path} className="admin-stat-card">
                                             <i className={`bi ${item.icon}`}></i>
                                             <span>{item.label}</span>
                                         </Link>
                                     ))}
+                                    {isEventsAdmin && (
+                                        <Link to="/admin/events-admin" className="admin-stat-card">
+                                            <i className="bi bi-calendar-event-fill"></i>
+                                            <span>My Events</span>
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         ) : (

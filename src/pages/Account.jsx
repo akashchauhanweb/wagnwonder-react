@@ -88,7 +88,7 @@ function Account() {
     };
 
     const isBaseRoute = location.pathname === "/account";
-    const isAdmin = user?.user_type === "admin";
+    const isAdmin = user?.permissions?.includes("master_console") || user?.permissions?.includes("events");
 
     return (
         <div className="account-page">

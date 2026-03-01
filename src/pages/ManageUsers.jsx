@@ -23,7 +23,12 @@ const ManageUsers = () => {
         has_boarding_access: false,
         has_services_access: false,
         has_clinic_access: false,
+        has_events_access: false,
     });
+    const [eventsAccessEnabled, setEventsAccessEnabled] = useState(false);
+    const [selectedEventIds, setSelectedEventIds] = useState([]);
+    const [allEvents, setAllEvents] = useState([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
     const [fetchingUsers, setFetchingUsers] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -87,6 +92,7 @@ const ManageUsers = () => {
             if (filter === "boarding") return user.has_boarding_access;
             if (filter === "services") return user.has_services_access;
             if (filter === "clinic") return user.has_clinic_access;
+            if (filter === "events") return user.has_events_access;
             return false;
         });
     };
@@ -106,21 +112,69 @@ const ManageUsers = () => {
         );
     };
 
+    const fetchAllEvents = async () => {
+        setLoadingEvents(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_EVENTS",
+                session_id: localStorage.getItem("session_id"),
+                status: "all"
+            });
+            if (response?.success) {
+                setAllEvents(response.events || []);
+            }
+        } catch (err) {
+            console.error("Error fetching events:", err);
+        } finally {
+            setLoadingEvents(false);
+        }
+    };
+
+    const handleEventToggle = (eventId) => {
+        setSelectedEventIds(prev =>
+            prev.includes(eventId)
+                ? prev.filter(id => id !== eventId)
+                : [...prev, eventId]
+        );
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         
         // Store password before sending (it gets hashed on backend)
         const plainPassword = formData.password_hashed;
+
+        // If events access enabled, set the flag
+        const submitData = {
+            ...formData,
+            has_events_access: eventsAccessEnabled && selectedEventIds.length > 0,
+        };
         
         let payload = {
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
-            ...formData
+            ...submitData
         };
         const res = await callServicesApi(payload);
 
         if (res?.success) {
+            // Assign event manager roles if events were selected
+            if (eventsAccessEnabled && selectedEventIds.length > 0 && res.user_id) {
+                for (const eventId of selectedEventIds) {
+                    try {
+                        await callServicesApi({
+                            action: "ASSIGN_EVENT_MANAGER",
+                            session_id: localStorage.getItem("session_id"),
+                            user_id: res.user_id,
+                            event_id: eventId
+                        });
+                    } catch (err) {
+                        console.error(`Error assigning event ${eventId}:`, err);
+                    }
+                }
+            }
+
             // Send welcome email
             try {
                 const emailHtml = getWelcomeUserEmailHtml({
@@ -154,7 +208,10 @@ const ManageUsers = () => {
                 has_boarding_access: false,
                 has_services_access: false,
                 has_clinic_access: false,
+                has_events_access: false,
             });
+            setEventsAccessEnabled(false);
+            setSelectedEventIds([]);
             fetchUsers();
         } else {
             setErrorMsg(res?.message || "Failed to add user.");
@@ -173,6 +230,7 @@ const ManageUsers = () => {
         if (user.has_boarding_access) badges.push({ label: "Boarding", type: "boarding" });
         if (user.has_services_access) badges.push({ label: "Services", type: "services" });
         if (user.has_clinic_access) badges.push({ label: "Clinic", type: "clinic" });
+        if (user.has_events_access) badges.push({ label: "Events", type: "events" });
         return badges;
     };
 
@@ -473,7 +531,61 @@ const ManageUsers = () => {
                                             Clinic Access
                                         </span>
                                     </label>
+                                    <label className="permission-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={eventsAccessEnabled}
+                                            onChange={(e) => {
+                                                setEventsAccessEnabled(e.target.checked);
+                                                if (e.target.checked && allEvents.length === 0) {
+                                                    fetchAllEvents();
+                                                }
+                                                if (!e.target.checked) {
+                                                    setSelectedEventIds([]);
+                                                }
+                                            }}
+                                        />
+                                        <span className="checkmark"></span>
+                                        <span className="permission-label">
+                                            <i className="bi bi-calendar-event"></i>
+                                            Event Manager
+                                        </span>
+                                    </label>
                                 </div>
+
+                                {eventsAccessEnabled && (
+                                    <div className="events-access-selector">
+                                        <label>Select Events to Manage</label>
+                                        {loadingEvents ? (
+                                            <div className="manual-entry-loading">
+                                                <div className="spinner-border spinner-border-sm"></div>
+                                            </div>
+                                        ) : allEvents.length === 0 ? (
+                                            <p className="form-hint">No events found.</p>
+                                        ) : (
+                                            <div className="events-checkbox-list">
+                                                {allEvents.map(evt => (
+                                                    <label key={evt.id} className="event-checkbox-item">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedEventIds.includes(evt.id)}
+                                                            onChange={() => handleEventToggle(evt.id)}
+                                                        />
+                                                        <span className="checkmark"></span>
+                                                        <span className="event-checkbox-info">
+                                                            <span className="event-checkbox-title">{evt.title}</span>
+                                                            <span className="event-checkbox-meta">
+                                                                {new Date(evt.event_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                                                {" · "}{evt.city}
+                                                                <span className={`event-checkbox-status ${evt.status}`}>{evt.status}</span>
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
