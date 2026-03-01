@@ -7108,6 +7108,11 @@ input[type="date"].hero-input:invalid {
     color: #64748b;
 }
 
+.access-badge.events {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
 .user-actions {
     text-align: right;
 }
@@ -17024,4 +17029,252 @@ input[type="date"].hero-input:invalid {
     flex: 1;
     height: 1px;
     background-color: #e5e7eb;
+}
+
+/* Events Admin Cards */
+.events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.event-admin-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.event-admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.event-admin-card-image {
+    position: relative;
+    height: 160px;
+    background: #f1f5f9;
+}
+
+.event-admin-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.event-admin-card-no-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 2rem;
+}
+
+.event-admin-card-status {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.event-admin-card-status.upcoming {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.event-admin-card-status.past {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.event-admin-card-body {
+    padding: 16px;
+}
+
+.event-admin-card-body h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.event-admin-card-body p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.event-admin-card-stats {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 13px;
+    color: #475569;
+}
+
+.manage-events-section-title-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+/* Manage Roles */
+.roles-assign-section {
+    margin-bottom: 28px;
+}
+
+.roles-assign-section h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.roles-assign-form {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.roles-assign-form .manual-entry-select {
+    flex: 1;
+    min-width: 200px;
+}
+
+.roles-assign-form .manual-entry-submit {
+    white-space: nowrap;
+    padding: 10px 20px;
+    min-width: unset;
+    width: auto;
+    font-size: 14px;
+}
+
+.roles-list-section h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.roles-list-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+/* Events Access Selector */
+.events-access-selector {
+    margin-top: 12px;
+}
+
+.events-access-selector > label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.events-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.event-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.event-checkbox-item:hover {
+    background: #f8fafc;
+}
+
+.event-checkbox-item input[type="checkbox"] {
+    display: none;
+}
+
+.event-checkbox-item .checkmark {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.15s;
+}
+
+.event-checkbox-item input:checked + .checkmark {
+    background: #D84A39;
+    border-color: #D84A39;
+}
+
+.event-checkbox-item input:checked + .checkmark::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 6px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.event-checkbox-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.event-checkbox-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.event-checkbox-meta {
+    font-size: 12px;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.event-checkbox-status {
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.event-checkbox-status.upcoming {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.event-checkbox-status.past {
+    background: #f1f5f9;
+    color: #64748b;
 }
