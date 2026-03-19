@@ -32,6 +32,7 @@ import Events from './pages/Events.jsx';
 import EventDetails from './pages/EventDetails.jsx';
 import EventBookingReview from './pages/EventBookingReview.jsx';
 import EventBookings from './pages/EventBookings.jsx';
+import EventsRevenue from './pages/EventsRevenue.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import WhatsAppButton from './assets/components/WhatsAppButton.jsx';
 import EventsAdminPage from './pages/EventsAdminPage.jsx';
@@ -98,6 +99,7 @@ function AppContent() {
           <Route path="kennels-admin" element={<KennelsAdminPage />} />
           <Route path="kennels-admin/:section" element={<KennelsAdminPage />} />
           <Route path="events-admin" element={<EventsAdminPage />} />
+          <Route path="events-revenue" element={<EventsRevenue />} />
         </Route>
       </Routes>
 

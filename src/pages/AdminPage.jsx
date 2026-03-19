@@ -155,6 +155,13 @@ const AdminPage = () => {
                                         <i className="bi bi-calendar-event-fill"></i>
                                         <span>My Events</span>
                                     </Link>
+                                    <Link
+                                        to="/admin/events-revenue"
+                                        className={`admin-nav-item ${location.pathname === "/admin/events-revenue" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-bar-chart-line-fill"></i>
+                                        <span>Events Revenue</span>
+                                    </Link>
                                 </>
                             )}
 
@@ -295,10 +302,16 @@ const AdminPage = () => {
                                         </>
                                     )}
                                     {isEventsAdmin && (
-                                        <Link to="/admin/events-admin" className="admin-stat-card">
-                                            <i className="bi bi-calendar-event-fill"></i>
-                                            <span>My Events</span>
-                                        </Link>
+                                        <>
+                                            <Link to="/admin/events-admin" className="admin-stat-card">
+                                                <i className="bi bi-calendar-event-fill"></i>
+                                                <span>My Events</span>
+                                            </Link>
+                                            <Link to="/admin/events-revenue" className="admin-stat-card">
+                                                <i className="bi bi-bar-chart-line-fill"></i>
+                                                <span>Events Revenue</span>
+                                            </Link>
+                                        </>
                                     )}
                                 </div>
                             </div>
