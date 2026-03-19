@@ -7,6 +7,7 @@ export default function CrecheBookings() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [activeFilter, setActiveFilter] = useState("active");
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -63,6 +64,21 @@ export default function CrecheBookings() {
                 {!loading && <span className="bookings-count">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</span>}
             </div>
 
+            <div className="event-bookings-filters">
+                <button
+                    className={activeFilter === "active" ? "active" : ""}
+                    onClick={() => setActiveFilter("active")}
+                >
+                    Active
+                </button>
+                <button
+                    className={activeFilter === "past" ? "active" : ""}
+                    onClick={() => setActiveFilter("past")}
+                >
+                    Past
+                </button>
+            </div>
+
             {loading ? (
                 <div className="bookings-loading">
                     <div className="spinner-border" role="status" />
@@ -72,17 +88,17 @@ export default function CrecheBookings() {
                     <i className="bi bi-exclamation-circle"></i>
                     <p>{error}</p>
                 </div>
-            ) : bookings.length === 0 ? (
+            ) : bookings.filter(b => activeFilter === "active" ? b.status !== "completed" : b.status === "completed").length === 0 ? (
                 <div className="bookings-empty">
                     <div className="bookings-empty-icon">
                         <i className="bi bi-calendar-x"></i>
                     </div>
-                    <h3>No bookings yet</h3>
-                    <p>When you book a stay for your pet, it will appear here.</p>
+                    <h3>No {activeFilter === "active" ? "active" : "past"} bookings</h3>
+                    <p>{activeFilter === "active" ? "When you book a stay for your pet, it will appear here." : "Your completed bookings will appear here."}</p>
                 </div>
             ) : (
                 <div className="bookings-list">
-                    {bookings.map((booking) => {
+                    {bookings.filter(b => activeFilter === "active" ? b.status !== "completed" : b.status === "completed").map((booking) => {
                         const isActive = booking.status === "booked" || booking.status === "checked_in";
                         const isCompleted = booking.status === "completed";
                         const isCancelled = booking.status === "cancelled";
