@@ -705,7 +705,7 @@ const ManageUsers = () => {
                                                                 </span>
                                                                 <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#94a3b8", marginBottom: "6px" }}>
                                                                     <input type="checkbox" checked disabled style={{ width: "16px", height: "16px" }} />
-                                                                    Basic Access (My Kennels, Today's Activity, Occupancy)
+                                                                    Basic Access (My Kennels, Today's Activity, Occupancy, Support Tickets)
                                                                 </label>
                                                                 <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#334155", marginBottom: "6px", cursor: "pointer" }}>
                                                                     <input

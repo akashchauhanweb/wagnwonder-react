@@ -137,12 +137,15 @@ const SupportTickets = () => {
     const filterCounts = useMemo(() => {
         if (!tickets) return {};
         const contactUsTickets = tickets.filter(t => t.source === 'contact_us');
+        const bookingTickets = tickets.filter(t => t.booking_id && t.source !== 'contact_us');
         return {
             all: tickets.filter(t => t.source !== 'contact_us').length,
             open: tickets.filter(t => t.status === 'open' && t.source !== 'contact_us').length,
             awaiting_reply: tickets.filter(t => t.last_reply_by === 'user' && t.status === 'in_progress' && t.source !== 'contact_us').length,
             in_progress: tickets.filter(t => t.status === 'in_progress' && t.source !== 'contact_us' && t.last_reply_by === 'admin').length,
             closed: tickets.filter(t => t.status === 'closed' && t.source !== 'contact_us').length,
+            booking: bookingTickets.length,
+            booking_pending: bookingTickets.filter(t => t.status !== 'closed').length,
             contact_us: contactUsTickets.length,
             contact_us_new: contactUsTickets.filter(t => t.status !== 'closed').length,
             contact_us_closed: contactUsTickets.filter(t => t.status === 'closed').length
@@ -160,6 +163,8 @@ const SupportTickets = () => {
         // Status/Source filter
         if (statusFilter === 'contact_us') {
             if (ticket.source !== 'contact_us') return false;
+        } else if (statusFilter === 'booking') {
+            if (!ticket.booking_id || ticket.source === 'contact_us') return false;
         } else if (statusFilter === 'awaiting_reply') {
             if (!isAwaitingReply) return false;
         } else if (statusFilter === 'open') {
@@ -188,18 +193,7 @@ const SupportTickets = () => {
         <div className="support-tickets">
             {/* Header */}
             <div className="support-tickets-header">
-                <h2>
-                    {selectedTicket ? (
-                        <>
-                            <button className="back-btn" onClick={handleBackToList}>
-                                <i className="bi bi-arrow-left"></i>
-                            </button>
-                            Ticket #{selectedTicket.ticket_id}
-                        </>
-                    ) : (
-                        "Support Tickets"
-                    )}
-                </h2>
+                <h2>Support Tickets</h2>
                 {!selectedTicket && (
                     <div className="ticket-count">
                         {filteredTickets.length} {filteredTickets.length === 1 ? 'ticket' : 'tickets'}
@@ -240,16 +234,20 @@ const SupportTickets = () => {
                             )}
                         </div>
                         <div className="filter-chips">
-                            {['all', 'open', 'awaiting_reply', 'in_progress', 'closed', 'contact_us'].map((status) => (
+                            {['all', 'open', 'awaiting_reply', 'in_progress', 'closed', 'booking', 'contact_us'].map((status) => (
                                 <button
                                     key={status}
                                     className={`filter-chip ${statusFilter === status ? 'active' : ''}`}
                                     onClick={() => setStatusFilter(status)}
                                 >
-                                    {status === 'all' ? 'All' : status === 'contact_us' ? 'Contact Us' : status === 'awaiting_reply' ? 'Awaiting Reply' : getStatusLabel(status)}
+                                    {status === 'all' ? 'All' : status === 'contact_us' ? 'Contact Us' : status === 'booking' ? 'Kennel Owner Tickets' : status === 'awaiting_reply' ? 'Awaiting Reply' : getStatusLabel(status)}
                                     {status === 'contact_us' ? (
                                         <span className={`filter-count ${filterCounts.contact_us_new > 0 ? 'highlight' : ''}`}>
                                             {filterCounts.contact_us_new || 0}/{filterCounts.contact_us_closed || 0}
+                                        </span>
+                                    ) : status === 'booking' ? (
+                                        <span className={`filter-count ${filterCounts.booking_pending > 0 ? 'highlight' : ''}`}>
+                                            {filterCounts.booking_pending || 0}/{filterCounts.booking || 0}
                                         </span>
                                     ) : (
                                         <span className={`filter-count ${(status === 'open' || status === 'awaiting_reply') && filterCounts[status] > 0 ? 'highlight' : ''}`}>
@@ -303,6 +301,12 @@ const SupportTickets = () => {
                                             <i className="bi bi-person"></i>
                                             <span>{ticket.name}</span>
                                             <span className="ticket-email">{ticket.email}</span>
+                                            {ticket.booking_id && (
+                                                <span className="ticket-email" style={{ marginLeft: "8px" }}>
+                                                    <i className="bi bi-house-door me-1"></i>
+                                                    Booking #{ticket.booking_id}{ticket.kennel_name && ` · ${ticket.kennel_name}`}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="ticket-stats">
                                             <span className="ticket-messages">
@@ -327,152 +331,189 @@ const SupportTickets = () => {
                 </>
             ) : (
                 <>
-                    {/* Ticket Detail View */}
-                    <div className="ticket-detail">
-                        {/* Ticket Info Card */}
-                        <div className="ticket-info-card">
-                            <div className="ticket-info-row">
-                                <div className="info-item">
-                                    <span className="info-label">Subject</span>
-                                    <span className="info-value">{selectedTicket.subject}</span>
-                                </div>
-                                <div className="info-item">
-                                    <span className="info-label">Status</span>
-                                    <span className={`ticket-status ${getStatusBadgeClass(selectedTicket.status)}`}>
-                                        {getStatusLabel(selectedTicket.status)}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="ticket-info-row">
-                                <div className="info-item">
-                                    <span className="info-label">From</span>
-                                    <span className="info-value">{selectedTicket.name} ({selectedTicket.email})</span>
-                                </div>
-                                <div className="info-item">
-                                    <span className="info-label">Created</span>
-                                    <span className="info-value">{formatDate(selectedTicket.created_at)}</span>
-                                </div>
-                            </div>
-                            {selectedTicket.phone && (
-                                <div className="ticket-info-row">
-                                    <div className="info-item">
-                                        <span className="info-label">Phone</span>
-                                        <span className="info-value">{selectedTicket.phone}</span>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="ticket-actions">
-                                {selectedTicket.status !== 'closed' ? (
-                                    <button 
-                                        className="btn-close-ticket"
-                                        onClick={() => handleStatusChange('closed')}
-                                        disabled={updatingStatus}
-                                    >
-                                        {updatingStatus ? (
-                                            <span className="spinner-border spinner-border-sm" />
-                                        ) : (
-                                            <i className="bi bi-check-circle"></i>
-                                        )}
-                                        {updatingStatus ? 'Closing...' : 'Close Ticket'}
-                                    </button>
-                                ) : (
-                                    <button 
-                                        className="btn-reopen-ticket"
-                                        onClick={() => handleStatusChange('open')}
-                                        disabled={updatingStatus}
-                                    >
-                                        {updatingStatus ? (
-                                            <span className="spinner-border spinner-border-sm" />
-                                        ) : (
-                                            <i className="bi bi-arrow-counterclockwise"></i>
-                                        )}
-                                        {updatingStatus ? 'Reopening...' : 'Reopen Ticket'}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+                    {/* Back button */}
+                    <button
+                        onClick={handleBackToList}
+                        style={{
+                            padding: "6px 14px", borderRadius: "8px", border: "1px solid #e2e8f0",
+                            background: "white", color: "#475569", fontSize: "0.85rem", fontWeight: 600,
+                            cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px"
+                        }}
+                    >
+                        <i className="bi bi-arrow-left"></i> Back to Tickets
+                    </button>
 
-                        {/* Messages Thread */}
-                        <div className="messages-thread">
-                            <h4>Conversation</h4>
-                            {loadingMessages ? (
-                                <div className="support-loading">
-                                    <div className="spinner-border" role="status" />
-                                </div>
-                            ) : (
-                                <div className="messages-list">
-                                    {messages.map((msg) => (
-                                        <div
-                                            key={msg.message_id}
-                                            className={`message-item ${msg.sender_type === 'admin' ? 'admin' : 'user'}`}
-                                        >
-                                            <div className="message-header">
-                                                <span className="message-sender">
-                                                    {msg.sender_type === 'admin' ? (
-                                                        <>
-                                                            <i className="bi bi-shield-check"></i>
-                                                            {msg.sender_name || 'Admin'}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <i className="bi bi-person"></i>
-                                                            {selectedTicket.name}
-                                                        </>
-                                                    )}
-                                                </span>
-                                                <span className="message-time">{formatDate(msg.created_at)}</span>
-                                            </div>
-                                            <div className="message-body">
-                                                {msg.message}
-                                            </div>
+                    {/* Ticket info card */}
+                    <div style={{
+                        background: "white", borderRadius: "12px", padding: "18px 20px",
+                        border: "1px solid #e2e8f0", marginBottom: "16px"
+                    }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                            <span style={{ fontWeight: 700, fontSize: "1rem", color: "#1e293b" }}>Ticket #{selectedTicket.ticket_id}</span>
+                            <span style={{
+                                padding: "3px 10px", borderRadius: "12px", fontSize: "0.72rem", fontWeight: 600,
+                                background: selectedTicket.status === "open" ? "#fef3c7" : selectedTicket.status === "in_progress" ? "#dbeafe" : "#f1f5f9",
+                                color: selectedTicket.status === "open" ? "#d97706" : selectedTicket.status === "in_progress" ? "#2563eb" : "#64748b"
+                            }}>
+                                {getStatusLabel(selectedTicket.status)}
+                            </span>
+                        </div>
+                        <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                            {selectedTicket.name} · {selectedTicket.email}
+                            {selectedTicket.phone && <> · {selectedTicket.phone}</>}
+                        </div>
+                        <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "4px" }}>
+                            Subject: {selectedTicket.subject}
+                            {selectedTicket.booking_id && <> · Booking #{selectedTicket.booking_id}</>}
+                            {selectedTicket.kennel_name && <> · {selectedTicket.kennel_name}</>}
+                            <span style={{ margin: "0 8px" }}>·</span>
+                            Created {formatDate(selectedTicket.created_at)}
+                        </div>
+                    </div>
+
+                    {/* Messages */}
+                    <div style={{
+                        background: "white", borderRadius: "12px", border: "1px solid #e2e8f0",
+                        marginBottom: "16px", overflow: "hidden"
+                    }}>
+                        {loadingMessages ? (
+                            <div style={{ textAlign: "center", padding: "30px" }}>
+                                <div className="spinner-border spinner-border-sm"></div>
+                            </div>
+                        ) : (
+                            <div style={{ display: "flex", flexDirection: "column", maxHeight: "400px", overflowY: "auto" }}>
+                                {messages.map(msg => (
+                                    <div key={msg.message_id} style={{
+                                        padding: "14px 20px",
+                                        background: msg.sender_type === "admin" ? "#f8fafc" : "white",
+                                        borderBottom: "1px solid #f1f5f9"
+                                    }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                            <span style={{
+                                                fontSize: "0.78rem", fontWeight: 600,
+                                                color: msg.sender_type === "admin" ? "#1e293b" : "#D84A39"
+                                            }}>
+                                                <i className={`bi ${msg.sender_type === "admin" ? "bi-shield-check" : "bi-person"} me-1`}></i>
+                                                {msg.sender_type === "admin" ? (msg.sender_name || "Admin") : selectedTicket.name}
+                                            </span>
+                                            <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{formatDate(msg.created_at)}</span>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Reply Box */}
-                        {selectedTicket.status !== 'closed' && (
-                            <div className="reply-box">
-                                {(selectedTicket.user_id !== null && selectedTicket.user_id !== undefined) || selectedTicket.can_reply === 1 ? (
-                                    <>
-                                        <textarea
-                                            placeholder="Type your reply..."
-                                            value={replyText}
-                                            onChange={(e) => setReplyText(e.target.value)}
-                                            rows={3}
-                                        />
-                                        <button
-                                            className="btn-send-reply"
-                                            onClick={handleSendReply}
-                                            disabled={sending || !replyText.trim()}
-                                        >
-                                            {sending ? (
-                                                <span className="spinner-border spinner-border-sm" />
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-send"></i>
-                                                    Send Reply
-                                                </>
-                                            )}
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div className="reply-disabled">
-                                        <i className="bi bi-exclamation-triangle"></i>
-                                        <p>Cannot reply to this ticket. The user is not registered in the system.</p>
+                                        <div style={{ fontSize: "0.88rem", color: "#1e293b", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                                            {msg.message}
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        )}
-
-                        {selectedTicket.status === 'closed' && (
-                            <div className="ticket-closed-notice">
-                                <i className="bi bi-lock"></i>
-                                <p>This ticket is closed. Reopen it to continue the conversation.</p>
+                                ))}
                             </div>
                         )}
                     </div>
+
+                    {/* Reply box + actions */}
+                    {selectedTicket.status !== "closed" ? (
+                        <>
+                            {(selectedTicket.user_id !== null && selectedTicket.user_id !== undefined) || selectedTicket.can_reply === 1 ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                    <textarea
+                                        value={replyText}
+                                        onChange={(e) => setReplyText(e.target.value)}
+                                        placeholder="Type your reply..."
+                                        rows={3}
+                                        style={{
+                                            width: "100%", padding: "12px 14px", borderRadius: "10px",
+                                            border: "1px solid #e2e8f0", fontSize: "0.88rem", resize: "none",
+                                            fontFamily: "inherit"
+                                        }}
+                                    />
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <button
+                                            onClick={() => handleStatusChange("closed")}
+                                            disabled={updatingStatus}
+                                            style={{
+                                                padding: "8px 14px", borderRadius: "8px",
+                                                border: "1px solid #fecaca", background: "#fef2f2",
+                                                color: "#dc2626", fontSize: "0.8rem", fontWeight: 600,
+                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "6px"
+                                            }}
+                                        >
+                                            {updatingStatus ? (
+                                                <span className="spinner-border spinner-border-sm"></span>
+                                            ) : (
+                                                <><i className="bi bi-x-circle"></i> Close Ticket</>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={handleSendReply}
+                                            disabled={sending || !replyText.trim()}
+                                            style={{
+                                                padding: "10px 20px", borderRadius: "10px", border: "none",
+                                                background: "#1e293b", color: "white", fontSize: "0.85rem",
+                                                fontWeight: 600, cursor: "pointer",
+                                                display: "flex", alignItems: "center", gap: "6px"
+                                            }}
+                                        >
+                                            {sending ? (
+                                                <span className="spinner-border spinner-border-sm"></span>
+                                            ) : (
+                                                <><i className="bi bi-send"></i> Reply</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{
+                                    padding: "14px 16px", borderRadius: "10px",
+                                    background: "#fffbeb", border: "1px solid #fde68a",
+                                    display: "flex", alignItems: "center", gap: "10px",
+                                    fontSize: "0.85rem", color: "#92400e"
+                                }}>
+                                    <i className="bi bi-exclamation-triangle"></i>
+                                    Cannot reply — user is not registered. You can only close this ticket.
+                                    <button
+                                        onClick={() => handleStatusChange("closed")}
+                                        disabled={updatingStatus}
+                                        style={{
+                                            marginLeft: "auto", padding: "6px 12px", borderRadius: "8px",
+                                            border: "1px solid #fecaca", background: "#fef2f2",
+                                            color: "#dc2626", fontSize: "0.78rem", fontWeight: 600,
+                                            cursor: "pointer", whiteSpace: "nowrap"
+                                        }}
+                                    >
+                                        {updatingStatus ? (
+                                            <span className="spinner-border spinner-border-sm"></span>
+                                        ) : (
+                                            "Close Ticket"
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div style={{
+                            padding: "14px 16px", borderRadius: "10px",
+                            background: "#f8fafc", border: "1px solid #e2e8f0",
+                            display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#94a3b8", fontSize: "0.85rem" }}>
+                                <i className="bi bi-lock"></i>
+                                This ticket is closed.
+                            </div>
+                            <button
+                                onClick={() => handleStatusChange("open")}
+                                disabled={updatingStatus}
+                                style={{
+                                    padding: "6px 14px", borderRadius: "8px",
+                                    border: "1px solid #dbeafe", background: "#eff6ff",
+                                    color: "#2563eb", fontSize: "0.8rem", fontWeight: 600,
+                                    cursor: "pointer", display: "flex", alignItems: "center", gap: "6px"
+                                }}
+                            >
+                                {updatingStatus ? (
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                    <><i className="bi bi-arrow-counterclockwise"></i> Reopen</>
+                                )}
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
         </div>

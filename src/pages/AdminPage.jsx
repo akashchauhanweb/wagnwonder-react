@@ -20,10 +20,11 @@ const AdminPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const userData = JSON.parse(localStorage.getItem("user_data"));
-    
+
     const [supportTickets, setSupportTickets] = useState([]);
     const [ticketsLoading, setTicketsLoading] = useState(true);
     const [pendingTicketCount, setPendingTicketCount] = useState(0);
+    const [pendingKennelTicketCount, setPendingKennelTicketCount] = useState(0);
 
     const fetchSupportTickets = async () => {
         const session_id = localStorage.getItem("session_id");
@@ -53,6 +54,32 @@ const AdminPage = () => {
         }
     };
 
+    const fetchKennelTicketCount = async () => {
+        const session_id = localStorage.getItem("session_id");
+        try {
+            const kennelRes = await callServicesApi({
+                action: "GET_MANAGED_KENNELS",
+                session_id,
+                user_id: userData.id
+            });
+            if (kennelRes?.success && kennelRes.kennels?.length > 0) {
+                const ticketRes = await callServicesApi({
+                    action: "GET_KENNEL_TICKETS",
+                    session_id,
+                    kennel_ids: kennelRes.kennels.map(k => k.id)
+                });
+                if (ticketRes?.success) {
+                    const pending = (ticketRes.tickets || []).filter(t =>
+                        t.status === "open" || (t.status === "in_progress" && t.last_reply_by === "user")
+                    ).length;
+                    setPendingKennelTicketCount(pending);
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching kennel ticket count:", err);
+        }
+    };
+
     const isSuperAdmin = userData?.permissions?.includes("master_console");
     const isEventsAdmin = userData?.permissions?.includes("events");
     const isBoardingAdmin = userData?.permissions?.includes("boarding");
@@ -61,6 +88,9 @@ const AdminPage = () => {
     useEffect(() => {
         if (isSuperAdmin) {
             fetchSupportTickets();
+        }
+        if (isBoardingAdmin) {
+            fetchKennelTicketCount();
         }
     }, []);
 
@@ -113,10 +143,10 @@ const AdminPage = () => {
                                 <h3>{userData.first_name} {userData.last_name}</h3>
                                 <p>{
                                     isSuperAdmin ? "Administrator" :
-                                    (isBoardingAdmin && isEventsAdmin) ? "Events & Boarding Admin" :
-                                    isBoardingAdmin ? "Boarding Admin" :
-                                    isEventsAdmin ? "Events Manager" :
-                                    "User"
+                                        (isBoardingAdmin && isEventsAdmin) ? "Events & Boarding Admin" :
+                                            isBoardingAdmin ? "Boarding Admin" :
+                                                isEventsAdmin ? "Events Manager" :
+                                                    "User"
                                 }</p>
                             </div>
                         </div>
@@ -220,6 +250,16 @@ const AdminPage = () => {
                                         <span>Employees</span>
                                     </Link>
                                     <Link
+                                        to="/admin/kennel-tickets"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennel-tickets" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-chat-dots-fill"></i>
+                                        <span>Support Tickets</span>
+                                        {pendingKennelTicketCount > 0 && (
+                                            <span className="admin-unread-badge">{pendingKennelTicketCount}</span>
+                                        )}
+                                    </Link>
+                                    <Link
                                         to="/admin/kennels-admin/closure"
                                         className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/closure" ? "active" : ""}`}
                                         style={location.pathname !== "/admin/kennels-admin/closure" ? {
@@ -249,7 +289,7 @@ const AdminPage = () => {
                                 Back to menu
                             </button>
                         )}
-                        
+
                         {isBaseAdminRoute ? (
                             <div className="admin-welcome">
                                 <div className="admin-welcome-icon">
@@ -257,7 +297,7 @@ const AdminPage = () => {
                                 </div>
                                 <h2>Welcome, {userData.first_name}!</h2>
                                 <p>Manage your dashboard using the menu on the left or get started below.</p>
-                                
+
                                 <div className="admin-quick-stats">
                                     {isSuperAdmin && MENU_ITEMS.map((item) => (
                                         <Link key={item.path} to={item.path} className="admin-stat-card">
@@ -294,6 +334,11 @@ const AdminPage = () => {
                                             <Link to="/admin/kennels-admin/employees" className="admin-stat-card">
                                                 <i className="bi bi-person-badge-fill"></i>
                                                 <span>Employees</span>
+                                            </Link>
+
+                                            <Link to="/admin/kennel-tickets" className="admin-stat-card">
+                                                <i className="bi bi-chat-dots-fill"></i>
+                                                <span>Support Tickets</span>
                                             </Link>
                                             <Link to="/admin/kennels-admin/closure" className="admin-stat-card" style={{ borderColor: "#fecaca", background: "#fff5f5" }}>
                                                 <i className="bi bi-exclamation-triangle-fill" style={{ color: "#dc2626" }}></i>

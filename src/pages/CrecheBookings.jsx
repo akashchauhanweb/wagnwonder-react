@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 
 export default function CrecheBookings() {
+    const navigate = useNavigate();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -220,6 +222,21 @@ export default function CrecheBookings() {
                                                     Call Kennel
                                                 </a>
                                             )}
+                                            <button
+                                                className="booking-action-btn"
+                                                onClick={() => navigate("/account/my-tickets", {
+                                                    state: {
+                                                    prefillTicket: {
+                                                        subject: "booking",
+                                                        message: `Help needed for Booking #${booking.booking_id}\nKennel: ${booking.kennel_name}\nCheck-in: ${formatDate(booking.check_in_date)}\nCheck-out: ${formatDate(booking.check_out_date)}\nPets: ${booking.pets?.map(p => p.pet_name).join(", ")}\n\nIssue: `,
+                                                        booking_id: booking.booking_id
+                                                    }
+                                                }
+                                                })}
+                                            >
+                                                <i className="bi bi-life-preserver"></i>
+                                                Help
+                                            </button>
                                         </div>
                                     )}
                                 </div>

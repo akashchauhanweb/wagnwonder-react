@@ -12289,12 +12289,12 @@ input[type="date"].hero-input:invalid {
 /* Reply Box */
 .my-ticket-reply {
     display: flex;
+    flex-direction: column;
     gap: 12px;
-    align-items: flex-end;
 }
 
 .my-ticket-reply textarea {
-    flex: 1;
+    width: 100%;
     padding: 12px;
     border: 2px solid #e2e8f0;
     border-radius: 10px;
@@ -12311,17 +12311,18 @@ input[type="date"].hero-input:invalid {
 .my-ticket-reply button {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 12px 20px;
+    width: 100%;
+    padding: 14px 20px;
     background: linear-gradient(135deg, #D84A39, #471915);
     color: white;
     border: none;
     border-radius: 10px;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    height: fit-content;
 }
 
 .my-ticket-reply button:hover:not(:disabled) {

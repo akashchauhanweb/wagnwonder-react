@@ -37,6 +37,7 @@ import ForgotPassword from './pages/ForgotPassword.jsx';
 import WhatsAppButton from './assets/components/WhatsAppButton.jsx';
 import EventsAdminPage from './pages/EventsAdminPage.jsx';
 import KennelsAdminPage from './pages/KennelsAdminPage.jsx';
+import KennelTickets from './pages/KennelTickets.jsx';
 import ManageServiceCities from './pages/ManageServiceCities.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
@@ -98,6 +99,7 @@ function AppContent() {
           <Route path="support-tickets" element={<SupportTickets />} />
           <Route path="kennels-admin" element={<KennelsAdminPage />} />
           <Route path="kennels-admin/:section" element={<KennelsAdminPage />} />
+          <Route path="kennel-tickets" element={<KennelTickets />} />
           <Route path="events-admin" element={<EventsAdminPage />} />
           <Route path="events-revenue" element={<EventsRevenue />} />
         </Route>

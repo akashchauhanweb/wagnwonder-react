@@ -3626,7 +3626,7 @@ const KennelsAdminPage = () => {
                                                 style={{ width: "18px", height: "18px", accentColor: "#1e293b" }}
                                             />
                                             <i className="bi bi-house-door" style={{ color: "#94a3b8" }}></i>
-                                            Basic Access (My Kennels, Today's Activity, Occupancy)
+                                            Basic Access (My Kennels, Today's Activity, Occupancy, Support Tickets)
                                         </label>
                                         {[
                                             { key: "can_manage_bookings", label: "Manage Bookings (Bookings, Manual Booking)", icon: "bi-calendar-check" },
