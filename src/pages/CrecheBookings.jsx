@@ -196,6 +196,32 @@ export default function CrecheBookings() {
                                             <span className="total-amount">₹{booking.total_price}</span>
                                         </div>
                                     </div>
+
+                                    {/* Action buttons */}
+                                    {!isCompleted && !isCancelled && (
+                                        <div className="booking-actions">
+                                            {booking.kennel_lat && booking.kennel_lng && (
+                                                <a
+                                                    href={`https://www.google.com/maps/dir/?api=1&destination=${booking.kennel_lat},${booking.kennel_lng}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="booking-action-btn"
+                                                >
+                                                    <i className="bi bi-geo-alt"></i>
+                                                    Get Directions
+                                                </a>
+                                            )}
+                                            {booking.owner_phone && (
+                                                <a
+                                                    href={`tel:${booking.owner_phone}`}
+                                                    className="booking-action-btn"
+                                                >
+                                                    <i className="bi bi-telephone"></i>
+                                                    Call Kennel
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
