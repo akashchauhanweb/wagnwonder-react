@@ -10,6 +10,7 @@ const MENU_ITEMS = [
     { path: "/admin/manage-users", icon: "bi-people-fill", label: "Manage Users" },
     { path: "/admin/manage-pets", icon: "bi-heart-pulse-fill", label: "Manage Pets" },
     { path: "/admin/manage-kennels", icon: "bi-house-door-fill", label: "Manage Kennels" },
+    { path: "/admin/manage-cities", icon: "bi-geo-alt-fill", label: "Service Cities" },
     { path: "/admin/manage-bookings", icon: "bi-calendar-check-fill", label: "Manage Bookings" },
     { path: "/admin/manage-events", icon: "bi-calendar-event", label: "Manage Events" },
     { path: "/admin/support-tickets", icon: "bi-chat-dots-fill", label: "Support Tickets" },

@@ -60,7 +60,9 @@ function HeroForm() {
         const fetchCities = async () => {
             // Check if already cached
             const cached = localStorage.getItem("city_data");
-            if (cached) {
+            const cachedTime = localStorage.getItem("city_data_time");
+            const oneHour = 60 * 60 * 1000;
+            if (cached && cachedTime && (Date.now() - parseInt(cachedTime)) < oneHour) {
                 setCityMap(JSON.parse(cached));
                 return;
             }
@@ -79,7 +81,7 @@ function HeroForm() {
                     token: token
                 });
                 if (res?.success && res.cities) {
-                    localStorage.setItem("city_data", JSON.stringify(res.cities));
+                    localStorage.setItem("city_data_time", Date.now().toString());
                     setCityMap(res.cities);
                 }
             } catch (err) {
