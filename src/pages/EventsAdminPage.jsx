@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { getEventBookingEmailHtml } from "../assets/js/eventBookingEmail";
 import AddPetModal from "../assets/components/AddPetModal";
+import AddUserModal from "../assets/components/AddUserModal";
 
 const EventsAdminPage = () => {
     // const navigate = useNavigate();
@@ -29,18 +30,21 @@ const EventsAdminPage = () => {
 
     // Manual entry
     const [manualEventInfo, setManualEventInfo] = useState(null);
-    const [manualUsers, setManualUsers] = useState([]);
     const [manualUser, setManualUser] = useState(null);
+    const [manualUserQuery, setManualUserQuery] = useState("");
+    const [lookingUpUser, setLookingUpUser] = useState(false);
+    const [userLookupDone, setUserLookupDone] = useState(false);
+    const [userNotFound, setUserNotFound] = useState(false);
     const [manualTier, setManualTier] = useState(null);
     const [manualTicketCount, setManualTicketCount] = useState(1);
     const [manualFormData, setManualFormData] = useState({});
     const [manualPets, setManualPets] = useState([]);
     const [manualSelectedPets, setManualSelectedPets] = useState([]);
-    const [loadingManualUsers, setLoadingManualUsers] = useState(false);
     const [loadingManualPets, setLoadingManualPets] = useState(false);
     const [loadingManualEvent, setLoadingManualEvent] = useState(false);
     const [manualSubmitting, setManualSubmitting] = useState(false);
     const [showAddPetModal, setShowAddPetModal] = useState(false);
+    const [showAddUserModal, setShowAddUserModal] = useState(false);
 
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -183,20 +187,33 @@ const EventsAdminPage = () => {
         }
     };
 
-    const fetchManualUsers = async () => {
-        setLoadingManualUsers(true);
+    const handleUserLookup = async () => {
+        if (!manualUserQuery.trim()) return;
+        setLookingUpUser(true);
+        setUserNotFound(false);
+        setManualUser(null);
+        setUserLookupDone(false);
         try {
             const response = await callServicesApi({
-                action: "GET_ALL_USERS",
-                session_id
+                action: "LOOKUP_USER",
+                session_id,
+                query: manualUserQuery.trim()
             });
-            if (response?.success) {
-                setManualUsers(response.data || []);
+            if (response?.success && response.user) {
+                setManualUser(response.user);
+                setUserLookupDone(true);
+                if (manualEventInfo?.requires_pet) {
+                    fetchManualPets(response.user.id);
+                }
+            } else {
+                setUserNotFound(true);
+                setUserLookupDone(true);
             }
-        } catch (err) {
-            console.error("Error fetching users:", err);
+        } catch {
+            setUserNotFound(true);
+            setUserLookupDone(true);
         } finally {
-            setLoadingManualUsers(false);
+            setLookingUpUser(false);
         }
     };
 
@@ -219,15 +236,6 @@ const EventsAdminPage = () => {
         }
     };
 
-    const handleManualUserSelect = (userId) => {
-        const user = manualUsers.find(u => u.id === parseInt(userId));
-        setManualUser(user || null);
-        setManualSelectedPets([]);
-        if (user && manualEventInfo?.requires_pet) {
-            fetchManualPets(user.id);
-        }
-    };
-
     const handleManualPetSelect = (petId) => {
         if (manualSelectedPets.includes(petId)) {
             setManualSelectedPets(manualSelectedPets.filter(id => id !== petId));
@@ -237,9 +245,6 @@ const EventsAdminPage = () => {
     };
 
     useEffect(() => {
-        if (activeTab === "manual" && manualUsers.length === 0) {
-            fetchManualUsers();
-        }
         if (activeTab === "registrations" && events.length > 0) {
             fetchAllRegistrations();
         }
@@ -330,6 +335,9 @@ const EventsAdminPage = () => {
                 setSuccessMsg(`Booking created! ID: ${response.booking_id}`);
                 setManualEventInfo(null);
                 setManualUser(null);
+                setManualUserQuery("");
+                setUserLookupDone(false);
+                setUserNotFound(false);
                 setManualTier(null);
                 setManualTicketCount(1);
                 setManualFormData({});
@@ -592,31 +600,100 @@ const EventsAdminPage = () => {
                             </div>
                         </div>
 
-                        {/* Step 2: Select User */}
+                        {/* Step 2: Find User */}
                         {manualEventInfo && (
                             <div className="manual-entry-step">
                                 <div className="step-header">
                                     <span className="step-number">2</span>
-                                    <h4>Select User</h4>
+                                    <h4>Find User</h4>
                                 </div>
                                 <div className="step-content">
-                                    {loadingManualUsers ? (
-                                        <div className="manual-entry-loading">
-                                            <div className="spinner-border spinner-border-sm"></div>
-                                        </div>
-                                    ) : (
-                                        <select
-                                            value={manualUser?.id || ""}
-                                            onChange={(e) => handleManualUserSelect(e.target.value)}
+                                    <div style={{ display: "flex", gap: "10px" }}>
+                                        <input
+                                            type="text"
+                                            value={manualUserQuery}
+                                            onChange={(e) => {
+                                                setManualUserQuery(e.target.value);
+                                                if (userLookupDone) {
+                                                    setUserLookupDone(false);
+                                                    setUserNotFound(false);
+                                                    setManualUser(null);
+                                                    setManualSelectedPets([]);
+                                                }
+                                            }}
+                                            onKeyDown={(e) => { if (e.key === "Enter") handleUserLookup(); }}
+                                            placeholder="Enter email or phone number"
                                             className="manual-entry-select"
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button
+                                            onClick={handleUserLookup}
+                                            disabled={lookingUpUser || !manualUserQuery.trim()}
+                                            style={{
+                                                padding: "10px 20px", borderRadius: "10px", border: "1px solid #1e293b",
+                                                background: "#1e293b", color: "white", fontSize: "0.85rem",
+                                                fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                                                display: "flex", alignItems: "center", gap: "6px"
+                                            }}
                                         >
-                                            <option value="">Choose a user...</option>
-                                            {manualUsers.map(u => (
-                                                <option key={u.id} value={u.id}>
-                                                    {u.first_name} {u.last_name} ({u.email})
-                                                </option>
-                                            ))}
-                                        </select>
+                                            {lookingUpUser ? (
+                                                <span className="spinner-border spinner-border-sm"></span>
+                                            ) : (
+                                                <><i className="bi bi-search"></i> Search</>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {userLookupDone && manualUser && (
+                                        <div style={{
+                                            marginTop: "12px", padding: "14px 16px", borderRadius: "10px",
+                                            background: "#f0fdf4", border: "1px solid #bbf7d0",
+                                            display: "flex", alignItems: "center", justifyContent: "space-between"
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                <div style={{
+                                                    width: "36px", height: "36px", borderRadius: "8px",
+                                                    background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center",
+                                                    fontWeight: 700, fontSize: "0.8rem", color: "#059669"
+                                                }}>
+                                                    {manualUser.first_name?.charAt(0)}{manualUser.last_name?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>
+                                                        {manualUser.first_name} {manualUser.last_name}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                                                        {manualUser.email} · {manualUser.phone_number}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <i className="bi bi-check-circle-fill" style={{ color: "#059669", fontSize: "1.2rem" }}></i>
+                                        </div>
+                                    )}
+
+                                    {userLookupDone && userNotFound && (
+                                        <div style={{
+                                            marginTop: "12px", padding: "14px 16px", borderRadius: "10px",
+                                            background: "#fffbeb", border: "1px solid #fde68a"
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                                <div style={{ fontSize: "0.85rem", color: "#92400e" }}>
+                                                    <i className="bi bi-info-circle me-2"></i>
+                                                    No user found. Would you like to register a new user?
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowAddUserModal(true)}
+                                                    style={{
+                                                        padding: "6px 14px", borderRadius: "8px", border: "1px solid #1e293b",
+                                                        background: "#1e293b", color: "white", fontSize: "0.8rem",
+                                                        fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                                                        display: "flex", alignItems: "center", gap: "4px"
+                                                    }}
+                                                >
+                                                    <i className="bi bi-person-plus"></i> Add User
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -922,6 +999,36 @@ const EventsAdminPage = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Add User Modal */}
+            {showAddUserModal && (
+                <AddUserModal
+                    session_id={session_id}
+                    onClose={() => setShowAddUserModal(false)}
+                    onUserCreated={async (userId) => {
+                        setSuccessMsg("User created successfully.");
+                        setShowAddUserModal(false);
+                        if (userId) {
+                            setLookingUpUser(true);
+                            const response = await callServicesApi({
+                                action: "LOOKUP_USER",
+                                session_id,
+                                user_id: userId
+                            });
+                            if (response?.success && response.user) {
+                                setManualUser(response.user);
+                                setManualUserQuery(response.user.email);
+                                setUserLookupDone(true);
+                                setUserNotFound(false);
+                                if (manualEventInfo?.requires_pet) {
+                                    fetchManualPets(userId);
+                                }
+                            }
+                            setLookingUpUser(false);
+                        }
+                    }}
+                />
             )}
 
             {/* Add Pet Modal */}

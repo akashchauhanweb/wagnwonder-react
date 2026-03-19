@@ -1,0 +1,4422 @@
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { callServicesApi } from "../assets/js/servicesApi";
+import { imageCompressor } from "../assets/js/imageCompressor";
+import AddUserModal from "../assets/components/AddUserModal";
+import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
+import { getBoardingBookingEmailHtml } from "../assets/js/boardingBookingEmail";
+import BookingDetailModal from "../assets/components/BookingDetailModal";
+import AddPetModal from "../assets/components/AddPetModal";
+import { getExtensionPaymentEmailHtml } from "../assets/js/extensionPaymentEmail";
+
+const KennelsAdminPage = () => {
+    const userData = JSON.parse(localStorage.getItem("user_data"));
+    const session_id = localStorage.getItem("session_id");
+
+    const { section } = useParams();
+    const activeTab = section || "kennels";
+    const navigate = useNavigate();
+
+    const [kennels, setKennels] = useState([]);
+    const [loadingKennels, setLoadingKennels] = useState(true);
+    const [kennelsCached, setKennelsCached] = useState(false);
+    const [searchKennel, setSearchKennel] = useState("");
+
+    // Bookings
+    const [allBookings, setAllBookings] = useState([]);
+    const [bookingsCached, setBookingsCached] = useState(false);
+    const [loadingBookings, setLoadingBookings] = useState(false);
+    const [bookingsSearch, setBookingsSearch] = useState("");
+    const [bookingsKennelFilter, setBookingsKennelFilter] = useState("all");
+    const [bookingsStatusFilter, setBookingsStatusFilter] = useState("all");
+    const [bookingsModeFilter, setBookingsModeFilter] = useState("all");
+    const [selectedBooking, setSelectedBooking] = useState(null);
+
+    // Manual entry
+    const [manualKennel, setManualKennel] = useState(null);
+    const [manualKennelInfo, setManualKennelInfo] = useState(null);
+    const [manualUser, setManualUser] = useState(null);
+    const [manualUserQuery, setManualUserQuery] = useState("");
+    const [lookingUpUser, setLookingUpUser] = useState(false);
+    const [userLookupDone, setUserLookupDone] = useState(false);
+    const [userNotFound, setUserNotFound] = useState(false);
+    const [manualPets, setManualPets] = useState([]);
+    const [manualSelectedPets, setManualSelectedPets] = useState([]);
+    const [manualRoomType, setManualRoomType] = useState(null);
+    const [manualRoomOccupancy, setManualRoomOccupancy] = useState([]);
+    const [loadingManualRooms, setLoadingManualRooms] = useState(false);
+    const [manualSelectedRooms, setManualSelectedRooms] = useState([]);
+    const [manualCheckIn, setManualCheckIn] = useState("");
+    const [manualCheckOut, setManualCheckOut] = useState("");
+    const [manualAvailability, setManualAvailability] = useState(null);
+    const [loadingManualAvailability, setLoadingManualAvailability] = useState(false);
+    const [loadingManualPets, setLoadingManualPets] = useState(false);
+    const [loadingManualKennel, setLoadingManualKennel] = useState(false);
+    const [manualSubmitting, setManualSubmitting] = useState(false);
+    const [showAddPetModal, setShowAddPetModal] = useState(false);
+
+    // Add User modal
+    const [showAddUserModal, setShowAddUserModal] = useState(false);
+
+    // Today's Activity
+    const [todayDate, setTodayDate] = useState(new Date().toISOString().split("T")[0]);
+
+    // Occupancy
+    const [occupancyKennelId, setOccupancyKennelId] = useState("");
+    const [occupancyDate, setOccupancyDate] = useState(new Date().toISOString().split("T")[0]);
+    const [occupancyEndDate, setOccupancyEndDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0];
+    });
+    const [occupancyData, setOccupancyData] = useState(null);
+    const [loadingOccupancy, setLoadingOccupancy] = useState(false);
+    const [occupancyView, setOccupancyView] = useState("summary");
+    const [roomOccupancy, setRoomOccupancy] = useState([]);
+    const [loadingRoomOccupancy, setLoadingRoomOccupancy] = useState(false);
+    const [roomOccupancyCached, setRoomOccupancyCached] = useState(false);
+    const [selectedRoom, setSelectedRoom] = useState(null);
+
+    // Employees
+    const [employees, setEmployees] = useState([]);
+    const [loadingEmployees, setLoadingEmployees] = useState(false);
+    const [employeesKennelId, setEmployeesKennelId] = useState("");
+    const [employeesSearch, setEmployeesSearch] = useState("");
+    const [showAddEmployee, setShowAddEmployee] = useState(false);
+    const [employeeUsers, setEmployeeUsers] = useState([]);
+    const [loadingEmployeeUsers, setLoadingEmployeeUsers] = useState(false);
+    const [newEmployee, setNewEmployee] = useState({
+        user_id: "",
+        can_manage_bookings: false, can_manage_kennel: false
+    });
+    const [submittingEmployee, setSubmittingEmployee] = useState(false);
+    const [updatingBookingId, setUpdatingBookingId] = useState(null);
+
+    // Extensions
+    const [extensions, setExtensions] = useState([]);
+    const [loadingExtensions, setLoadingExtensions] = useState(false);
+    const [extensionsCached, setExtensionsCached] = useState(false);
+    const [extensionsSearch, setExtensionsSearch] = useState("");
+
+    // Profile
+    const [profileKennelId, setProfileKennelId] = useState("");
+    const [profileData, setProfileData] = useState(null);
+    const [loadingProfile, setLoadingProfile] = useState(false);
+    const [profileTab, setProfileTab] = useState("pricing");
+    const [editedPricing, setEditedPricing] = useState([]);
+    const [savingPricing, setSavingPricing] = useState(false);
+    const [allFeatures, setAllFeatures] = useState([]);
+    const [loadingFeatures, setLoadingFeatures] = useState(false);
+    const [selectedFeatureIds, setSelectedFeatureIds] = useState([]);
+    const [savingFeatures, setSavingFeatures] = useState(false);
+    const [uploadingImages, setUploadingImages] = useState(false);
+    const [imageUploadProgress, setImageUploadProgress] = useState({ current: 0, total: 0 });
+    const [removingImage, setRemovingImage] = useState(null);
+
+    // Closures
+    const [closures, setClosures] = useState([]);
+    const [loadingClosures, setLoadingClosures] = useState(false);
+    const [closureKennelId, setClosureKennelId] = useState("");
+    const [closureStart, setClosureStart] = useState("");
+    const [closureEnd, setClosureEnd] = useState("");
+    const [closureReason, setClosureReason] = useState("Maintenance");
+    const [submittingClosure, setSubmittingClosure] = useState(false);
+    const [conflictingBookings, setConflictingBookings] = useState([]);
+    const [cancellingClosureId, setCancellingClosureId] = useState(null);
+
+    // Checkout pending payments modal
+    const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+    const [checkoutBooking, setCheckoutBooking] = useState(null);
+    const [checkoutPending, setCheckoutPending] = useState(null);
+    const [resendingCheckoutId, setResendingCheckoutId] = useState(null);
+    const [forcingCheckout, setForcingCheckout] = useState(false);
+    const [refreshingCheckout, setRefreshingCheckout] = useState(false);
+
+    // Extension modal
+    const [showExtendModal, setShowExtendModal] = useState(false);
+    const [extendBooking, setExtendBooking] = useState(null);
+    const [extendNewDate, setExtendNewDate] = useState("");
+    const [extendAmount, setExtendAmount] = useState(0);
+    const [extendCalculatedAmount, setExtendCalculatedAmount] = useState(0);
+    const [submittingExtend, setSubmittingExtend] = useState(false);
+
+    const [successMsg, setSuccessMsg] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
+
+    // Kennel detail modal
+    const [showKennelModal, setShowKennelModal] = useState(false);
+    const [kennelInfo, setKennelInfo] = useState(null);
+
+    // Profile functions
+    const fetchProfileData = async (kennelId) => {
+        setLoadingProfile(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_INFO",
+                session_id,
+                kennel_id: parseInt(kennelId)
+            });
+            if (response?.success) {
+                setProfileData(response.data);
+                setEditedPricing((response.data.rooms || []).map(r => ({
+                    room_type_id: r.room_type_id,
+                    room_type_name: r.room_type_name,
+                    count: r.count,
+                    price_small: parseFloat(r.price_small),
+                    price_medium: parseFloat(r.price_medium),
+                    price_large: parseFloat(r.price_large)
+                })));
+                setSelectedFeatureIds((response.data.features || []).map(f => f.id));
+            }
+        } catch (err) {
+            console.error("Error fetching profile:", err);
+        } finally {
+            setLoadingProfile(false);
+        }
+    };
+
+    const fetchAllFeatures = async () => {
+        setLoadingFeatures(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_FEATURES",
+                session_id
+            });
+            if (response?.success) {
+                setAllFeatures(response.data || []);
+            }
+        } catch (err) {
+            console.error("Error fetching features:", err);
+        } finally {
+            setLoadingFeatures(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === "profile" && profileKennels.length > 0 && !profileKennelId) {
+            setProfileKennelId(profileKennels[0].id);
+        }
+    }, [activeTab, kennels]);
+
+    useEffect(() => {
+        if (profileKennelId) {
+            fetchProfileData(profileKennelId);
+            if (allFeatures.length === 0) fetchAllFeatures();
+        }
+    }, [profileKennelId]);
+
+    const handleSavePricing = async () => {
+        setSavingPricing(true);
+        try {
+            const response = await callServicesApi({
+                action: "UPDATE_KENNEL_PROFILE",
+                session_id,
+                kennel_id: parseInt(profileKennelId),
+                update_type: "pricing",
+                rooms: editedPricing.map(r => ({
+                    room_type_id: r.room_type_id,
+                    price_small: r.price_small,
+                    price_medium: r.price_medium,
+                    price_large: r.price_large
+                }))
+            });
+            if (response?.success) {
+                setSuccessMsg("Pricing updated successfully.");
+                fetchProfileData(profileKennelId);
+            } else {
+                setErrorMsg(response?.message || "Failed to update pricing.");
+            }
+        } catch { setErrorMsg("Error updating pricing."); }
+        finally { setSavingPricing(false); }
+    };
+
+    const handleSaveFeatures = async () => {
+        setSavingFeatures(true);
+        try {
+            const response = await callServicesApi({
+                action: "UPDATE_KENNEL_PROFILE",
+                session_id,
+                kennel_id: parseInt(profileKennelId),
+                update_type: "features",
+                feature_ids: selectedFeatureIds
+            });
+            if (response?.success) {
+                setSuccessMsg("Features updated successfully.");
+                fetchProfileData(profileKennelId);
+            } else {
+                setErrorMsg(response?.message || "Failed to update features.");
+            }
+        } catch { setErrorMsg("Error updating features."); }
+        finally { setSavingFeatures(false); }
+    };
+
+    const handleImageUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        setUploadingImages(true);
+        setImageUploadProgress({ current: 0, total: files.length });
+        try {
+            const urls = [];
+            for (let i = 0; i < files.length; i++) {
+                setImageUploadProgress({ current: i + 1, total: files.length });
+                const compressed = await imageCompressor(files[i]);
+                const url = await uploadImageToS3(compressed, "kennels/");
+                urls.push(url);
+            }
+            const response = await callServicesApi({
+                action: "UPDATE_KENNEL_PROFILE",
+                session_id,
+                kennel_id: parseInt(profileKennelId),
+                update_type: "add_images",
+                images: urls
+            });
+            if (response?.success) {
+                setSuccessMsg(`${urls.length} image(s) uploaded.`);
+                fetchProfileData(profileKennelId);
+            } else {
+                setErrorMsg(response?.message || "Failed to add images.");
+            }
+        } catch (err) {
+            console.error(err);
+            setErrorMsg("Error uploading images.");
+        } finally {
+            setUploadingImages(false);
+            e.target.value = "";
+        }
+    };
+
+    const handleRemoveImage = async (imageUrl) => {
+        if (!window.confirm("Remove this image?")) return;
+        setRemovingImage(imageUrl);
+        try {
+            const response = await callServicesApi({
+                action: "UPDATE_KENNEL_PROFILE",
+                session_id,
+                kennel_id: parseInt(profileKennelId),
+                update_type: "remove_image",
+                image_url: imageUrl
+            });
+            if (response?.success) {
+                setSuccessMsg("Image removed.");
+                fetchProfileData(profileKennelId);
+            } else {
+                setErrorMsg(response?.message || "Failed to remove image.");
+            }
+        } catch { setErrorMsg("Error removing image."); }
+        finally { setRemovingImage(null); }
+    };
+
+    // Extension functions
+    const openExtendModal = (booking) => {
+        setExtendBooking(booking);
+        setExtendNewDate("");
+        setExtendAmount(0);
+        setExtendCalculatedAmount(0);
+        setShowExtendModal(true);
+    };
+
+    const calculateExtensionPrice = (booking, newDate) => {
+        if (!booking || !newDate) return 0;
+        const currentCheckout = new Date(booking.check_out_date);
+        const newCheckout = new Date(newDate);
+        const extraDays = Math.ceil((newCheckout - currentCheckout) / (1000 * 60 * 60 * 24));
+        if (extraDays <= 0) return 0;
+
+        // Use the per-pet pricing from the booking
+        let totalExtra = 0;
+        if (booking.pets?.length > 0) {
+            booking.pets.forEach(p => {
+                const pricePerDay = parseFloat(p.price_per_day) || 0;
+                totalExtra += pricePerDay * extraDays;
+            });
+        }
+        return Math.round(totalExtra * 100) / 100;
+    };
+
+    const handleExtendDateChange = (newDate) => {
+        setExtendNewDate(newDate);
+        const calc = calculateExtensionPrice(extendBooking, newDate);
+        setExtendCalculatedAmount(calc);
+        setExtendAmount(calc);
+    };
+
+    const handleSubmitExtension = async () => {
+        if (!extendBooking || !extendNewDate) {
+            setErrorMsg("Please select a new checkout date."); return;
+        }
+        if (parseFloat(extendAmount) < 0) {
+            setErrorMsg("Amount cannot be negative."); return;
+        }
+        setSubmittingExtend(true);
+        try {
+            const response = await callServicesApi({
+                action: "UPDATE_BOOKING_STATUS",
+                session_id,
+                booking_id: extendBooking.booking_id,
+                new_status: "extend",
+                new_checkout_date: extendNewDate,
+                extension_amount: parseFloat(extendAmount),
+                created_by: userData.id
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                if (response.extension?.link_url) {
+                    // Send payment link email to customer
+                    try {
+                        const emailHtml = getExtensionPaymentEmailHtml({
+                            userName: extendBooking.first_name || "Guest",
+                            kennelName: extendBooking.kennel_name,
+                            bookingId: extendBooking.booking_id,
+                            originalCheckout: formatDate(extendBooking.check_out_date),
+                            newCheckout: formatDate(extendNewDate),
+                            extraDays: Math.ceil((new Date(extendNewDate) - new Date(extendBooking.check_out_date)) / (1000 * 60 * 60 * 24)),
+                            amount: parseFloat(extendAmount).toFixed(2),
+                            paymentLink: response.extension.link_url
+                        });
+                        await callServicesApi({
+                            action: "SEND_EMAIL",
+                            session_id,
+                            email: extendBooking.email,
+                            subject: `Booking Extension: Payment Required - #${extendBooking.booking_id}`,
+                            html: emailHtml
+                        });
+                        setSuccessMsg(`${response.message} Payment link sent to ${extendBooking.email}.`);
+                    } catch (emailErr) {
+                        console.error("Failed to send extension email:", emailErr);
+                        setSuccessMsg(`${response.message} Payment link created but email could not be sent.`);
+                    }
+                }
+                setShowExtendModal(false);
+                setBookingsCached(false);
+                await fetchAllBookings(true);
+                setExtensionsCached(false);
+            } else {
+                setErrorMsg(response?.message || "Failed to extend booking.");
+            }
+        } catch { setErrorMsg("Error extending booking."); }
+        finally { setSubmittingExtend(false); }
+    };
+
+    // Closure functions
+    const fetchClosures = async () => {
+        const ids = kennels.map(k => k.id);
+        if (ids.length === 0) return;
+        setLoadingClosures(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_CLOSURES",
+                session_id,
+                kennel_ids: ids
+            });
+            if (response?.success) {
+                setClosures(response.closures || []);
+            }
+        } catch (err) {
+            console.error("Error fetching closures:", err);
+        } finally {
+            setLoadingClosures(false);
+        }
+    };
+
+    const handleCreateClosure = async () => {
+        if (!closureKennelId || !closureStart || !closureEnd) {
+            setErrorMsg("Please select kennel and date range.");
+            return;
+        }
+        if (new Date(closureEnd) < new Date(closureStart)) {
+            setErrorMsg("End date must be after start date.");
+            return;
+        }
+        setSubmittingClosure(true);
+        setConflictingBookings([]);
+        try {
+            const response = await callServicesApi({
+                action: "CREATE_KENNEL_CLOSURE",
+                session_id,
+                kennel_id: parseInt(closureKennelId),
+                closure_start: closureStart,
+                closure_end: closureEnd,
+                reason: closureReason,
+                created_by: userData.id
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                setClosureStart("");
+                setClosureEnd("");
+                setClosureReason("Maintenance");
+                fetchClosures();
+            } else if (response?.has_conflicts) {
+                setConflictingBookings(response.conflicting_bookings || []);
+            } else {
+                setErrorMsg(response?.message || "Failed to create closure.");
+            }
+        } catch { setErrorMsg("Error creating closure."); }
+        finally { setSubmittingClosure(false); }
+    };
+
+    const handleCancelClosure = async (closureId) => {
+        if (!window.confirm("Cancel this scheduled closure?")) return;
+        setCancellingClosureId(closureId);
+        try {
+            const response = await callServicesApi({
+                action: "CANCEL_KENNEL_CLOSURE",
+                session_id,
+                closure_id: closureId
+            });
+            if (response?.success) {
+                setSuccessMsg("Closure cancelled.");
+                fetchClosures();
+            } else {
+                setErrorMsg(response?.message || "Failed to cancel closure.");
+            }
+        } catch { setErrorMsg("Error cancelling closure."); }
+        finally { setCancellingClosureId(null); }
+    };
+
+    // Derived: user permissions for current kennels
+    const getUserPermissions = () => {
+        const isOwner = kennels.some(k => k.user_role === "owner");
+        if (isOwner) {
+            return { isOwner: true, canManageBookings: true, canManageKennel: true };
+        }
+        return {
+            isOwner: false,
+            canManageBookings: kennels.some(k => k.can_manage_bookings),
+            canManageKennel: kennels.some(k => k.can_manage_kennel),
+        };
+    };
+
+    // Per-kennel permission filtered lists
+    const bookingKennels = kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings);
+    const profileKennels = kennels.filter(k => k.user_role === "owner" || k.can_manage_kennel);
+
+    useEffect(() => {
+        fetchManagedKennels();
+    }, []);
+
+    useEffect(() => {
+        if (kennels.length > 0) {
+            fetchClosures();
+        }
+    }, [kennels]);
+
+    useEffect(() => {
+        if (activeTab === "closure" && profileKennels.length > 0 && !closureKennelId) {
+            setClosureKennelId(profileKennels[0].id);
+        }
+    }, [activeTab, kennels]);
+
+    useEffect(() => {
+        if (activeTab === "profile" && kennels.length > 0) {
+            const ownerKennels = kennels.filter(k => k.user_role === "owner" || k.can_manage_kennel);
+            if (ownerKennels.length > 0 && !profileKennelId) {
+                setProfileKennelId(ownerKennels[0].id);
+            }
+        }
+    }, [activeTab, kennels]);
+
+    useEffect(() => {
+        if (profileKennelId) {
+            fetchProfileData(profileKennelId);
+            if (allFeatures.length === 0) fetchAllFeatures();
+        }
+    }, [profileKennelId]);
+
+    useEffect(() => {
+        if (successMsg || errorMsg) {
+            const timer = setTimeout(() => { setSuccessMsg(""); setErrorMsg(""); }, 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [successMsg, errorMsg]);
+
+    const fetchManagedKennels = async (forceRefresh = false) => {
+        if (kennelsCached && !forceRefresh) return;
+        setLoadingKennels(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_MANAGED_KENNELS",
+                session_id,
+                user_id: userData.id
+            });
+            if (response?.success) {
+                setKennels(response.kennels || []);
+                setKennelsCached(true);
+            }
+        } catch (err) {
+            console.error("Error fetching managed kennels:", err);
+        } finally {
+            setLoadingKennels(false);
+        }
+    };
+
+    const fetchExtensions = async (forceRefresh = false) => {
+        if (extensionsCached && !forceRefresh) return;
+        const ids = bookingKennels.map(k => k.id);
+        if (ids.length === 0) return;
+        setLoadingExtensions(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_BOOKING_EXTENSIONS",
+                session_id,
+                kennel_ids: ids
+            });
+            if (response?.success) {
+                setExtensions(response.extensions || []);
+                setExtensionsCached(true);
+            }
+        } catch (err) {
+            console.error("Error fetching extensions:", err);
+        } finally {
+            setLoadingExtensions(false);
+        }
+    };
+
+    const [resendingExtensionId, setResendingExtensionId] = useState(null);
+
+    const handleResendExtensionEmail = async (ext) => {
+        setResendingExtensionId(ext.id);
+        try {
+            if (ext.payment_mode === "online" && ext.link_url) {
+                const emailHtml = getExtensionPaymentEmailHtml({
+                    userName: ext.first_name || "Guest",
+                    kennelName: ext.kennel_name,
+                    bookingId: ext.booking_id,
+                    originalCheckout: formatDate(ext.original_checkout_date),
+                    newCheckout: formatDate(ext.new_checkout_date),
+                    extraDays: ext.extra_days,
+                    amount: parseFloat(ext.amount).toFixed(2),
+                    paymentLink: ext.link_url
+                });
+                await callServicesApi({
+                    action: "SEND_EMAIL",
+                    session_id,
+                    email: ext.email,
+                    subject: `Booking Extension: Payment Required - #${ext.booking_id}`,
+                    html: emailHtml
+                });
+            } else {
+                // Offline — send a simple reminder
+                const emailHtml = getExtensionPaymentEmailHtml({
+                    userName: ext.first_name || "Guest",
+                    kennelName: ext.kennel_name,
+                    bookingId: ext.booking_id,
+                    originalCheckout: formatDate(ext.original_checkout_date),
+                    newCheckout: formatDate(ext.new_checkout_date),
+                    extraDays: ext.extra_days,
+                    amount: parseFloat(ext.amount).toFixed(2),
+                    paymentLink: "https://wagnwonder.co/account/creche-bookings"
+                });
+                await callServicesApi({
+                    action: "SEND_EMAIL",
+                    session_id,
+                    email: ext.email,
+                    subject: `Booking Extended: #${ext.booking_id} - ${ext.kennel_name}`,
+                    html: emailHtml
+                });
+            }
+            setSuccessMsg(`Email sent to ${ext.email}`);
+        } catch {
+            setErrorMsg("Failed to send email.");
+        } finally {
+            setResendingExtensionId(null);
+        }
+    };
+
+    const fetchAllBookings = async (forceRefresh = false) => {
+        if (bookingsCached && !forceRefresh) return;
+        setLoadingBookings(true);
+        try {
+            const kennelIds = kennels.map(k => k.id);
+            if (kennelIds.length === 0) {
+                setAllBookings([]);
+                setBookingsCached(true);
+                setLoadingBookings(false);
+                return;
+            }
+            const response = await callServicesApi({
+                action: "GET_KENNEL_BOOKINGS",
+                session_id,
+                kennel_ids: kennelIds
+            });
+            if (response?.success) {
+                setAllBookings(response.bookings || []);
+                setBookingsCached(true);
+            }
+        } catch (err) {
+            console.error("Error fetching bookings:", err);
+        } finally {
+            setLoadingBookings(false);
+        }
+    };
+
+    const handleKennelClick = (kennel) => {
+        setKennelInfo(null);
+        setShowKennelModal(true);
+        fetchKennelInfo(kennel.id);
+    };
+
+    const fetchKennelInfo = async (kennelId) => {
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_INFO",
+                session_id,
+                kennel_id: kennelId
+            });
+            if (response?.success) {
+                setKennelInfo(response.data);
+            }
+        } catch (err) {
+            console.error("Error fetching kennel info:", err);
+        }
+    };
+
+    const filteredKennels = kennels.filter(k => {
+        if (searchKennel.trim()) {
+            const s = searchKennel.toLowerCase();
+            return (
+                k.name?.toLowerCase().includes(s) ||
+                k.city?.toLowerCase().includes(s) ||
+                k.state?.toLowerCase().includes(s)
+            );
+        }
+        return true;
+    });
+
+    const bookingKennelIds = new Set(bookingKennels.map(k => k.id));
+    const filteredBookings = allBookings.filter(b => {
+        if (!bookingKennelIds.has(b.kennel_id)) return false;
+        if (bookingsKennelFilter !== "all" && b.kennel_id !== parseInt(bookingsKennelFilter)) return false;
+        if (bookingsStatusFilter !== "all" && b.status !== bookingsStatusFilter) return false;
+        if (bookingsModeFilter !== "all" && b.mode !== bookingsModeFilter) return false;
+        if (bookingsSearch.trim()) {
+            const s = bookingsSearch.toLowerCase();
+            return (
+                b.first_name?.toLowerCase().includes(s) ||
+                b.last_name?.toLowerCase().includes(s) ||
+                b.email?.toLowerCase().includes(s) ||
+                b.phone_number?.includes(s) ||
+                b.kennel_name?.toLowerCase().includes(s) ||
+                b.booking_id?.toString().includes(s)
+            );
+        }
+        return true;
+    });
+
+    // Manual entry handlers
+    const handleManualKennelSelect = async (kennelId) => {
+        if (!kennelId) { setManualKennel(null); setManualKennelInfo(null); return; }
+        const k = kennels.find(kn => kn.id === parseInt(kennelId));
+        setManualKennel(k || null);
+        setManualRoomType(null);
+        setManualAvailability(null);
+        setManualCheckIn("");
+        setManualCheckOut("");
+        setManualSelectedRooms([]);
+        setManualRoomOccupancy([]);
+        setManualUser(null);
+        setManualUserQuery("");
+        setUserLookupDone(false);
+        setUserNotFound(false);
+        setLoadingManualKennel(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_INFO",
+                session_id,
+                kennel_id: parseInt(kennelId)
+            });
+            if (response?.success) {
+                setManualKennelInfo(response.data);
+            }
+        } catch (err) {
+            console.error("Error fetching kennel info:", err);
+        } finally {
+            setLoadingManualKennel(false);
+        }
+    };
+
+    const handleUserLookup = async () => {
+        if (!manualUserQuery.trim()) return;
+        setLookingUpUser(true);
+        setUserNotFound(false);
+        setManualUser(null);
+        setUserLookupDone(false);
+        try {
+            const response = await callServicesApi({
+                action: "LOOKUP_USER",
+                session_id,
+                query: manualUserQuery.trim()
+            });
+            if (response?.success && response.user) {
+                setManualUser(response.user);
+                setUserLookupDone(true);
+                fetchManualPets(response.user.id);
+            } else {
+                setUserNotFound(true);
+                setUserLookupDone(true);
+            }
+        } catch (err) {
+            console.error("Error looking up user:", err);
+            setUserNotFound(true);
+            setUserLookupDone(true);
+        } finally {
+            setLookingUpUser(false);
+        }
+    };
+
+    const fetchManualPets = async (userId) => {
+        setLoadingManualPets(true);
+        setManualPets([]);
+        setManualSelectedPets([]);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ALL_PETS",
+                session_id
+            });
+            if (response?.success) {
+                setManualPets((response.data || []).filter(p => p.owner_id === userId));
+            }
+        } catch (err) {
+            console.error("Error fetching pets:", err);
+        } finally {
+            setLoadingManualPets(false);
+        }
+    };
+
+    const fetchManualAvailability = async (kennelId, checkIn, checkOut) => {
+        if (!kennelId || !checkIn || !checkOut) return;
+
+        // Check for maintenance closure
+        const closureConflict = closures.find(c =>
+            c.kennel_id === parseInt(kennelId) &&
+            c.closure_start < checkOut &&
+            c.closure_end > checkIn
+        );
+        if (closureConflict) {
+            setManualAvailability(null);
+            setManualRoomType(null);
+            setErrorMsg(`This kennel is closed for maintenance from ${formatDate(closureConflict.closure_start)} to ${formatDate(closureConflict.closure_end)}.`);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+
+        setLoadingManualAvailability(true);
+        setManualRoomType(null);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_BOOKING",
+                session_id,
+                kennel_id: parseInt(kennelId),
+                pet_count: 1,
+                check_in: checkIn,
+                check_out: checkOut
+            });
+            if (response?.success) {
+                setManualAvailability(response.room_types || []);
+            }
+        } catch (err) {
+            console.error("Error fetching availability:", err);
+        } finally {
+            setLoadingManualAvailability(false);
+        }
+    };
+
+    const fetchManualRoomOccupancy = async () => {
+        if (!manualKennelInfo || !manualCheckIn || !manualCheckOut) return;
+        setLoadingManualRooms(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ROOM_OCCUPANCY",
+                session_id,
+                kennel_id: manualKennelInfo.id,
+                check_in: manualCheckIn,
+                check_out: manualCheckOut
+            });
+            if (response?.success) {
+                setManualRoomOccupancy(response.rooms || []);
+            }
+        } catch (err) {
+            console.error("Error fetching room occupancy:", err);
+        } finally {
+            setLoadingManualRooms(false);
+        }
+    };
+
+    const handleManualPetToggle = (petId) => {
+        if (manualSelectedPets.includes(petId)) {
+            setManualSelectedPets(manualSelectedPets.filter(id => id !== petId));
+        } else {
+            setManualSelectedPets([...manualSelectedPets, petId]);
+        }
+    };
+
+    useEffect(() => {
+        if ((activeTab === "bookings" || activeTab === "today" || activeTab === "occupancy" || activeTab === "revenue" || activeTab === "extensions") && kennels.length > 0) {
+            fetchAllBookings();
+        }
+        if (activeTab === "extensions" && kennels.length > 0) {
+            fetchExtensions();
+        }
+        if (activeTab === "employees" && kennels.length > 0) {
+            const ownerKennels = kennels.filter(k => k.user_role === "owner");
+            if (ownerKennels.length > 0 && !employeesKennelId) {
+                setEmployeesKennelId(ownerKennels[0].id);
+            }
+        }
+    }, [activeTab, kennels]);
+
+    useEffect(() => {
+        if (employeesKennelId) fetchKennelEmployees(employeesKennelId);
+    }, [employeesKennelId]);
+
+    const fetchKennelEmployees = async (kennelId) => {
+        setLoadingEmployees(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_EMPLOYEES",
+                session_id,
+                kennel_id: parseInt(kennelId)
+            });
+            if (response?.success) {
+                setEmployees(response.employees || []);
+            }
+        } catch (err) {
+            console.error("Error fetching employees:", err);
+        } finally {
+            setLoadingEmployees(false);
+        }
+    };
+
+    const fetchEmployeeUsers = async () => {
+        setLoadingEmployeeUsers(true);
+        try {
+            const response = await callServicesApi({ action: "GET_ALL_USERS", session_id });
+            if (response?.success) setEmployeeUsers(response.data || []);
+        } catch (err) { console.error(err); }
+        finally { setLoadingEmployeeUsers(false); }
+    };
+
+    const handleAddEmployee = async () => {
+        if (!newEmployee.user_id || !employeesKennelId) {
+            setErrorMsg("Please select a user."); return;
+        }
+        setSubmittingEmployee(true);
+        try {
+            const response = await callServicesApi({
+                action: "ASSIGN_KENNEL_EMPLOYEE",
+                session_id,
+                kennel_id: parseInt(employeesKennelId),
+                user_id: parseInt(newEmployee.user_id),
+                can_manage_bookings: newEmployee.can_manage_bookings ? 1 : 0,
+                can_manage_kennel: newEmployee.can_manage_kennel ? 1 : 0
+            });
+            if (response?.success) {
+                setSuccessMsg("Employee added successfully.");
+                setShowAddEmployee(false);
+                setNewEmployee({ user_id: "", can_manage_bookings: false, can_manage_kennel: false });
+                fetchKennelEmployees(employeesKennelId);
+            } else {
+                setErrorMsg(response?.message || "Failed to add employee.");
+            }
+        } catch { setErrorMsg("Error adding employee."); }
+        finally { setSubmittingEmployee(false); }
+    };
+
+    const handleRemoveEmployee = async (assignmentId) => {
+        if (!window.confirm("Remove this employee?")) return;
+        try {
+            const response = await callServicesApi({
+                action: "REMOVE_KENNEL_EMPLOYEE",
+                session_id,
+                assignment_id: assignmentId
+            });
+            if (response?.success) {
+                setSuccessMsg("Employee removed.");
+                fetchKennelEmployees(employeesKennelId);
+            } else {
+                setErrorMsg(response?.message || "Failed to remove employee.");
+            }
+        } catch { setErrorMsg("Error removing employee."); }
+    };
+
+    const handleUpdateBookingStatus = async (bookingId, newStatus, forceCheckout = false) => {
+        setUpdatingBookingId(bookingId);
+        try {
+            const payload = {
+                action: "UPDATE_BOOKING_STATUS",
+                session_id,
+                booking_id: bookingId,
+                new_status: newStatus
+            };
+            if (forceCheckout) payload.force_checkout = true;
+
+            const response = await callServicesApi(payload);
+
+            if (response?.has_pending_payments && newStatus === "completed") {
+                // Show checkout modal with pending payments
+                const booking = allBookings.find(b => b.booking_id === bookingId);
+                setCheckoutBooking(booking);
+                setCheckoutPending(response);
+                setShowCheckoutModal(true);
+                setUpdatingBookingId(null);
+                return;
+            }
+
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                setBookingsCached(false);
+                setExtensionsCached(false);
+                await fetchAllBookings(true);
+                setShowCheckoutModal(false);
+                setCheckoutBooking(null);
+                setCheckoutPending(null);
+            } else {
+                setErrorMsg(response?.message || "Failed to update status.");
+            }
+        } catch { setErrorMsg("Error updating booking status."); }
+        finally { setUpdatingBookingId(null); setForcingCheckout(false); }
+    };
+
+    const handleForceCheckout = async () => {
+        if (!checkoutBooking) return;
+        setForcingCheckout(true);
+        await handleUpdateBookingStatus(checkoutBooking.booking_id, "completed", true);
+    };
+
+    const handleResendCheckoutEmail = async (ext) => {
+        setResendingCheckoutId(ext.id);
+        try {
+            const emailHtml = getExtensionPaymentEmailHtml({
+                userName: checkoutBooking.first_name || "Guest",
+                kennelName: checkoutBooking.kennel_name,
+                bookingId: checkoutBooking.booking_id,
+                originalCheckout: formatDate(ext.original_checkout),
+                newCheckout: formatDate(ext.new_checkout),
+                extraDays: ext.extra_days,
+                amount: parseFloat(ext.amount).toFixed(2),
+                paymentLink: ext.link_url
+            });
+            await callServicesApi({
+                action: "SEND_EMAIL",
+                session_id,
+                email: checkoutBooking.email,
+                subject: `Payment Reminder: Booking Extension #${checkoutBooking.booking_id}`,
+                html: emailHtml
+            });
+            setSuccessMsg(`Reminder sent to ${checkoutBooking.email}`);
+        } catch {
+            setErrorMsg("Failed to send reminder email.");
+        } finally {
+            setResendingCheckoutId(null);
+        }
+    };
+
+    const fetchRoomOccupancy = async (forceRefresh = false) => {
+        if (!occupancyKennelId || !occupancyDate || !occupancyEndDate) return;
+        if (roomOccupancyCached && !forceRefresh) return;
+        setLoadingRoomOccupancy(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ROOM_OCCUPANCY",
+                session_id,
+                kennel_id: parseInt(occupancyKennelId),
+                check_in: occupancyDate,
+                check_out: occupancyEndDate
+            });
+            if (response?.success) {
+                setRoomOccupancy(response.rooms || []);
+                setRoomOccupancyCached(true);
+            }
+        } catch (err) {
+            console.error("Error fetching room occupancy:", err);
+        } finally {
+            setLoadingRoomOccupancy(false);
+        }
+    };
+
+    const fetchOccupancy = async () => {
+        if (!occupancyKennelId || !occupancyDate || !occupancyEndDate) return;
+        setLoadingOccupancy(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNEL_BOOKING",
+                session_id,
+                kennel_id: parseInt(occupancyKennelId),
+                pet_count: 1,
+                check_in: occupancyDate,
+                check_out: occupancyEndDate
+            });
+            if (response?.success) {
+                setOccupancyData(response);
+            }
+        } catch (err) { console.error(err); }
+        finally { setLoadingOccupancy(false); }
+    };
+
+    useEffect(() => {
+        if (activeTab === "occupancy" && occupancyKennelId) {
+            fetchOccupancy();
+            setRoomOccupancyCached(false);
+            if (occupancyView === "rooms") {
+                fetchRoomOccupancy(true);
+            }
+        }
+    }, [occupancyKennelId, occupancyDate, occupancyEndDate, activeTab]);
+
+    useEffect(() => {
+        if (occupancyView === "rooms" && occupancyKennelId && occupancyDate && occupancyEndDate) {
+            fetchRoomOccupancy();
+        }
+    }, [occupancyView]);
+
+    useEffect(() => {
+        if (activeTab === "occupancy" && kennels.length > 0 && !occupancyKennelId) {
+            setOccupancyKennelId(kennels[0].id);
+        }
+    }, [activeTab, kennels]);
+
+    // Today's activity computed from bookings
+    const todayCheckIns = allBookings.filter(b =>
+        b.check_in_date && new Date(b.check_in_date).toISOString().split("T")[0] === todayDate
+        && (bookingsKennelFilter === "all" || b.kennel_id === parseInt(bookingsKennelFilter))
+    );
+    const todayCheckOuts = allBookings.filter(b =>
+        b.check_out_date && new Date(b.check_out_date).toISOString().split("T")[0] === todayDate
+        && (bookingsKennelFilter === "all" || b.kennel_id === parseInt(bookingsKennelFilter))
+    );
+
+    const getPetWeightCategory = (weight) => {
+        if (!weight) return null;
+        const w = weight.toLowerCase();
+        if (w.includes("below 15") || w.includes("small")) return "small";
+        if (w.includes("above 40") || w.includes("large")) return "large";
+        return "medium";
+    };
+
+    const calculatePetPrice = (pet, roomType) => {
+        if (!roomType || !pet) return 0;
+        const category = getPetWeightCategory(pet.weight);
+        if (category === "small") return parseFloat(roomType.price_small) || 0;
+        if (category === "large") return parseFloat(roomType.price_large) || 0;
+        return parseFloat(roomType.price_medium) || 0;
+    };
+
+    const manualDays = (() => {
+        if (!manualCheckIn || !manualCheckOut) return 0;
+        const d1 = new Date(manualCheckIn);
+        const d2 = new Date(manualCheckOut);
+        const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+        return diff > 0 ? diff : 0;
+    })();
+
+    const manualTotal = (() => {
+        if (!manualRoomType || manualSelectedPets.length === 0 || manualDays === 0) return 0;
+        let total = 0;
+        for (const petId of manualSelectedPets) {
+            const pet = manualPets.find(p => p.id === petId);
+            total += calculatePetPrice(pet, manualRoomType) * manualDays;
+        }
+        return Math.round(total * 100) / 100;
+    })();
+
+    const handleManualSubmit = async () => {
+        if (!manualKennelInfo || !manualUser || !manualRoomType) {
+            setErrorMsg("Please select kennel, user, and room type.");
+            return;
+        }
+        if (manualSelectedPets.length === 0) {
+            setErrorMsg("Please select at least one pet.");
+            return;
+        }
+        if (!manualCheckIn || !manualCheckOut) {
+            setErrorMsg("Please select check-in and check-out dates.");
+            return;
+        }
+        if (manualDays <= 0) {
+            setErrorMsg("Check-out must be after check-in.");
+            return;
+        }
+
+        setManualSubmitting(true);
+        try {
+            const orderId = `MANUAL_${Date.now()}`;
+            const petsPayload = manualSelectedPets.map((petId, idx) => {
+                const pet = manualPets.find(p => p.id === petId);
+                const pricePerDay = calculatePetPrice(pet, manualRoomType);
+                return {
+                    pet_id: petId,
+                    price_per_day: Math.round(pricePerDay * 100) / 100,
+                    total_price: Math.round(pricePerDay * manualDays * 100) / 100,
+                    room_id: manualSelectedRooms[idx]?.room_id || null
+                };
+            });
+
+            const response = await callServicesApi({
+                action: "CREATE_BOOKING_ENTRY",
+                session_id,
+                user_id: manualUser.id,
+                kennel_id: manualKennelInfo.id,
+                room_type_id: manualRoomType.room_type_id,
+                check_in_date: manualCheckIn,
+                check_out_date: manualCheckOut,
+                days: manualDays,
+                total_price: manualTotal,
+                mode: "offline",
+                order_id: orderId,
+                cf_order_id: null,
+                pets: petsPayload
+            });
+
+            if (response?.success) {
+                // Send confirmation email
+                try {
+                    const petDetails = manualSelectedPets.map(petId => {
+                        const pet = manualPets.find(p => p.id === petId);
+                        const pricePerDay = calculatePetPrice(pet, manualRoomType);
+                        const markup = manualKennel?.markup ? (1 + parseFloat(manualKennel.markup) / 100) : 1;
+                        return {
+                            name: pet?.name || `Pet #${petId}`,
+                            breed: pet?.breed || "-",
+                            total: Math.round(pricePerDay * markup * manualDays * 100) / 100
+                        };
+                    });
+                    const emailHtml = getBoardingBookingEmailHtml({
+                        userName: manualUser.first_name || "Guest",
+                        kennelName: manualKennelInfo.name,
+                        checkIn: formatDate(manualCheckIn),
+                        checkOut: formatDate(manualCheckOut),
+                        days: manualDays,
+                        pets: petDetails,
+                        totalPrice: manualTotal,
+                        orderId: orderId,
+                        transactionId: "MANUAL"
+                    });
+                    await callServicesApi({
+                        action: "SEND_EMAIL",
+                        session_id,
+                        email: manualUser.email,
+                        subject: `Booking Confirmed: ${manualKennelInfo.name} - Wag N Wonder`,
+                        html: emailHtml
+                    });
+                } catch (emailErr) {
+                    console.error("Failed to send email:", emailErr);
+                }
+
+                setSuccessMsg("Booking created successfully!");
+                // Reset form
+                setManualKennel(null);
+                setManualKennelInfo(null);
+                setManualUser(null);
+                setManualUserQuery("");
+                setUserLookupDone(false);
+                setUserNotFound(false);
+                setManualRoomType(null);
+                setManualCheckIn("");
+                setManualCheckOut("");
+                setManualPets([]);
+                setManualSelectedPets([]);
+                setManualSelectedRooms([]);
+                setManualRoomOccupancy([]);
+                setBookingsCached(false);
+            } else {
+                setErrorMsg(response?.message || "Failed to create booking.");
+            }
+        } catch {
+            setErrorMsg("Error creating booking.");
+        } finally {
+            setManualSubmitting(false);
+        }
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "";
+        return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    };
+
+    const permissions = getUserPermissions();
+
+    // Auth guard
+    if (!userData || !userData.permissions?.includes("boarding")) {
+        localStorage.clear();
+        window.location.href = "/login";
+        return null;
+    }
+
+    return (
+        <div className="manage-events-page">
+            {/* Header */}
+            <div className="manage-events-header">
+                <h2>
+                    {activeTab === "kennels" && "My Kennels"}
+                    {(activeTab === "bookings" || activeTab === "manual" || activeTab === "extensions") && "Bookings"}
+                    {activeTab === "profile" && "Kennel Profile"}
+                    {activeTab === "revenue" && "Revenue"}
+                    {activeTab === "today" && "Today's Activity"}
+                    {activeTab === "occupancy" && "Occupancy"}
+                    {activeTab === "employees" && "Employees"}
+                    {activeTab === "closure" && "Maintenance Closure"}
+                </h2>
+            </div>
+            {/* Closure Banners */}
+            {closures.map(c => {
+                const today = new Date().toISOString().split("T")[0];
+                const isActive = today >= c.closure_start && today < c.closure_end;
+                const isUpcoming = today < c.closure_start;
+                if (!isActive && !isUpcoming) return null;
+                return (
+                    <div key={c.id} style={{
+                        padding: "12px 20px",
+                        borderRadius: "10px",
+                        marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        background: isActive ? "linear-gradient(135deg, #fef2f2, #fee2e2)" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                        border: isActive ? "1px solid #fca5a5" : "1px solid #fcd34d"
+                    }}>
+                        <i className={`bi ${isActive ? "bi-exclamation-octagon-fill" : "bi-exclamation-triangle-fill"}`}
+                            style={{ fontSize: "1.2rem", color: isActive ? "#dc2626" : "#d97706" }}></i>
+                        <div style={{ flex: 1 }}>
+                            <span style={{ fontWeight: 600, color: isActive ? "#991b1b" : "#92400e", fontSize: "0.9rem" }}>
+                                {isActive
+                                    ? `${c.kennel_name} is closed until ${formatDate(c.closure_end)}`
+                                    : `${c.kennel_name} will close from ${formatDate(c.closure_start)} to ${formatDate(c.closure_end)}`
+                                }
+                            </span>
+                            {c.reason && (
+                                <span style={{ display: "block", fontSize: "0.8rem", color: isActive ? "#b91c1c" : "#a16207", marginTop: "2px" }}>
+                                    Reason: {c.reason}
+                                </span>
+                            )}
+                        </div>
+                        {(permissions.isOwner || permissions.canManageKennel) && (
+                            <button
+                                onClick={() => handleCancelClosure(c.id)}
+                                disabled={cancellingClosureId === c.id}
+                                style={{
+                                    padding: "6px 14px", borderRadius: "8px",
+                                    border: "1px solid " + (isActive ? "#fca5a5" : "#fcd34d"),
+                                    background: "white", color: isActive ? "#dc2626" : "#d97706",
+                                    fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                                    whiteSpace: "nowrap"
+                                }}
+                            >
+                                {cancellingClosureId === c.id ? (
+                                    <span className="spinner-border spinner-border-sm"></span>
+                                ) : (
+                                    "Revert Closure"
+                                )}
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
+            {/* Messages */}
+            {successMsg && (
+                <div className="manage-events-alert success">
+                    <i className="bi bi-check-circle"></i> {successMsg}
+                    <button onClick={() => setSuccessMsg("")}><i className="bi bi-x"></i></button>
+                </div>
+            )}
+            {errorMsg && (
+                <div className="manage-events-alert error">
+                    <i className="bi bi-exclamation-circle"></i> {errorMsg}
+                    <button onClick={() => setErrorMsg("")}><i className="bi bi-x"></i></button>
+                </div>
+            )}
+
+            {/* ==================== MY KENNELS TAB ==================== */}
+            {activeTab === "kennels" && (
+                <>
+                    <div className="events-filters">
+                        <div className="search-box">
+                            <i className="bi bi-search"></i>
+                            <input
+                                type="text"
+                                placeholder="Search kennels..."
+                                value={searchKennel}
+                                onChange={(e) => setSearchKennel(e.target.value)}
+                            />
+                        </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={() => fetchManagedKennels(true)}
+                            disabled={loadingKennels}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${loadingKennels ? 'spinning' : ''}`}></i>
+                        </button>
+                    </div>
+                    {loadingKennels ? (
+                        <div className="loading-spinner">
+                            <div className="spinner-border" role="status"></div>
+                        </div>
+                    ) : filteredKennels.length === 0 ? (
+                        <div className="empty-state">
+                            <i className="bi bi-house-door"></i>
+                            <p>No kennels found</p>
+                        </div>
+                    ) : (
+                        <div className="events-grid">
+                            {filteredKennels.map(kennel => (
+                                <div key={kennel.id} className="event-admin-card" onClick={() => handleKennelClick(kennel)}>
+                                    <div className="event-admin-card-image">
+                                        {kennel.image ? (
+                                            <img src={kennel.image} alt={kennel.name} />
+                                        ) : (
+                                            <div className="event-admin-card-no-image">
+                                                <i className="bi bi-house-door"></i>
+                                            </div>
+                                        )}
+                                        <span className={`event-admin-card-status ${kennel.is_active ? 'upcoming' : 'past'}`}>
+                                            {kennel.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
+                                    <div className="event-admin-card-body">
+                                        <h4>{kennel.name}</h4>
+                                        <p><i className="bi bi-geo-alt me-1"></i>{kennel.city}, {kennel.state}</p>
+                                        <p><i className="bi bi-pin-map me-1"></i>{kennel.pin_code}</p>
+                                        <div className="event-admin-card-stats">
+                                            <span><i className="bi bi-door-open me-1"></i>{kennel.total_rooms} rooms</span>
+                                            <span style={{ marginLeft: "12px" }}><i className="bi bi-calendar-check me-1"></i>{kennel.active_bookings} active</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ==================== PROFILE TAB ==================== */}
+            {activeTab === "profile" && loadingKennels && (
+                <div className="loading-spinner">
+                    <div className="spinner-border" role="status"></div>
+                </div>
+            )}
+            {activeTab === "profile" && !loadingKennels && !(permissions.isOwner || permissions.canManageKennel) && (
+                <div className="empty-state">
+                    <i className="bi bi-shield-lock"></i>
+                    <p>You don't have access to manage kennel profiles</p>
+                </div>
+            )}
+            {activeTab === "profile" && !loadingKennels && (permissions.isOwner || permissions.canManageKennel) && (
+                <>
+                    {/* Sub-tabs */}
+                    <div className="manage-events-submenu" style={{ marginBottom: "16px" }}>
+                        <button
+                            className={`submenu-item ${profileTab === "pricing" ? "active" : ""}`}
+                            onClick={() => setProfileTab("pricing")}
+                        >
+                            <i className="bi bi-currency-rupee"></i>
+                            Pricing
+                        </button>
+                        <button
+                            className={`submenu-item ${profileTab === "images" ? "active" : ""}`}
+                            onClick={() => setProfileTab("images")}
+                        >
+                            <i className="bi bi-images"></i>
+                            Photos
+                        </button>
+                        <button
+                            className={`submenu-item ${profileTab === "features" ? "active" : ""}`}
+                            onClick={() => setProfileTab("features")}
+                        >
+                            <i className="bi bi-stars"></i>
+                            Features
+                        </button>
+                    </div>
+
+                    <div className="events-filters">
+                        {kennels.length > 1 && (
+                            <div className="status-filter">
+                                <select
+                                    value={profileKennelId}
+                                    onChange={(e) => setProfileKennelId(e.target.value)}
+                                >
+                                    {kennels.map(k => {
+                                        const hasAccess = k.user_role === "owner" || k.can_manage_kennel;
+                                        return (
+                                            <option key={k.id} value={k.id} disabled={!hasAccess}>
+                                                {k.name}{!hasAccess ? " (No access)" : ""}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                        )}
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={() => fetchProfileData(profileKennelId)}
+                            disabled={loadingProfile}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${loadingProfile ? 'spinning' : ''}`}></i>
+                        </button>
+                    </div>
+
+                    {loadingProfile ? (
+                        <div className="loading-spinner">
+                            <div className="spinner-border" role="status"></div>
+                        </div>
+                    ) : !profileData ? (
+                        <div className="loading-spinner">
+                            <div className="spinner-border" role="status"></div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* ---- PRICING ---- */}
+                            {profileTab === "pricing" && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                    {editedPricing.map((room, idx) => (
+                                        <div key={idx} style={{
+                                            background: "white", borderRadius: "12px", padding: "20px",
+                                            border: "1px solid #e2e8f0"
+                                        }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                                                <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>
+                                                    {room.room_type_name}
+                                                </h4>
+                                                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>{room.count} rooms</span>
+                                            </div>
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+                                                <div>
+                                                    <label style={{ display: "block", fontSize: "0.8rem", color: "#64748b", marginBottom: "6px" }}>Small (below 15kg)</label>
+                                                    <div style={{ position: "relative" }}>
+                                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.9rem" }}>₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={room.price_small}
+                                                            onChange={(e) => {
+                                                                const updated = [...editedPricing];
+                                                                updated[idx].price_small = parseFloat(e.target.value) || 0;
+                                                                setEditedPricing(updated);
+                                                            }}
+                                                            className="manual-entry-select"
+                                                            style={{ paddingLeft: "28px" }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: "block", fontSize: "0.8rem", color: "#64748b", marginBottom: "6px" }}>Medium (15-40kg)</label>
+                                                    <div style={{ position: "relative" }}>
+                                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.9rem" }}>₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={room.price_medium}
+                                                            onChange={(e) => {
+                                                                const updated = [...editedPricing];
+                                                                updated[idx].price_medium = parseFloat(e.target.value) || 0;
+                                                                setEditedPricing(updated);
+                                                            }}
+                                                            className="manual-entry-select"
+                                                            style={{ paddingLeft: "28px" }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: "block", fontSize: "0.8rem", color: "#64748b", marginBottom: "6px" }}>Large (above 40kg)</label>
+                                                    <div style={{ position: "relative" }}>
+                                                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.9rem" }}>₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={room.price_large}
+                                                            onChange={(e) => {
+                                                                const updated = [...editedPricing];
+                                                                updated[idx].price_large = parseFloat(e.target.value) || 0;
+                                                                setEditedPricing(updated);
+                                                            }}
+                                                            className="manual-entry-select"
+                                                            style={{ paddingLeft: "28px" }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {editedPricing.length > 0 && (
+                                        <button
+                                            className="manual-entry-submit"
+                                            onClick={handleSavePricing}
+                                            disabled={savingPricing}
+                                            style={{ alignSelf: "flex-start" }}
+                                        >
+                                            {savingPricing ? (
+                                                <><span className="spinner-border spinner-border-sm"></span> Saving...</>
+                                            ) : (
+                                                <><i className="bi bi-check-circle"></i> Save Pricing</>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ---- PHOTOS ---- */}
+                            {profileTab === "images" && (
+                                <div>
+                                    {/* Upload button */}
+                                    <div style={{
+                                        background: "white", borderRadius: "12px", padding: "20px",
+                                        border: "2px dashed #cbd5e1", textAlign: "center", marginBottom: "20px",
+                                        cursor: uploadingImages ? "not-allowed" : "pointer",
+                                        opacity: uploadingImages ? 0.6 : 1
+                                    }}
+                                        onClick={() => !uploadingImages && document.getElementById("profile-image-input").click()}
+                                    >
+                                        <input
+                                            id="profile-image-input"
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handleImageUpload}
+                                            style={{ display: "none" }}
+                                        />
+                                        {uploadingImages ? (
+                                            <div>
+                                                <div className="spinner-border spinner-border-sm" style={{ marginBottom: "8px" }}></div>
+                                                <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>
+                                                    Uploading {imageUploadProgress.current} of {imageUploadProgress.total}...
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <i className="bi bi-cloud-arrow-up" style={{ fontSize: "2rem", color: "#94a3b8" }}></i>
+                                                <p style={{ margin: "8px 0 0", fontSize: "0.9rem", color: "#64748b" }}>
+                                                    Click to upload photos
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Existing images */}
+                                    {profileData.images?.length === 0 ? (
+                                        <div className="empty-state">
+                                            <i className="bi bi-images"></i>
+                                            <p>No photos added yet</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+                                            {profileData.images.map((img, idx) => (
+                                                <div key={idx} style={{
+                                                    position: "relative", borderRadius: "12px", overflow: "hidden",
+                                                    border: "1px solid #e2e8f0", aspectRatio: "4/3"
+                                                }}>
+                                                    <img
+                                                        src={img.image_url}
+                                                        alt={img.alt_text || "Kennel"}
+                                                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                                    />
+                                                    <button
+                                                        onClick={() => handleRemoveImage(img.image_url)}
+                                                        disabled={removingImage === img.image_url}
+                                                        style={{
+                                                            position: "absolute", top: "8px", right: "8px",
+                                                            width: "32px", height: "32px", borderRadius: "50%",
+                                                            background: "rgba(220, 38, 38, 0.9)", color: "white",
+                                                            border: "none", cursor: "pointer",
+                                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                                            fontSize: "0.85rem"
+                                                        }}
+                                                    >
+                                                        {removingImage === img.image_url ? (
+                                                            <span className="spinner-border spinner-border-sm"></span>
+                                                        ) : (
+                                                            <i className="bi bi-trash"></i>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ---- FEATURES ---- */}
+                            {profileTab === "features" && (
+                                <div>
+                                    {loadingFeatures ? (
+                                        <div className="loading-spinner">
+                                            <div className="spinner-border" role="status"></div>
+                                        </div>
+                                    ) : allFeatures.length === 0 ? (
+                                        <div className="empty-state">
+                                            <i className="bi bi-stars"></i>
+                                            <p>No features available</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{
+                                                display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                                                gap: "10px", marginBottom: "20px"
+                                            }}>
+                                                {allFeatures.map(f => {
+                                                    const isSelected = selectedFeatureIds.includes(f.id);
+                                                    return (
+                                                        <div
+                                                            key={f.id}
+                                                            onClick={() => {
+                                                                setSelectedFeatureIds(prev =>
+                                                                    isSelected ? prev.filter(id => id !== f.id) : [...prev, f.id]
+                                                                );
+                                                            }}
+                                                            style={{
+                                                                padding: "12px 16px", borderRadius: "10px",
+                                                                border: isSelected ? "2px solid #1e293b" : "1px solid #e2e8f0",
+                                                                background: isSelected ? "#f8fafc" : "white",
+                                                                cursor: "pointer", transition: "all 0.2s",
+                                                                display: "flex", alignItems: "center", gap: "10px"
+                                                            }}
+                                                        >
+                                                            <i className={`bi ${isSelected ? 'bi-check-circle-fill' : 'bi-circle'}`}
+                                                                style={{ color: isSelected ? "#1e293b" : "#cbd5e1", fontSize: "1.1rem" }}></i>
+                                                            <span style={{ fontSize: "0.9rem", color: "#1e293b", fontWeight: isSelected ? 600 : 400 }}>
+                                                                {f.name}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                className="manual-entry-submit"
+                                                onClick={handleSaveFeatures}
+                                                disabled={savingFeatures}
+                                                style={{ alignSelf: "flex-start" }}
+                                            >
+                                                {savingFeatures ? (
+                                                    <><span className="spinner-border spinner-border-sm"></span> Saving...</>
+                                                ) : (
+                                                    <><i className="bi bi-check-circle"></i> Save Features</>
+                                                )}
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* ==================== REVENUE TAB ==================== */}
+            {activeTab === "revenue" && loadingKennels && (
+                <div className="loading-spinner">
+                    <div className="spinner-border" role="status"></div>
+                </div>
+            )}
+            {activeTab === "revenue" && !loadingKennels && !(permissions.isOwner || permissions.canManageKennel) && (
+                <div className="empty-state">
+                    <i className="bi bi-shield-lock"></i>
+                    <p>You don't have access to view revenue</p>
+                </div>
+            )}
+            {activeTab === "revenue" && !loadingKennels && (permissions.isOwner || permissions.canManageKennel) && (
+                <>
+                    {kennels.length > 1 && (
+                        <div className="events-filters" style={{ marginBottom: "16px" }}>
+                            <div className="status-filter">
+                                <select
+                                    value={bookingsKennelFilter}
+                                    onChange={(e) => setBookingsKennelFilter(e.target.value)}
+                                >
+                                    <option value="all">All Kennels</option>
+                                    {kennels.map(k => {
+                                        const hasAccess = k.user_role === "owner" || k.can_manage_kennel;
+                                        return (
+                                            <option key={k.id} value={k.id} disabled={!hasAccess}>
+                                                {k.name}{!hasAccess ? " (No access)" : ""}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+                    {(loadingBookings || loadingKennels) ? (
+                        <div className="loading-spinner">
+                            <div className="spinner-border" role="status"></div>
+                        </div>
+                    ) : (() => {
+                        const profileKennelIds = new Set(profileKennels.map(k => k.id));
+                        const bookedBookings = allBookings.filter(b =>
+                            (b.status === "booked" || b.status === "completed") && profileKennelIds.has(b.kennel_id)
+                            && (bookingsKennelFilter === "all" || b.kennel_id === parseInt(bookingsKennelFilter))
+                        );
+                        const totalRevenue = bookedBookings.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+                        const onlineBookings = bookedBookings.filter(b => b.mode === "online");
+                        const offlineBookings = bookedBookings.filter(b => b.mode === "offline");
+                        const onlineRevenue = onlineBookings.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+                        const offlineRevenue = offlineBookings.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+                        const avgValue = bookedBookings.length > 0 ? totalRevenue / bookedBookings.length : 0;
+
+                        // Per-kennel breakdown
+                        const kennelStats = {};
+                        bookedBookings.forEach(b => {
+                            if (!kennelStats[b.kennel_id]) {
+                                kennelStats[b.kennel_id] = {
+                                    name: b.kennel_name,
+                                    count: 0, revenue: 0, online: 0, offline: 0
+                                };
+                            }
+                            kennelStats[b.kennel_id].count++;
+                            kennelStats[b.kennel_id].revenue += parseFloat(b.total_price || 0);
+                            if (b.mode === "online") kennelStats[b.kennel_id].online++;
+                            else kennelStats[b.kennel_id].offline++;
+                        });
+
+                        // Monthly trend (last 6 months)
+                        const monthlyStats = {};
+                        const now = new Date();
+                        for (let i = 5; i >= 0; i--) {
+                            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                            monthlyStats[key] = { month: d.toLocaleDateString("en-IN", { month: "short", year: "numeric" }), revenue: 0, count: 0 };
+                        }
+                        bookedBookings.forEach(b => {
+                            const d = new Date(b.created_at);
+                            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                            if (monthlyStats[key]) {
+                                monthlyStats[key].revenue += parseFloat(b.total_price || 0);
+                                monthlyStats[key].count++;
+                            }
+                        });
+                        const monthlyData = Object.values(monthlyStats);
+                        const maxMonthlyRevenue = Math.max(...monthlyData.map(m => m.revenue), 1);
+
+                        const formatCurrency = (amount) => {
+                            const num = parseFloat(amount) || 0;
+                            if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
+                            if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
+                            if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
+                            return `₹${Math.round(num).toLocaleString('en-IN')}`;
+                        };
+
+                        return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                                {/* Summary Cards */}
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+                                    <div style={{
+                                        background: "white", borderRadius: "12px", padding: "20px",
+                                        border: "1px solid #e2e8f0"
+                                    }}>
+                                        <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px" }}>Total Revenue</div>
+                                        <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#1e293b" }}>{formatCurrency(totalRevenue)}</div>
+                                        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>{bookedBookings.length} booking{bookedBookings.length !== 1 ? "s" : ""}</div>
+                                    </div>
+                                    <div style={{
+                                        background: "white", borderRadius: "12px", padding: "20px",
+                                        border: "1px solid #e2e8f0"
+                                    }}>
+                                        <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px" }}>Online Collection</div>
+                                        <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#059669" }}>{formatCurrency(onlineRevenue)}</div>
+                                        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>{onlineBookings.length} booking{onlineBookings.length !== 1 ? "s" : ""}</div>
+                                    </div>
+                                    <div style={{
+                                        background: "white", borderRadius: "12px", padding: "20px",
+                                        border: "1px solid #e2e8f0"
+                                    }}>
+                                        <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px" }}>Offline Collection</div>
+                                        <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#d97706" }}>{formatCurrency(offlineRevenue)}</div>
+                                        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>{offlineBookings.length} booking{offlineBookings.length !== 1 ? "s" : ""}</div>
+                                    </div>
+                                    <div style={{
+                                        background: "white", borderRadius: "12px", padding: "20px",
+                                        border: "1px solid #e2e8f0"
+                                    }}>
+                                        <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px" }}>Avg. Booking Value</div>
+                                        <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#7c3aed" }}>{formatCurrency(avgValue)}</div>
+                                        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>per booking</div>
+                                    </div>
+                                </div>
+
+                                {/* Monthly Trend */}
+                                <div style={{
+                                    background: "white", borderRadius: "12px", padding: "24px",
+                                    border: "1px solid #e2e8f0"
+                                }}>
+                                    <h4 style={{ margin: "0 0 20px", fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>
+                                        Monthly Trend (Last 6 Months)
+                                    </h4>
+                                    <div style={{ display: "flex", alignItems: "flex-end", gap: "12px", height: "180px" }}>
+                                        {monthlyData.map((m, idx) => {
+                                            const barHeight = maxMonthlyRevenue > 0 ? (m.revenue / maxMonthlyRevenue) * 150 : 0;
+                                            return (
+                                                <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                                                    <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 500 }}>
+                                                        {m.revenue > 0 ? formatCurrency(m.revenue) : "—"}
+                                                    </span>
+                                                    <div style={{
+                                                        width: "100%", maxWidth: "60px",
+                                                        height: `${Math.max(barHeight, 4)}px`,
+                                                        borderRadius: "6px 6px 0 0",
+                                                        background: m.revenue > 0
+                                                            ? "linear-gradient(180deg, #1e293b, #334155)"
+                                                            : "#f1f5f9",
+                                                        transition: "height 0.5s ease"
+                                                    }}></div>
+                                                    <div style={{ textAlign: "center" }}>
+                                                        <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>{m.month}</span>
+                                                        {m.count > 0 && (
+                                                            <span style={{ display: "block", fontSize: "0.65rem", color: "#cbd5e1" }}>{m.count} bookings</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Per-Kennel Breakdown (only if multiple kennels) */}
+                                {Object.keys(kennelStats).length > 0 && (
+                                    <div style={{
+                                        background: "white", borderRadius: "12px",
+                                        border: "1px solid #e2e8f0", overflow: "hidden"
+                                    }}>
+                                        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
+                                            <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>
+                                                Kennel-wise Breakdown
+                                            </h4>
+                                        </div>
+                                        <div className="registrations-table-wrapper">
+                                            <table className="registrations-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Kennel</th>
+                                                        <th>Bookings</th>
+                                                        <th>Online</th>
+                                                        <th>Offline</th>
+                                                        <th>Revenue</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {Object.values(kennelStats).sort((a, b) => b.revenue - a.revenue).map((k, idx) => (
+                                                        <tr key={idx}>
+                                                            <td style={{ fontWeight: 500 }}>{k.name}</td>
+                                                            <td>{k.count}</td>
+                                                            <td><span className="mode-badge mode-online">{k.online}</span></td>
+                                                            <td><span className="mode-badge mode-offline">{k.offline}</span></td>
+                                                            <td style={{ fontWeight: 600 }}>{formatCurrency(k.revenue)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {bookedBookings.length === 0 && (
+                                    <div className="empty-state">
+                                        <i className="bi bi-bar-chart"></i>
+                                        <p>No booking data available yet</p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </>
+            )}
+
+            {/* ==================== BOOKINGS TAB ==================== */}
+            {(activeTab === "bookings" || activeTab === "manual" || activeTab === "extensions") && !permissions.canManageBookings && (
+                <div className="empty-state">
+                    <i className="bi bi-shield-lock"></i>
+                    <p>You don't have access to manage bookings</p>
+                </div>
+            )}
+            {(activeTab === "bookings" || activeTab === "manual" || activeTab === "extensions") && permissions.canManageBookings && (
+                <>
+                    {/* Bookings sub-tabs */}
+                    {permissions.canManageBookings && (
+                        <div className="manage-events-submenu" style={{ marginBottom: "16px" }}>
+                            <button
+                                className={`submenu-item ${activeTab === "bookings" ? "active" : ""}`}
+                                onClick={() => navigate("/admin/kennels-admin/bookings", { replace: true })}
+                            >
+                                <i className="bi bi-calendar-check"></i>
+                                View All Bookings
+                            </button>
+                            <button
+                                className={`submenu-item ${activeTab === "manual" ? "active" : ""}`}
+                                onClick={() => navigate("/admin/kennels-admin/manual", { replace: true })}
+                            >
+                                <i className="bi bi-pencil-square"></i>
+                                Manual Booking
+                            </button>
+                            <button
+                                className={`submenu-item ${activeTab === "extensions" ? "active" : ""}`}
+                                onClick={() => navigate("/admin/kennels-admin/extensions", { replace: true })}
+                            >
+                                <i className="bi bi-credit-card"></i>
+                                Extension Payments
+                            </button>
+                        </div>
+                    )}
+
+                    {activeTab === "bookings" && (
+                        <>
+                            <div className="events-filters">
+                                <div className="search-box">
+                                    <i className="bi bi-search"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, phone, booking ID..."
+                                        value={bookingsSearch}
+                                        onChange={(e) => setBookingsSearch(e.target.value)}
+                                    />
+                                </div>
+                                {kennels.length > 1 && (
+                                    <div className="status-filter">
+                                        <select
+                                            value={bookingsKennelFilter}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "all") { setBookingsKennelFilter("all"); return; }
+                                                const k = kennels.find(kn => kn.id === parseInt(val));
+                                                if (k && (k.user_role === "owner" || k.can_manage_bookings)) {
+                                                    setBookingsKennelFilter(val);
+                                                }
+                                            }}
+                                        >
+                                            <option value="all">All Kennels</option>
+                                            {kennels.map(k => {
+                                                const hasAccess = k.user_role === "owner" || k.can_manage_bookings;
+                                                return (
+                                                    <option key={k.id} value={k.id} disabled={!hasAccess}>
+                                                        {k.name}{!hasAccess ? " (No access)" : ""}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
+                                )}
+                                <div className="status-filter">
+                                    <select
+                                        value={bookingsStatusFilter}
+                                        onChange={(e) => setBookingsStatusFilter(e.target.value)}
+                                    >
+                                        <option value="all">All Statuses</option>
+                                        <option value="booked">Booked</option>
+                                        <option value="checked_in">Checked In</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                                <div className="status-filter">
+                                    <select
+                                        value={bookingsModeFilter}
+                                        onChange={(e) => setBookingsModeFilter(e.target.value)}
+                                    >
+                                        <option value="all">All Modes</option>
+                                        <option value="online">Online</option>
+                                        <option value="offline">Offline</option>
+                                    </select>
+                                </div>
+                                <button
+                                    className="earnings-refresh-btn"
+                                    onClick={() => fetchAllBookings(true)}
+                                    disabled={loadingBookings}
+                                    style={{ marginLeft: "auto", minWidth: "unset" }}
+                                >
+                                    <i className={`bi bi-arrow-clockwise ${loadingBookings ? 'spinning' : ''}`}></i>
+                                </button>
+                            </div>
+
+                            {loadingBookings ? (
+                                <div className="loading-spinner">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            ) : filteredBookings.length === 0 ? (
+                                <div className="empty-state">
+                                    <i className="bi bi-calendar-x"></i>
+                                    <p>No bookings found</p>
+                                </div>
+                            ) : (() => {
+                                const activeBookings = filteredBookings.filter(b => b.status === "booked" || b.status === "checked_in");
+                                const completedBookings = filteredBookings.filter(b => b.status === "completed");
+                                const cancelledBookings = filteredBookings.filter(b => b.status === "cancelled");
+
+                                const BookingCard = ({ b }) => {
+                                    const isCompleted = b.status === "completed";
+                                    const isCancelled = b.status === "cancelled";
+                                    const today = new Date().toISOString().split("T")[0];
+                                    const checkIn = new Date(b.check_in_date).toISOString().split("T")[0];
+                                    const checkOut = new Date(b.check_out_date).toISOString().split("T")[0];
+                                    const isCheckedIn = b.status === "checked_in";
+                                    const isOngoing = checkIn <= today && checkOut > today && !isCompleted && !isCancelled;
+                                    const isUpcoming = checkIn > today && !isCompleted && !isCancelled;
+
+                                    return (
+                                        <div
+                                            onClick={() => setSelectedBooking(b)}
+                                            style={{
+                                                borderRadius: "12px",
+                                                border: "1px solid #e2e8f0",
+                                                background: "white",
+                                                cursor: "pointer",
+                                                transition: "transform 0.15s, box-shadow 0.15s",
+                                                overflow: "hidden",
+                                                opacity: isCancelled ? 0.6 : 1
+                                            }}
+                                            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.06)"; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                                        >
+                                            <div style={{ padding: "18px 20px" }}>
+                                                {/* Row 1: Guest info + Status */}
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                        <div style={{
+                                                            width: "38px", height: "38px", borderRadius: "10px",
+                                                            background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center",
+                                                            fontWeight: 700, fontSize: "0.85rem", color: "#475569", flexShrink: 0
+                                                        }}>
+                                                            {b.first_name?.charAt(0)}{b.last_name?.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b" }}>
+                                                                {b.first_name} {b.last_name}
+                                                            </div>
+                                                            <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
+                                                                #{b.booking_id}
+                                                                {!isCompleted && <> · <i className="bi bi-telephone me-1"></i>{b.phone_number}</>}
+                                                                {kennels.length > 1 && <> · {b.kennel_name}</>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span style={{
+                                                        padding: "4px 12px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.02em",
+                                                        background: isCompleted ? "#d1fae5" : isCancelled ? "#fee2e2" : isCheckedIn ? "#dbeafe" : isOngoing ? "#e0e7ff" : "#f1f5f9",
+                                                        color: isCompleted ? "#059669" : isCancelled ? "#dc2626" : isCheckedIn ? "#2563eb" : isOngoing ? "#4f46e5" : "#64748b"
+                                                    }}>
+                                                        {isCheckedIn ? "Checked In" : isOngoing ? "Ongoing" : isUpcoming ? "Upcoming" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Row 2: Stay details grid */}
+                                                <div style={{
+                                                    display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                                                    gap: "2px", borderRadius: "10px", overflow: "hidden",
+                                                    background: "#f8fafc", marginBottom: "14px"
+                                                }}>
+                                                    <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                        <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Check-in</div>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{formatDate(b.check_in_date)}</div>
+                                                    </div>
+                                                    <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                        <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Check-out</div>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{formatDate(b.check_out_date)}</div>
+                                                    </div>
+                                                    <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                        <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Room</div>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{b.room_type_name || "N/A"}</div>
+                                                    </div>
+                                                    <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                        <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Stay</div>
+                                                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{b.days} night{b.days !== 1 ? "s" : ""}</div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Row 3: Pets + Actions + Price */}
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+                                                        {b.pets?.map((p, i) => (
+                                                            <span key={i} style={{
+                                                                display: "inline-flex", alignItems: "center", gap: "4px",
+                                                                padding: "3px 10px", borderRadius: "20px",
+                                                                fontSize: "0.75rem", fontWeight: 500,
+                                                                background: "#f1f5f9", color: "#475569",
+                                                                border: "1px solid #e2e8f0"
+                                                            }}>
+                                                                <i className="bi bi-heart-pulse-fill" style={{ fontSize: "0.65rem", color: p.pet_aggression === "high" ? "#dc2626" : p.pet_aggression === "moderate" ? "#d97706" : "#16a34a" }}></i>
+                                                                {p.pet_name}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                                                        {!isCompleted && !isCancelled && (
+                                                            <div style={{ display: "flex", gap: "6px" }}>
+                                                                {b.status === "booked" && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleUpdateBookingStatus(b.booking_id, "checked_in"); }}
+                                                                        disabled={updatingBookingId === b.booking_id}
+                                                                        style={{
+                                                                            padding: "5px 12px", borderRadius: "8px", border: "1px solid #dbeafe",
+                                                                            background: "#eff6ff", color: "#2563eb", fontSize: "0.75rem",
+                                                                            fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                            transition: "all 0.2s", whiteSpace: "nowrap"
+                                                                        }}
+                                                                    >
+                                                                        {updatingBookingId === b.booking_id ? (
+                                                                            <span className="spinner-border spinner-border-sm"></span>
+                                                                        ) : (
+                                                                            <><i className="bi bi-box-arrow-in-right"></i> Check In</>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                                {b.status === "checked_in" && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); openExtendModal(b); }}
+                                                                        style={{
+                                                                            padding: "5px 12px", borderRadius: "8px", border: "1px solid #fde68a",
+                                                                            background: "#fffbeb", color: "#d97706", fontSize: "0.75rem",
+                                                                            fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                            transition: "all 0.2s", whiteSpace: "nowrap"
+                                                                        }}
+                                                                    >
+                                                                        <i className="bi bi-calendar-plus"></i> Extend
+                                                                    </button>
+                                                                )}
+                                                                {b.status === "checked_in" && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleUpdateBookingStatus(b.booking_id, "completed"); }}
+                                                                        disabled={updatingBookingId === b.booking_id}
+                                                                        style={{
+                                                                            padding: "5px 12px", borderRadius: "8px", border: "1px solid #d1fae5",
+                                                                            background: "#f0fdf4", color: "#059669", fontSize: "0.75rem",
+                                                                            fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                            transition: "all 0.2s", whiteSpace: "nowrap"
+                                                                        }}
+                                                                    >
+                                                                        {updatingBookingId === b.booking_id ? (
+                                                                            <span className="spinner-border spinner-border-sm"></span>
+                                                                        ) : (
+                                                                            <><i className="bi bi-check-lg"></i> Check Out</>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleUpdateBookingStatus(b.booking_id, "cancelled"); }}
+                                                                    disabled={updatingBookingId === b.booking_id}
+                                                                    style={{
+                                                                        padding: "5px 12px", borderRadius: "8px", border: "1px solid #fee2e2",
+                                                                        background: "#fef2f2", color: "#dc2626", fontSize: "0.75rem",
+                                                                        fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                        transition: "all 0.2s", whiteSpace: "nowrap"
+                                                                    }}
+                                                                >
+                                                                    <i className="bi bi-x-lg"></i> Cancel
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        <div style={{ textAlign: "right", minWidth: "70px" }}>
+                                                            <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#1e293b" }}>₹{b.total_price}</div>
+                                                            <span className={`mode-badge ${b.mode === 'online' ? 'mode-online' : 'mode-offline'}`} style={{ marginLeft: 0 }}>{b.mode}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                };
+
+                                const SectionHeader = ({ icon, title, count, color }) => (
+                                    <div style={{
+                                        display: "flex", alignItems: "center", gap: "10px",
+                                        marginBottom: "14px", marginTop: "8px"
+                                    }}>
+                                        <div style={{
+                                            width: "32px", height: "32px", borderRadius: "8px",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            background: color + "18", color: color
+                                        }}>
+                                            <i className={`bi ${icon}`} style={{ fontSize: "0.95rem" }}></i>
+                                        </div>
+                                        <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#1e293b" }}>{title}</h4>
+                                        <span style={{
+                                            padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600,
+                                            background: color + "18", color: color
+                                        }}>
+                                            {count}
+                                        </span>
+                                    </div>
+                                );
+
+                                return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        {/* Active Bookings */}
+                                        {activeBookings.length > 0 && (
+                                            <>
+                                                <SectionHeader icon="bi-calendar-check-fill" title="Active Bookings" count={activeBookings.length} color="#2563eb" />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                                                    {activeBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Completed Bookings */}
+                                        {completedBookings.length > 0 && (
+                                            <>
+                                                <SectionHeader icon="bi-check-circle-fill" title="Completed" count={completedBookings.length} color="#059669" />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                                                    {completedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Cancelled Bookings */}
+                                        {cancelledBookings.length > 0 && (
+                                            <>
+                                                <SectionHeader icon="bi-x-circle-fill" title="Cancelled" count={cancelledBookings.length} color="#dc2626" />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                                    {cancelledBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </>
+                    )}
+
+                    {/* Manual Entry (sub-tab of Bookings) */}
+                    {activeTab === "manual" && permissions.canManageBookings && (
+                        <div className="manual-entry-section">
+                            <div className="manual-entry-form">
+                                {/* Step 1: Select Kennel */}
+                                <div className="manual-entry-step">
+                                    <div className="step-header">
+                                        <span className="step-number">1</span>
+                                        <h4>Select Kennel</h4>
+                                    </div>
+                                    <div className="step-content">
+                                        {kennels.filter(k => k.can_manage_bookings).length === 1 ? (
+                                            (() => {
+                                                const k = kennels.filter(kn => kn.can_manage_bookings)[0];
+                                                if (!manualKennel) handleManualKennelSelect(k.id);
+                                                return (
+                                                    <div className="manual-entry-select" style={{ background: "#f8fafc", cursor: "default" }}>
+                                                        {k.name} — {k.city}, {k.state}
+                                                    </div>
+                                                );
+                                            })()
+                                        ) : (
+                                            <select
+                                                value={manualKennel?.id || ""}
+                                                onChange={(e) => handleManualKennelSelect(e.target.value)}
+                                                className="manual-entry-select"
+                                                disabled={loadingManualKennel}
+                                            >
+                                                <option value="">Choose a kennel...</option>
+                                                {kennels.filter(k => k.can_manage_bookings).map(k => (
+                                                    <option key={k.id} value={k.id}>
+                                                        {k.name} — {k.city}, {k.state}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Step 2: Find User */}
+                                {manualKennelInfo && (
+                                    <div className="manual-entry-step">
+                                        <div className="step-header">
+                                            <span className="step-number">2</span>
+                                            <h4>Find User</h4>
+                                        </div>
+                                        <div className="step-content">
+                                            <div style={{ display: "flex", gap: "10px" }}>
+                                                <input
+                                                    type="text"
+                                                    value={manualUserQuery}
+                                                    onChange={(e) => {
+                                                        setManualUserQuery(e.target.value);
+                                                        if (userLookupDone) {
+                                                            setUserLookupDone(false);
+                                                            setUserNotFound(false);
+                                                            setManualUser(null);
+                                                            setManualSelectedPets([]);
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => { if (e.key === "Enter") handleUserLookup(); }}
+                                                    placeholder="Enter email or phone number"
+                                                    className="manual-entry-select"
+                                                    style={{ flex: 1 }}
+                                                />
+                                                <button
+                                                    onClick={handleUserLookup}
+                                                    disabled={lookingUpUser || !manualUserQuery.trim()}
+                                                    style={{
+                                                        padding: "10px 20px", borderRadius: "10px", border: "1px solid #1e293b",
+                                                        background: "#1e293b", color: "white", fontSize: "0.85rem",
+                                                        fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                                                        display: "flex", alignItems: "center", gap: "6px"
+                                                    }}
+                                                >
+                                                    {lookingUpUser ? (
+                                                        <span className="spinner-border spinner-border-sm"></span>
+                                                    ) : (
+                                                        <><i className="bi bi-search"></i> Search</>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            {/* User found */}
+                                            {userLookupDone && manualUser && (
+                                                <div style={{
+                                                    marginTop: "12px", padding: "14px 16px", borderRadius: "10px",
+                                                    background: "#f0fdf4", border: "1px solid #bbf7d0",
+                                                    display: "flex", alignItems: "center", justifyContent: "space-between"
+                                                }}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                        <div style={{
+                                                            width: "36px", height: "36px", borderRadius: "8px",
+                                                            background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center",
+                                                            fontWeight: 700, fontSize: "0.8rem", color: "#059669"
+                                                        }}>
+                                                            {manualUser.first_name?.charAt(0)}{manualUser.last_name?.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>
+                                                                {manualUser.first_name} {manualUser.last_name}
+                                                            </div>
+                                                            <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                                                                {manualUser.email} · {manualUser.phone_number}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <i className="bi bi-check-circle-fill" style={{ color: "#059669", fontSize: "1.2rem" }}></i>
+                                                </div>
+                                            )}
+
+                                            {/* User not found */}
+                                            {userLookupDone && userNotFound && (
+                                                <div style={{
+                                                    marginTop: "12px", padding: "14px 16px", borderRadius: "10px",
+                                                    background: "#fffbeb", border: "1px solid #fde68a"
+                                                }}>
+                                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                                        <div style={{ fontSize: "0.85rem", color: "#92400e" }}>
+                                                            <i className="bi bi-info-circle me-2"></i>
+                                                            No user found. Would you like to register a new user?
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setShowAddUserModal(true)}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px", border: "1px solid #1e293b",
+                                                                background: "#1e293b", color: "white", fontSize: "0.8rem",
+                                                                fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+                                                                display: "flex", alignItems: "center", gap: "4px"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-person-plus"></i> Add User
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 3: Select Pets */}
+                                {manualUser && (
+                                    <div className="manual-entry-step">
+                                        <div className="step-header">
+                                            <span className="step-number">3</span>
+                                            <h4>Select Pets ({manualSelectedPets.length} selected)</h4>
+                                        </div>
+                                        <div className="step-content">
+                                            {loadingManualPets ? (
+                                                <div className="manual-entry-loading">
+                                                    <div className="spinner-border spinner-border-sm"></div>
+                                                </div>
+                                            ) : manualPets.length === 0 ? (
+                                                <div className="manual-entry-no-pets">
+                                                    <p>No pets found for this user.</p>
+                                                    <button onClick={() => setShowAddPetModal(true)}>
+                                                        <i className="bi bi-plus"></i> Add Pet
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="manual-entry-pets">
+                                                    {manualPets.map(pet => (
+                                                        <button
+                                                            key={pet.id}
+                                                            className={`pet-select-btn ${manualSelectedPets.includes(pet.id) ? 'selected' : ''}`}
+                                                            onClick={() => handleManualPetToggle(pet.id)}
+                                                        >
+                                                            <i className={`bi ${manualSelectedPets.includes(pet.id) ? 'bi-check-circle-fill' : 'bi-circle'}`}></i>
+                                                            <div className="pet-info">
+                                                                <span className="pet-name">{pet.name}</span>
+                                                                <span className="pet-breed">{pet.breed} · {pet.weight || "Unknown weight"}</span>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                    <button className="pet-add-btn" onClick={() => setShowAddPetModal(true)}>
+                                                        <i className="bi bi-plus"></i>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 4: Select Dates */}
+                                {manualSelectedPets.length > 0 && manualKennelInfo && (
+                                    <div className="manual-entry-step">
+                                        <div className="step-header">
+                                            <span className="step-number">4</span>
+                                            <h4>Select Dates</h4>
+                                        </div>
+                                        <div className="step-content">
+                                            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                                                <div style={{ flex: 1, minWidth: "180px" }}>
+                                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>Check-in</label>
+                                                    <input
+                                                        type="date"
+                                                        value={manualCheckIn}
+                                                        min={new Date().toISOString().split("T")[0]}
+                                                        onChange={(e) => {
+                                                            setManualCheckIn(e.target.value);
+                                                            if (manualCheckOut && e.target.value >= manualCheckOut) {
+                                                                setManualCheckOut("");
+                                                                setManualAvailability(null);
+                                                                setManualRoomType(null);
+                                                            } else if (manualCheckOut) {
+                                                                fetchManualAvailability(manualKennelInfo.id, e.target.value, manualCheckOut);
+                                                            }
+                                                        }}
+                                                        className="manual-entry-select"
+                                                    />
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: "180px" }}>
+                                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>Check-out</label>
+                                                    <input
+                                                        type="date"
+                                                        value={manualCheckOut}
+                                                        min={manualCheckIn || new Date().toISOString().split("T")[0]}
+                                                        onChange={(e) => {
+                                                            setManualCheckOut(e.target.value);
+                                                            if (manualCheckIn && e.target.value) {
+                                                                fetchManualAvailability(manualKennelInfo.id, manualCheckIn, e.target.value);
+                                                            }
+                                                        }}
+                                                        className="manual-entry-select"
+                                                        disabled={!manualCheckIn}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {manualDays > 0 && (
+                                                <p style={{ marginTop: "8px", fontSize: "0.85rem", color: "#64748b" }}>
+                                                    {manualDays} night{manualDays !== 1 ? "s" : ""}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 5: Select Room Type (based on availability) */}
+                                {manualDays > 0 && manualAvailability && (
+                                    <div className="manual-entry-step">
+                                        <div className="step-header">
+                                            <span className="step-number">5</span>
+                                            <h4>Select Room Type</h4>
+                                        </div>
+                                        <div className="step-content">
+                                            {loadingManualAvailability ? (
+                                                <div className="manual-entry-loading">
+                                                    <div className="spinner-border spinner-border-sm"></div>
+                                                </div>
+                                            ) : manualAvailability.filter(rt => parseInt(rt.available_rooms) >= manualSelectedPets.length).length === 0 ? (
+                                                <div style={{ padding: "16px", background: "#fef2f2", borderRadius: "10px", color: "#dc2626", fontSize: "0.9rem" }}>
+                                                    <i className="bi bi-exclamation-triangle me-2"></i>
+                                                    No room types have enough availability for {manualSelectedPets.length} pet{manualSelectedPets.length !== 1 ? "s" : ""} on these dates.
+                                                </div>
+                                            ) : (
+                                                <div className="manual-entry-tiers">
+                                                    {manualAvailability.map((rt, idx) => {
+                                                        const available = parseInt(rt.available_rooms);
+                                                        const hasSpace = available >= manualSelectedPets.length;
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                className={`tier-btn ${manualRoomType?.room_type_id === rt.room_type_id ? 'selected' : ''}`}
+                                                                onClick={() => { if (hasSpace) { setManualRoomType(rt); setManualSelectedRooms([]); setManualRoomOccupancy([]); } }}
+                                                                disabled={!hasSpace}
+                                                                style={!hasSpace ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                                                            >
+                                                                <span className="tier-label">{rt.room_type}</span>
+                                                                <span className="tier-price" style={{ color: hasSpace ? "#059669" : "#dc2626" }}>
+                                                                    {available} available
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 6: Select Room (optional) */}
+                                {manualRoomType && manualCheckIn && manualCheckOut && manualDays > 0 && (
+                                    <div className="manual-entry-step">
+                                        <div className="step-header">
+                                            <span className="step-number">6</span>
+                                            <h4>Select Room <span style={{ fontSize: "0.8rem", fontWeight: 400, color: "#94a3b8" }}>(optional — auto-assigned if skipped)</span></h4>
+                                        </div>
+                                        <div className="step-content">
+                                            {manualRoomOccupancy.length === 0 && !loadingManualRooms ? (
+                                                <button
+                                                    onClick={fetchManualRoomOccupancy}
+                                                    style={{
+                                                        padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2e8f0",
+                                                        background: "white", color: "#475569", fontSize: "0.85rem",
+                                                        fontWeight: 600, cursor: "pointer", display: "flex",
+                                                        alignItems: "center", gap: "6px"
+                                                    }}
+                                                >
+                                                    <i className="bi bi-grid-3x3"></i> Load Room Layout
+                                                </button>
+                                            ) : loadingManualRooms ? (
+                                                <div className="manual-entry-loading">
+                                                    <div className="spinner-border spinner-border-sm"></div>
+                                                </div>
+                                            ) : (() => {
+                                                const typeRooms = manualRoomOccupancy.filter(
+                                                    r => r.room_type_id === manualRoomType.room_type_id
+                                                );
+                                                if (typeRooms.length === 0) {
+                                                    return (
+                                                        <div style={{ padding: "16px", background: "#f8fafc", borderRadius: "10px", color: "#64748b", fontSize: "0.9rem" }}>
+                                                            No rooms found for this room type.
+                                                        </div>
+                                                    );
+                                                }
+
+                                                const petsToAssign = manualSelectedPets.length;
+
+                                                return (
+                                                    <div>
+                                                        {/* Legend */}
+                                                        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "0.78rem", color: "#64748b", marginBottom: "14px" }}>
+                                                            <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                                                <span style={{ width: "12px", height: "12px", borderRadius: "4px", background: "linear-gradient(135deg, #d1fae5, #a7f3d0)", border: "1px solid #6ee7b7" }}></span>
+                                                                Available
+                                                            </span>
+                                                            <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                                                <span style={{ width: "12px", height: "12px", borderRadius: "4px", background: "linear-gradient(135deg, #fee2e2, #fecaca)", border: "1px solid #fca5a5" }}></span>
+                                                                Occupied
+                                                            </span>
+                                                            <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                                                <span style={{ width: "12px", height: "12px", borderRadius: "4px", background: "linear-gradient(135deg, #dbeafe, #bfdbfe)", border: "1px solid #93c5fd" }}></span>
+                                                                Selected
+                                                            </span>
+                                                        </div>
+
+                                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px" }}>
+                                                            {typeRooms.map(room => {
+                                                                const isOccupied = room.is_occupied;
+                                                                const isSelected = manualSelectedRooms.some(r => r.room_id === room.room_id);
+                                                                const canSelect = !isOccupied && (isSelected || manualSelectedRooms.length < petsToAssign);
+
+                                                                return (
+                                                                    <div
+                                                                        key={room.room_id}
+                                                                        onClick={() => {
+                                                                            if (isOccupied) return;
+                                                                            if (isSelected) {
+                                                                                setManualSelectedRooms(prev => prev.filter(r => r.room_id !== room.room_id));
+                                                                            } else if (canSelect) {
+                                                                                setManualSelectedRooms(prev => [...prev, room]);
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            borderRadius: "10px",
+                                                                            border: isSelected ? "2px solid #3b82f6" : isOccupied ? "1px solid #fca5a5" : "1px solid #6ee7b7",
+                                                                            background: isSelected
+                                                                                ? "linear-gradient(135deg, #eff6ff, #dbeafe)"
+                                                                                : isOccupied
+                                                                                    ? "linear-gradient(135deg, #fff5f5, #fee2e2)"
+                                                                                    : "linear-gradient(135deg, #f0fdf4, #d1fae5)",
+                                                                            padding: "14px",
+                                                                            cursor: isOccupied ? "not-allowed" : canSelect || isSelected ? "pointer" : "default",
+                                                                            opacity: isOccupied ? 0.6 : (!canSelect && !isSelected) ? 0.5 : 1,
+                                                                            transition: "all 0.2s",
+                                                                            textAlign: "center"
+                                                                        }}
+                                                                    >
+                                                                        <i className={`bi ${isSelected ? "bi-check-circle-fill" : isOccupied ? "bi-door-closed-fill" : "bi-door-open"}`}
+                                                                            style={{ fontSize: "1.2rem", color: isSelected ? "#3b82f6" : isOccupied ? "#dc2626" : "#059669", display: "block", marginBottom: "4px" }}></i>
+                                                                        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1e293b" }}>
+                                                                            Room {room.display_number}
+                                                                        </span>
+                                                                        {isOccupied && room.booking && (
+                                                                            <span style={{ display: "block", fontSize: "0.68rem", color: "#dc2626", marginTop: "2px" }}>
+                                                                                {room.booking.pet_name}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {manualSelectedRooms.length > 0 && (
+                                                            <div style={{ marginTop: "12px", fontSize: "0.85rem", color: "#475569" }}>
+                                                                <i className="bi bi-check-circle me-1" style={{ color: "#3b82f6" }}></i>
+                                                                {manualSelectedRooms.length} of {petsToAssign} room{petsToAssign !== 1 ? "s" : ""} selected
+                                                                <button
+                                                                    onClick={() => setManualSelectedRooms([])}
+                                                                    style={{
+                                                                        marginLeft: "12px", padding: "2px 8px", borderRadius: "6px",
+                                                                        border: "1px solid #e2e8f0", background: "white",
+                                                                        color: "#94a3b8", fontSize: "0.75rem", cursor: "pointer"
+                                                                    }}
+                                                                >
+                                                                    Clear
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Summary & Submit */}
+                                {manualRoomType && manualCheckIn && manualCheckOut && manualDays > 0 && (
+                                    <div className="manual-entry-summary">
+                                        <div className="summary-details">
+                                            <div className="summary-row">
+                                                <span>Kennel</span>
+                                                <span>{manualKennelInfo?.name}</span>
+                                            </div>
+                                            <div className="summary-row">
+                                                <span>Guest</span>
+                                                <span>{manualUser?.first_name} {manualUser?.last_name}</span>
+                                            </div>
+                                            <div className="summary-row">
+                                                <span>Pets</span>
+                                                <span>{manualSelectedPets.map(id => manualPets.find(p => p.id === id)?.name).join(", ")}</span>
+                                            </div>
+                                            <div className="summary-row">
+                                                <span>Dates</span>
+                                                <span>{formatDate(manualCheckIn)} → {formatDate(manualCheckOut)} ({manualDays} nights)</span>
+                                            </div>
+                                            <div className="summary-row total">
+                                                <span>Total</span>
+                                                <span>₹{manualTotal}</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="manual-entry-submit"
+                                            onClick={handleManualSubmit}
+                                            disabled={manualSubmitting}
+                                        >
+                                            {manualSubmitting ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm"></span>
+                                                    Creating Booking...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="bi bi-check-circle"></i>
+                                                    Create Booking
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Extensions tab */}
+                    {activeTab === "extensions" && permissions.canManageBookings && (
+                        <>
+                            <div className="events-filters">
+                                <div className="search-box">
+                                    <i className="bi bi-search"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, phone..."
+                                        value={extensionsSearch}
+                                        onChange={(e) => setExtensionsSearch(e.target.value)}
+                                    />
+                                </div>
+                                {kennels.length > 1 && (
+                                    <div className="status-filter">
+                                        <select
+                                            value={bookingsKennelFilter}
+                                            onChange={(e) => setBookingsKennelFilter(e.target.value)}
+                                        >
+                                            <option value="all">All Kennels</option>
+                                            {bookingKennels.map(k => (
+                                                <option key={k.id} value={k.id}>{k.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <button
+                                    className="earnings-refresh-btn"
+                                    onClick={() => fetchExtensions(true)}
+                                    disabled={loadingExtensions}
+                                    style={{ marginLeft: "auto", minWidth: "unset" }}
+                                >
+                                    <i className={`bi bi-arrow-clockwise ${loadingExtensions ? 'spinning' : ''}`}></i>
+                                </button>
+                            </div>
+
+                            {loadingExtensions ? (
+                                <div className="loading-spinner">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            ) : (() => {
+                                const filtered = extensions.filter(ext => {
+                                    if (bookingsKennelFilter !== "all" && ext.kennel_id !== parseInt(bookingsKennelFilter)) return false;
+                                    if (extensionsSearch.trim()) {
+                                        const s = extensionsSearch.toLowerCase();
+                                        return (
+                                            ext.first_name?.toLowerCase().includes(s) ||
+                                            ext.last_name?.toLowerCase().includes(s) ||
+                                            ext.email?.toLowerCase().includes(s) ||
+                                            ext.phone_number?.includes(s) ||
+                                            ext.booking_id?.toString().includes(s)
+                                        );
+                                    }
+                                    return true;
+                                });
+                                const unpaid = filtered.filter(ext => ext.payment_status === "pending");
+                                const paid = filtered.filter(ext => ext.payment_status === "paid");
+                                const expired = filtered.filter(ext => ext.payment_status === "expired" || ext.payment_status === "cancelled");
+
+                                if (filtered.length === 0) {
+                                    return (
+                                        <div className="empty-state">
+                                            <i className="bi bi-credit-card"></i>
+                                            <p>No extension payments found</p>
+                                        </div>
+                                    );
+                                }
+
+                                const ExtensionCard = ({ ext, isPaid, isExpired = false }) => (
+                                    <div style={{
+                                        borderRadius: "12px",
+                                        border: isExpired ? "1px solid #fecaca" : isPaid ? "1px solid #d1fae5" : "1px solid #fde68a",
+                                        background: "white",
+                                        overflow: "hidden"
+                                    }}>
+                                        <div style={{ padding: "18px 20px" }}>
+                                            {/* Row 1: Guest + Status */}
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                    <div style={{
+                                                        width: "38px", height: "38px", borderRadius: "10px",
+                                                        background: isExpired ? "#fee2e2" : isPaid ? "#d1fae5" : "#fef3c7",
+                                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                                        fontWeight: 700, fontSize: "0.85rem",
+                                                        color: isExpired ? "#dc2626" : isPaid ? "#059669" : "#d97706", flexShrink: 0
+                                                    }}>
+                                                        {ext.first_name?.charAt(0)}{ext.last_name?.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b" }}>
+                                                            {ext.first_name} {ext.last_name}
+                                                        </div>
+                                                        <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
+                                                            Booking #{ext.booking_id}
+                                                            {kennels.length > 1 && <> · {ext.kennel_name}</>}
+                                                            {!isPaid && <> · <i className="bi bi-telephone me-1"></i>{ext.phone_number}</>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span style={{
+                                                    padding: "4px 12px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 600,
+                                                    background: isExpired ? "#fee2e2" : isPaid ? "#d1fae5" : "#fef3c7",
+                                                    color: isExpired ? "#dc2626" : isPaid ? "#059669" : "#d97706"
+                                                }}>
+                                                    {isExpired ? (ext.payment_status === "expired" ? "Expired" : "Cancelled") : isPaid ? "Paid" : "Awaiting Payment"}
+                                                </span>
+                                            </div>
+
+                                            {/* Row 2: Extension details */}
+                                            <div style={{
+                                                display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                                                gap: "2px", borderRadius: "10px", overflow: "hidden",
+                                                background: "#f8fafc", marginBottom: "14px"
+                                            }}>
+                                                <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                    <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Original Checkout</div>
+                                                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{formatDate(ext.original_checkout_date)}</div>
+                                                </div>
+                                                <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                    <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>New Checkout</div>
+                                                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{formatDate(ext.new_checkout_date)}</div>
+                                                </div>
+                                                <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                    <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Extra Days</div>
+                                                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{ext.extra_days} night{ext.extra_days !== 1 ? "s" : ""}</div>
+                                                </div>
+                                                <div style={{ padding: "10px 12px", background: "#f8fafc" }}>
+                                                    <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.04em" }}>{isPaid ? "Paid On" : "Requested"}</div>
+                                                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{formatDate(isPaid ? ext.paid_at : ext.created_at)}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Row 3: Amount + mode + link */}
+                                            {/* Row 3: Amount + mode + link + resend */}
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                    <span className={`mode-badge ${ext.payment_mode === 'online' ? 'mode-online' : 'mode-offline'}`}>
+                                                        {ext.payment_mode}
+                                                    </span>
+                                                    {!isPaid && !isExpired && ext.link_url && (
+                                                        <a
+                                                            href={ext.link_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{
+                                                                padding: "4px 10px", borderRadius: "8px",
+                                                                border: "1px solid #dbeafe", background: "#eff6ff",
+                                                                color: "#2563eb", fontSize: "0.75rem", fontWeight: 600,
+                                                                textDecoration: "none", display: "inline-flex",
+                                                                alignItems: "center", gap: "4px"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-link-45deg"></i> Payment Link
+                                                        </a>
+                                                    )}
+                                                    {!isPaid && !isExpired && (
+                                                        <button
+                                                            onClick={() => handleResendExtensionEmail(ext)}
+                                                            disabled={resendingExtensionId === ext.id}
+                                                            style={{
+                                                                padding: "4px 10px", borderRadius: "8px",
+                                                                border: "1px solid #e2e8f0", background: "#f8fafc",
+                                                                color: "#475569", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "inline-flex",
+                                                                alignItems: "center", gap: "4px"
+                                                            }}
+                                                        >
+                                                            {resendingExtensionId === ext.id ? (
+                                                                <span className="spinner-border spinner-border-sm"></span>
+                                                            ) : (
+                                                                <><i className="bi bi-envelope"></i> Resend Email</>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#1e293b" }}>
+                                                    ₹{parseFloat(ext.amount).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+
+                                const SectionHeader = ({ icon, title, count, color }) => (
+                                    <div style={{
+                                        display: "flex", alignItems: "center", gap: "10px",
+                                        marginBottom: "14px", marginTop: "8px"
+                                    }}>
+                                        <div style={{
+                                            width: "32px", height: "32px", borderRadius: "8px",
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            background: color + "18", color: color
+                                        }}>
+                                            <i className={`bi ${icon}`} style={{ fontSize: "0.95rem" }}></i>
+                                        </div>
+                                        <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#1e293b" }}>{title}</h4>
+                                        <span style={{
+                                            padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600,
+                                            background: color + "18", color: color
+                                        }}>
+                                            {count}
+                                        </span>
+                                    </div>
+                                );
+
+                                return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        {unpaid.length > 0 && (
+                                            <>
+                                                <SectionHeader icon="bi-clock-fill" title="Awaiting Payment" count={unpaid.length} color="#d97706" />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                                                    {unpaid.map(ext => <ExtensionCard key={ext.id} ext={ext} isPaid={false} />)}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {paid.length > 0 && (
+                                            <>
+                                                <SectionHeader icon="bi-check-circle-fill" title="Paid" count={paid.length} color="#059669" />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                                    {paid.map(ext => <ExtensionCard key={ext.id} ext={ext} isPaid={true} />)}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {expired.length > 0 && (
+                                            <>
+                                                <SectionHeader icon="bi-x-circle-fill" title="Expired / Cancelled" count={expired.length} color="#dc2626" />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                                    {expired.map(ext => <ExtensionCard key={ext.id} ext={ext} isPaid={false} isExpired={true} />)}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </>
+                    )}
+
+                </>
+            )}
+
+            {/* ==================== TODAY'S ACTIVITY TAB ==================== */}
+            {activeTab === "today" && (
+                <>
+                    <div className="events-filters">
+                        <div className="status-filter">
+                            <select
+                                value={bookingsKennelFilter}
+                                onChange={(e) => setBookingsKennelFilter(e.target.value)}
+                            >
+                                <option value="all">All Kennels</option>
+                                {kennels.map(k => (
+                                    <option key={k.id} value={k.id}>{k.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="search-box" style={{ maxWidth: "220px" }}>
+                            <i className="bi bi-calendar-day"></i>
+                            <input
+                                type="date"
+                                value={todayDate}
+                                onChange={(e) => setTodayDate(e.target.value)}
+                                style={{ paddingLeft: "38px" }}
+                            />
+                        </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={() => fetchAllBookings(true)}
+                            disabled={loadingBookings}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${loadingBookings ? 'spinning' : ''}`}></i>
+                        </button>
+                    </div>
+
+                    {loadingBookings ? (
+                        <div className="loading-spinner">
+                            <div className="spinner-border" role="status"></div>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                            {/* Check-ins Section */}
+                            <div style={{ background: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                                <div style={{
+                                    padding: "16px 20px",
+                                    background: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
+                                    borderBottom: "1px solid #a7f3d0",
+                                    display: "flex", alignItems: "center", gap: "10px"
+                                }}>
+                                    <i className="bi bi-box-arrow-in-right" style={{ fontSize: "1.2rem", color: "#059669" }}></i>
+                                    <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#065f46" }}>
+                                        Check-ins ({todayCheckIns.length})
+                                    </h4>
+                                </div>
+                                {todayCheckIns.length === 0 ? (
+                                    <div style={{ padding: "32px", textAlign: "center", color: "#94a3b8" }}>
+                                        <i className="bi bi-calendar-x" style={{ fontSize: "2rem", display: "block", marginBottom: "8px", opacity: 0.5 }}></i>
+                                        <p style={{ margin: 0 }}>No check-ins for this date</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: "12px" }}>
+                                        {todayCheckIns.map(b => (
+                                            <div key={b.booking_id} style={{
+                                                display: "flex", alignItems: "center", gap: "16px",
+                                                padding: "14px 16px", borderRadius: "10px",
+                                                border: "1px solid #e2e8f0", marginBottom: "8px",
+                                                background: "#fafafa"
+                                            }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.95rem" }}>
+                                                        {b.first_name} {b.last_name}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
+                                                        <i className="bi bi-telephone me-1"></i>{b.phone_number}
+                                                        <span style={{ margin: "0 8px" }}>·</span>
+                                                        <i className="bi bi-door-open me-1"></i>{b.room_type_name || "N/A"}
+                                                        {kennels.length > 1 && (
+                                                            <><span style={{ margin: "0 8px" }}>·</span><i className="bi bi-house-door me-1"></i>{b.kennel_name}</>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>
+                                                        {b.pets?.map((p, i) => (
+                                                            <span key={i} style={{
+                                                                display: "inline-block", padding: "2px 8px",
+                                                                background: p.pet_aggression === "high" ? "#fef2f2" : p.pet_aggression === "moderate" ? "#fffbeb" : "#f0fdf4",
+                                                                color: p.pet_aggression === "high" ? "#dc2626" : p.pet_aggression === "moderate" ? "#d97706" : "#16a34a",
+                                                                borderRadius: "12px", fontSize: "0.75rem", marginRight: "6px",
+                                                                fontWeight: 500
+                                                            }}>
+                                                                {p.pet_name} ({p.pet_breed}) · {p.pet_aggression}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                                                    <span style={{ fontWeight: 600, color: "#1e293b" }}>₹{b.total_price}</span>
+                                                    <span style={{
+                                                        padding: "2px 8px", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600,
+                                                        background: b.status === "completed" ? "#d1fae5" : b.status === "cancelled" ? "#fee2e2" : b.status === "checked_in" ? "#dbeafe" : "#e0e7ff",
+                                                        color: b.status === "completed" ? "#059669" : b.status === "cancelled" ? "#dc2626" : b.status === "checked_in" ? "#2563eb" : "#4f46e5"
+                                                    }}>
+                                                        {b.status === "checked_in" ? "Checked In" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Check-outs Section */}
+                            <div style={{ background: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                                <div style={{
+                                    padding: "16px 20px",
+                                    background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+                                    borderBottom: "1px solid #fcd34d",
+                                    display: "flex", alignItems: "center", gap: "10px"
+                                }}>
+                                    <i className="bi bi-box-arrow-right" style={{ fontSize: "1.2rem", color: "#b45309" }}></i>
+                                    <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#78350f" }}>
+                                        Check-outs ({todayCheckOuts.length})
+                                    </h4>
+                                </div>
+                                {todayCheckOuts.length === 0 ? (
+                                    <div style={{ padding: "32px", textAlign: "center", color: "#94a3b8" }}>
+                                        <i className="bi bi-calendar-x" style={{ fontSize: "2rem", display: "block", marginBottom: "8px", opacity: 0.5 }}></i>
+                                        <p style={{ margin: 0 }}>No check-outs for this date</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: "12px" }}>
+                                        {todayCheckOuts.map(b => (
+                                            <div key={b.booking_id} style={{
+                                                display: "flex", alignItems: "center", gap: "16px",
+                                                padding: "14px 16px", borderRadius: "10px",
+                                                border: "1px solid #e2e8f0", marginBottom: "8px",
+                                                background: "#fafafa"
+                                            }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.95rem" }}>
+                                                        {b.first_name} {b.last_name}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
+                                                        <i className="bi bi-telephone me-1"></i>{b.phone_number}
+                                                        <span style={{ margin: "0 8px" }}>·</span>
+                                                        <i className="bi bi-door-open me-1"></i>{b.room_type_name || "N/A"}
+                                                        {kennels.length > 1 && (
+                                                            <><span style={{ margin: "0 8px" }}>·</span><i className="bi bi-house-door me-1"></i>{b.kennel_name}</>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>
+                                                        {b.pets?.map((p, i) => (
+                                                            <span key={i} style={{
+                                                                display: "inline-block", padding: "2px 8px",
+                                                                background: p.pet_aggression === "high" ? "#fef2f2" : p.pet_aggression === "moderate" ? "#fffbeb" : "#f0fdf4",
+                                                                color: p.pet_aggression === "high" ? "#dc2626" : p.pet_aggression === "moderate" ? "#d97706" : "#16a34a",
+                                                                borderRadius: "12px", fontSize: "0.75rem", marginRight: "6px",
+                                                                fontWeight: 500
+                                                            }}>
+                                                                {p.pet_name} ({p.pet_breed}) · {p.pet_aggression}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                                                    <span style={{ fontWeight: 600, color: "#1e293b" }}>₹{b.total_price}</span>
+                                                    <span style={{
+                                                        padding: "2px 8px", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600,
+                                                        background: b.status === "completed" ? "#d1fae5" : b.status === "cancelled" ? "#fee2e2" : b.status === "checked_in" ? "#dbeafe" : "#e0e7ff",
+                                                        color: b.status === "completed" ? "#059669" : b.status === "cancelled" ? "#dc2626" : b.status === "checked_in" ? "#2563eb" : "#4f46e5"
+                                                    }}>
+                                                        {b.status === "checked_in" ? "Checked In" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ==================== OCCUPANCY TAB ==================== */}
+            {activeTab === "occupancy" && (
+                <>
+                    <div className="manage-events-submenu" style={{ marginBottom: "16px" }}>
+                        <button
+                            className={`submenu-item ${occupancyView === "summary" ? "active" : ""}`}
+                            onClick={() => setOccupancyView("summary")}
+                        >
+                            <i className="bi bi-bar-chart"></i>
+                            Summary
+                        </button>
+                        <button
+                            className={`submenu-item ${occupancyView === "rooms" ? "active" : ""}`}
+                            onClick={() => setOccupancyView("rooms")}
+                        >
+                            <i className="bi bi-grid-3x3"></i>
+                            Room View
+                        </button>
+                    </div>
+
+                    <div className="events-filters">
+                        {kennels.length > 1 && (
+                            <div className="status-filter">
+                                <select
+                                    value={occupancyKennelId}
+                                    onChange={(e) => setOccupancyKennelId(e.target.value)}
+                                >
+                                    {kennels.map(k => (
+                                        <option key={k.id} value={k.id}>{k.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div className="search-box" style={{ maxWidth: "180px" }}>
+                            <i className="bi bi-calendar"></i>
+                            <input
+                                type="date"
+                                value={occupancyDate}
+                                onChange={(e) => {
+                                    setOccupancyDate(e.target.value);
+                                    if (occupancyEndDate <= e.target.value) {
+                                        const d = new Date(e.target.value);
+                                        d.setDate(d.getDate() + 1);
+                                        setOccupancyEndDate(d.toISOString().split("T")[0]);
+                                    }
+                                }}
+                                style={{ paddingLeft: "38px" }}
+                            />
+                        </div>
+                        <div className="search-box" style={{ maxWidth: "180px" }}>
+                            <i className="bi bi-calendar-check"></i>
+                            <input
+                                type="date"
+                                value={occupancyEndDate}
+                                min={occupancyDate}
+                                onChange={(e) => setOccupancyEndDate(e.target.value)}
+                                style={{ paddingLeft: "38px" }}
+                            />
+                        </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={() => { fetchOccupancy(); if (occupancyView === "rooms") fetchRoomOccupancy(true); }}
+                            disabled={loadingOccupancy || loadingRoomOccupancy}
+                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                        >
+                            <i className={`bi bi-arrow-clockwise ${(loadingOccupancy || loadingRoomOccupancy) ? 'spinning' : ''}`}></i>
+                        </button>
+                    </div>
+
+                    {/* ---- SUMMARY VIEW ---- */}
+                    {occupancyView === "summary" && (
+                        <>
+                            {loadingOccupancy ? (
+                                <div className="loading-spinner">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            ) : !occupancyData ? (
+                                <div className="loading-spinner">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            ) : occupancyData.room_types?.length === 0 ? (
+                                <div className="empty-state">
+                                    <i className="bi bi-door-open"></i>
+                                    <p>No room types configured for this kennel</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                    {occupancyData.room_types.map((rt, idx) => {
+                                        const totalRooms = parseInt(rt.available_rooms) + (allBookings.filter(b =>
+                                            b.kennel_id === parseInt(occupancyKennelId) &&
+                                            b.room_type_name === rt.room_type &&
+                                            (b.status === "booked" || b.status === "checked_in") &&
+                                            new Date(b.check_in_date) < new Date(occupancyEndDate) &&
+                                            new Date(b.check_out_date) > new Date(occupancyDate)
+                                        ).length || 0);
+                                        const occupied = totalRooms - parseInt(rt.available_rooms);
+                                        const percentage = totalRooms > 0 ? (occupied / totalRooms) * 100 : 0;
+                                        return (
+                                            <div key={idx} style={{
+                                                background: "white", borderRadius: "12px", padding: "20px",
+                                                border: "1px solid #e2e8f0"
+                                            }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                                                    <div>
+                                                        <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>
+                                                            {rt.room_type}
+                                                        </h4>
+                                                        <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                                            S: ₹{rt.price_small} · M: ₹{rt.price_medium} · L: ₹{rt.price_large}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ textAlign: "right" }}>
+                                                        <span style={{
+                                                            fontSize: "1.4rem", fontWeight: 700,
+                                                            color: percentage >= 90 ? "#dc2626" : percentage >= 70 ? "#d97706" : "#059669"
+                                                        }}>
+                                                            {rt.available_rooms}
+                                                        </span>
+                                                        <span style={{ fontSize: "0.85rem", color: "#64748b" }}> / {totalRooms} available</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    height: "10px", background: "#f1f5f9", borderRadius: "5px",
+                                                    overflow: "hidden"
+                                                }}>
+                                                    <div style={{
+                                                        height: "100%", borderRadius: "5px", transition: "width 0.5s ease",
+                                                        width: `${percentage}%`,
+                                                        background: percentage >= 90 ? "linear-gradient(90deg, #ef4444, #dc2626)" :
+                                                            percentage >= 70 ? "linear-gradient(90deg, #f59e0b, #d97706)" :
+                                                                "linear-gradient(90deg, #10b981, #059669)"
+                                                    }}></div>
+                                                </div>
+                                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "0.75rem", color: "#94a3b8" }}>
+                                                    <span>{occupied} occupied</span>
+                                                    <span>{Math.round(percentage)}% full</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* ---- ROOM VIEW ---- */}
+                    {occupancyView === "rooms" && (
+                        <>
+                            {loadingRoomOccupancy ? (
+                                <div className="loading-spinner">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            ) : roomOccupancy.length === 0 ? (
+                                <div className="loading-spinner">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                                    {/* Legend */}
+                                    <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", fontSize: "0.8rem", color: "#64748b" }}>
+                                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "linear-gradient(135deg, #d1fae5, #a7f3d0)", border: "1px solid #6ee7b7" }}></span>
+                                            Available
+                                        </span>
+                                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "linear-gradient(135deg, #fffbeb, #fef3c7)", border: "1px solid #fcd34d" }}></span>
+                                            Booked
+                                        </span>
+                                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "linear-gradient(135deg, #fee2e2, #fecaca)", border: "1px solid #fca5a5" }}></span>
+                                            Checked In
+                                        </span>
+                                    </div>
+
+                                    {/* Group by room type */}
+                                    {(() => {
+                                        const grouped = {};
+                                        roomOccupancy.forEach(r => {
+                                            if (!grouped[r.room_type_name]) grouped[r.room_type_name] = [];
+                                            grouped[r.room_type_name].push(r);
+                                        });
+                                        return Object.entries(grouped).map(([typeName, rooms]) => {
+                                            const occupiedCount = rooms.filter(r => r.is_occupied).length;
+                                            return (
+                                                <div key={typeName}>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                                                        <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>{typeName}</h4>
+                                                        <span style={{
+                                                            padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600,
+                                                            background: occupiedCount === rooms.length ? "#fee2e2" : occupiedCount === 0 ? "#d1fae5" : "#fef3c7",
+                                                            color: occupiedCount === rooms.length ? "#dc2626" : occupiedCount === 0 ? "#059669" : "#d97706"
+                                                        }}>
+                                                            {occupiedCount}/{rooms.length} occupied
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
+                                                        {rooms.map(room => {
+                                                            const bookingStatus = room.booking?.status;
+                                                            const isCheckedIn = room.is_occupied && bookingStatus === "checked_in";
+                                                            const isBooked = room.is_occupied && bookingStatus === "booked";
+                                                            return (
+                                                                <div
+                                                                    key={`${room.room_type_id}-${room.display_number}`}
+                                                                    onClick={() => room.is_occupied && setSelectedRoom(room)}
+                                                                    style={{
+                                                                        borderRadius: "12px",
+                                                                        border: isCheckedIn ? "1px solid #fca5a5" : isBooked ? "1px solid #fcd34d" : "1px solid #6ee7b7",
+                                                                        background: isCheckedIn
+                                                                            ? "linear-gradient(135deg, #fff5f5, #fee2e2)"
+                                                                            : isBooked
+                                                                                ? "linear-gradient(135deg, #fffbeb, #fef3c7)"
+                                                                                : "linear-gradient(135deg, #f0fdf4, #d1fae5)",
+                                                                        padding: "16px",
+                                                                        transition: "all 0.2s",
+                                                                        cursor: room.is_occupied ? "pointer" : "default"
+                                                                    }}
+                                                                >
+                                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                                            <i className={`bi ${isCheckedIn ? "bi-door-closed-fill" : isBooked ? "bi-door-closed" : "bi-door-open"}`}
+                                                                                style={{ fontSize: "1.1rem", color: isCheckedIn ? "#dc2626" : isBooked ? "#d97706" : "#059669" }}></i>
+                                                                            <span style={{ fontWeight: 700, fontSize: "1rem", color: "#1e293b" }}>
+                                                                                Room {room.display_number}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span style={{
+                                                                            padding: "2px 8px", borderRadius: "8px", fontSize: "0.7rem", fontWeight: 600,
+                                                                            background: isCheckedIn ? "#dc2626" : isBooked ? "#d97706" : "#059669",
+                                                                            color: "white"
+                                                                        }}>
+                                                                            {isCheckedIn ? "Checked In" : isBooked ? "Booked" : "Free"}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* ==================== EMPLOYEES TAB ==================== */}
+            {activeTab === "employees" && loadingKennels && (
+                <div className="loading-spinner">
+                    <div className="spinner-border" role="status"></div>
+                </div>
+            )}
+            {activeTab === "employees" && !loadingKennels && !permissions.isOwner && (
+                <div className="empty-state">
+                    <i className="bi bi-shield-lock"></i>
+                    <p>Only kennel owners can manage employees</p>
+                </div>
+            )}
+            {activeTab === "employees" && !loadingKennels && permissions.isOwner && (
+                <>
+                    <div className="events-filters">
+                        {kennels.filter(k => k.user_role === "owner").length > 1 && (
+                            <div className="status-filter">
+                                <select
+                                    value={employeesKennelId}
+                                    onChange={(e) => setEmployeesKennelId(e.target.value)}
+                                >
+                                    {kennels.filter(k => k.user_role === "owner").map(k => (
+                                        <option key={k.id} value={k.id}>{k.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div className="search-box">
+                            <i className="bi bi-search"></i>
+                            <input
+                                type="text"
+                                placeholder="Search by name, email, phone..."
+                                value={employeesSearch}
+                                onChange={(e) => setEmployeesSearch(e.target.value)}
+                            />
+                        </div>
+                        <button
+                            className="earnings-refresh-btn"
+                            onClick={() => {
+                                if (!showAddEmployee) {
+                                    setShowAddEmployee(true);
+                                    if (employeeUsers.length === 0) fetchEmployeeUsers();
+                                } else {
+                                    setShowAddEmployee(false);
+                                }
+                            }}
+                            style={{ marginLeft: "auto" }}
+                        >
+                            <i className={`bi ${showAddEmployee ? 'bi-x-lg' : 'bi-person-plus'}`}></i>
+                            {showAddEmployee ? " Cancel" : " Add Employee"}
+                        </button>
+                    </div>
+
+                    {/* Add Employee Form */}
+                    {showAddEmployee && (
+                        <div style={{
+                            background: "white", borderRadius: "12px", padding: "20px",
+                            border: "1px solid #e2e8f0", marginBottom: "20px"
+                        }}>
+                            <h4 style={{ margin: "0 0 16px", fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>Add Employee</h4>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                                <div>
+                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>User *</label>
+                                    {loadingEmployeeUsers ? (
+                                        <div className="manual-entry-loading"><div className="spinner-border spinner-border-sm"></div></div>
+                                    ) : (
+                                        <select
+                                            value={newEmployee.user_id}
+                                            onChange={(e) => setNewEmployee({ ...newEmployee, user_id: e.target.value })}
+                                            className="manual-entry-select"
+                                        >
+                                            <option value="">Choose a user...</option>
+                                            {employeeUsers.map(u => (
+                                                <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.email})</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                                <div>
+                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "10px" }}>Permissions</label>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        <label style={{
+                                            display: "flex", alignItems: "center", gap: "10px",
+                                            fontSize: "0.9rem", color: "#94a3b8"
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={true}
+                                                disabled
+                                                style={{ width: "18px", height: "18px", accentColor: "#1e293b" }}
+                                            />
+                                            <i className="bi bi-house-door" style={{ color: "#94a3b8" }}></i>
+                                            Basic Access (My Kennels, Today's Activity, Occupancy)
+                                        </label>
+                                        {[
+                                            { key: "can_manage_bookings", label: "Manage Bookings (Bookings, Manual Booking)", icon: "bi-calendar-check" },
+                                            { key: "can_manage_kennel", label: "Manage Kennel (Profile, Revenue, Maintenance Closure)", icon: "bi-gear" }
+                                        ].map(perm => (
+                                            <label key={perm.key} style={{
+                                                display: "flex", alignItems: "center", gap: "10px",
+                                                cursor: "pointer", fontSize: "0.9rem", color: "#334155"
+                                            }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newEmployee[perm.key]}
+                                                    onChange={(e) => setNewEmployee({ ...newEmployee, [perm.key]: e.target.checked })}
+                                                    style={{ width: "18px", height: "18px", accentColor: "#1e293b" }}
+                                                />
+                                                <i className={`bi ${perm.icon}`} style={{ color: "#64748b" }}></i>
+                                                {perm.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <button
+                                    className="manual-entry-submit"
+                                    onClick={handleAddEmployee}
+                                    disabled={submittingEmployee || !newEmployee.user_id}
+                                    style={{ marginTop: "4px" }}
+                                >
+                                    {submittingEmployee ? (
+                                        <><span className="spinner-border spinner-border-sm"></span> Adding...</>
+                                    ) : (
+                                        <><i className="bi bi-person-plus"></i> Add Employee</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Employee List */}
+                    {loadingEmployees ? (
+                        <div className="loading-spinner">
+                            <div className="spinner-border" role="status"></div>
+                        </div>
+                    ) : employees.filter(emp => {
+                        if (!employeesSearch.trim()) return true;
+                        const s = employeesSearch.toLowerCase();
+                        return (
+                            emp.first_name?.toLowerCase().includes(s) ||
+                            emp.last_name?.toLowerCase().includes(s) ||
+                            emp.email?.toLowerCase().includes(s) ||
+                            emp.phone_number?.includes(s)
+                        );
+                    }).length === 0 ? (
+                        <div className="empty-state">
+                            <i className="bi bi-person-badge"></i>
+                            <p>No employees added yet</p>
+                        </div>
+                    ) : (
+                        <div className="registrations-table-wrapper">
+                            <table className="registrations-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Bookings</th>
+                                        <th>Kennel</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {employees.filter(emp => {
+                                        if (!employeesSearch.trim()) return true;
+                                        const s = employeesSearch.toLowerCase();
+                                        return (
+                                            emp.first_name?.toLowerCase().includes(s) ||
+                                            emp.last_name?.toLowerCase().includes(s) ||
+                                            emp.email?.toLowerCase().includes(s) ||
+                                            emp.phone_number?.includes(s)
+                                        );
+                                    }).map(emp => (
+                                        <tr key={emp.id}>
+                                            <td>{emp.first_name} {emp.last_name}</td>
+                                            <td>{emp.email}</td>
+                                            <td>{emp.phone_number}</td>
+                                            <td><i className={`bi ${emp.can_manage_bookings ? 'bi-check-circle-fill' : 'bi-x-circle'}`} style={{ color: emp.can_manage_bookings ? "#059669" : "#dc2626" }}></i></td>
+                                            <td><i className={`bi ${emp.can_manage_kennel ? 'bi-check-circle-fill' : 'bi-x-circle'}`} style={{ color: emp.can_manage_kennel ? "#059669" : "#dc2626" }}></i></td>
+                                            <td>
+                                                <button
+                                                    onClick={() => handleRemoveEmployee(emp.id)}
+                                                    style={{
+                                                        padding: "4px 10px", borderRadius: "6px", border: "1px solid #fecaca",
+                                                        background: "#fef2f2", color: "#dc2626", fontSize: "0.8rem",
+                                                        cursor: "pointer"
+                                                    }}
+                                                >
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ==================== MAINTENANCE CLOSURE TAB ==================== */}
+            {activeTab === "closure" && loadingKennels && (
+                <div className="loading-spinner">
+                    <div className="spinner-border" role="status"></div>
+                </div>
+            )}
+            {activeTab === "closure" && !loadingKennels && !(permissions.isOwner || permissions.canManageKennel) && (
+                <div className="empty-state">
+                    <i className="bi bi-shield-lock"></i>
+                    <p>You don't have access to manage maintenance closures</p>
+                </div>
+            )}
+            {activeTab === "closure" && !loadingKennels && (permissions.isOwner || permissions.canManageKennel) && (
+                <>
+                    {/* Warning */}
+                    <div style={{
+                        padding: "16px 20px", borderRadius: "10px", marginBottom: "20px",
+                        background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                        border: "1px solid #fca5a5"
+                    }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                            <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.3rem", color: "#dc2626", marginTop: "2px" }}></i>
+                            <div>
+                                <h4 style={{ margin: "0 0 6px", fontSize: "1rem", fontWeight: 600, color: "#991b1b" }}>
+                                    Scheduling a Maintenance Closure
+                                </h4>
+                                <p style={{ margin: 0, fontSize: "0.85rem", color: "#b91c1c", lineHeight: 1.5 }}>
+                                    During a maintenance closure, no new bookings (online or offline) will be accepted for the kennel.
+                                    Existing bookings during the closure period must be cancelled manually before scheduling.
+                                    The kennel will not appear in search results and no revenue will be generated during this period.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Schedule Form */}
+                    <div style={{
+                        background: "white", borderRadius: "12px", padding: "24px",
+                        border: "1px solid #e2e8f0", marginBottom: "24px"
+                    }}>
+                        <h4 style={{ margin: "0 0 20px", fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>
+                            Schedule New Closure
+                        </h4>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>Kennel</label>
+                                {profileKennels.length === 1 ? (
+                                    (() => {
+                                        if (!closureKennelId) setClosureKennelId(profileKennels[0].id);
+                                        return (
+                                            <div className="manual-entry-select" style={{ background: "#f8fafc", cursor: "default" }}>
+                                                {profileKennels[0].name}
+                                            </div>
+                                        );
+                                    })()
+                                ) : (
+                                    <select
+                                        value={closureKennelId}
+                                        onChange={(e) => setClosureKennelId(e.target.value)}
+                                        className="manual-entry-select"
+                                    >
+                                        {profileKennels.map(k => (
+                                            <option key={k.id} value={k.id}>{k.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                                <div style={{ flex: 1, minWidth: "180px" }}>
+                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={closureStart}
+                                        min={new Date().toISOString().split("T")[0]}
+                                        onChange={(e) => {
+                                            setClosureStart(e.target.value);
+                                            setConflictingBookings([]);
+                                            if (closureEnd && e.target.value >= closureEnd) setClosureEnd("");
+                                        }}
+                                        className="manual-entry-select"
+                                    />
+                                </div>
+                                <div style={{ flex: 1, minWidth: "180px" }}>
+                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>End Date</label>
+                                    <input
+                                        type="date"
+                                        value={closureEnd}
+                                        min={closureStart || new Date().toISOString().split("T")[0]}
+                                        onChange={(e) => { setClosureEnd(e.target.value); setConflictingBookings([]); }}
+                                        className="manual-entry-select"
+                                        disabled={!closureStart}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>Reason (optional)</label>
+                                <input
+                                    type="text"
+                                    value={closureReason}
+                                    onChange={(e) => setClosureReason(e.target.value)}
+                                    placeholder="e.g. Maintenance, Renovation, Deep Cleaning"
+                                    className="manual-entry-select"
+                                />
+                            </div>
+
+                            {/* Conflicting Bookings Warning */}
+                            {conflictingBookings.length > 0 && (
+                                <div style={{
+                                    padding: "16px", borderRadius: "10px",
+                                    background: "#fef2f2", border: "1px solid #fecaca"
+                                }}>
+                                    <div style={{ fontWeight: 600, color: "#dc2626", fontSize: "0.9rem", marginBottom: "10px" }}>
+                                        <i className="bi bi-exclamation-circle me-2"></i>
+                                        {conflictingBookings.length} booking{conflictingBookings.length !== 1 ? "s" : ""} found during this period:
+                                    </div>
+                                    {conflictingBookings.map((b, idx) => (
+                                        <div key={idx} style={{
+                                            padding: "10px 12px", background: "white", borderRadius: "8px",
+                                            marginBottom: "6px", fontSize: "0.85rem", color: "#1e293b",
+                                            display: "flex", justifyContent: "space-between", alignItems: "center"
+                                        }}>
+                                            <div>
+                                                <span style={{ fontWeight: 600 }}>#{b.booking_id}</span>
+                                                <span style={{ margin: "0 8px", color: "#94a3b8" }}>·</span>
+                                                {b.guest}
+                                            </div>
+                                            <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                                <i className="bi bi-telephone me-1"></i>{b.phone}
+                                                <span style={{ margin: "0 8px" }}>·</span>
+                                                {formatDate(b.check_in)} → {formatDate(b.check_out)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <p style={{ margin: "10px 0 0", fontSize: "0.8rem", color: "#b91c1c" }}>
+                                        Please contact these customers to cancel their bookings before scheduling the closure.
+                                    </p>
+                                </div>
+                            )}
+
+                            <button
+                                className="manual-entry-submit"
+                                onClick={handleCreateClosure}
+                                disabled={submittingClosure || !closureStart || !closureEnd}
+                                style={{
+                                    alignSelf: "flex-start",
+                                    background: "linear-gradient(135deg, #dc2626, #b91c1c)"
+                                }}
+                            >
+                                {submittingClosure ? (
+                                    <><span className="spinner-border spinner-border-sm"></span> Scheduling...</>
+                                ) : (
+                                    <><i className="bi bi-exclamation-triangle"></i> Schedule Closure</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Existing Closures */}
+                    <div style={{
+                        background: "white", borderRadius: "12px",
+                        border: "1px solid #e2e8f0", overflow: "hidden"
+                    }}>
+                        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9" }}>
+                            <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>
+                                Scheduled Closures
+                            </h4>
+                        </div>
+                        {loadingClosures ? (
+                            <div className="loading-spinner">
+                                <div className="spinner-border" role="status"></div>
+                            </div>
+                        ) : closures.filter(c => {
+                            if (profileKennels.length > 0) {
+                                const ids = new Set(profileKennels.map(k => k.id));
+                                return ids.has(c.kennel_id);
+                            }
+                            return true;
+                        }).length === 0 ? (
+                            <div style={{ padding: "32px", textAlign: "center", color: "#94a3b8" }}>
+                                <i className="bi bi-calendar-check" style={{ fontSize: "2rem", display: "block", marginBottom: "8px", opacity: 0.5 }}></i>
+                                <p style={{ margin: 0 }}>No upcoming closures scheduled</p>
+                            </div>
+                        ) : (
+                            <div style={{ padding: "12px" }}>
+                                {closures.filter(c => {
+                                    if (profileKennels.length > 0) {
+                                        const ids = new Set(profileKennels.map(k => k.id));
+                                        return ids.has(c.kennel_id);
+                                    }
+                                    return true;
+                                }).map(c => {
+                                    const today = new Date().toISOString().split("T")[0];
+                                    const isActive = today >= c.closure_start && today < c.closure_end;
+                                    return (
+                                        <div key={c.id} style={{
+                                            display: "flex", alignItems: "center", gap: "16px",
+                                            padding: "14px 16px", borderRadius: "10px",
+                                            border: isActive ? "1px solid #fca5a5" : "1px solid #e2e8f0",
+                                            background: isActive ? "#fff5f5" : "#fafafa",
+                                            marginBottom: "8px"
+                                        }}>
+                                            <div style={{
+                                                width: "40px", height: "40px", borderRadius: "10px",
+                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                background: isActive ? "#fee2e2" : "#fef3c7",
+                                                flexShrink: 0
+                                            }}>
+                                                <i className={`bi ${isActive ? "bi-x-circle-fill" : "bi-clock-fill"}`}
+                                                    style={{ color: isActive ? "#dc2626" : "#d97706", fontSize: "1.1rem" }}></i>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.95rem" }}>
+                                                    {c.kennel_name}
+                                                </div>
+                                                <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
+                                                    {formatDate(c.closure_start)} → {formatDate(c.closure_end)}
+                                                    {c.reason && <span style={{ margin: "0 8px" }}>·</span>}
+                                                    {c.reason && <span>{c.reason}</span>}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                <span style={{
+                                                    padding: "3px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600,
+                                                    background: isActive ? "#fee2e2" : "#fef3c7",
+                                                    color: isActive ? "#dc2626" : "#d97706"
+                                                }}>
+                                                    {isActive ? "Active" : "Upcoming"}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleCancelClosure(c.id)}
+                                                    disabled={cancellingClosureId === c.id}
+                                                    style={{
+                                                        padding: "6px 12px", borderRadius: "8px",
+                                                        border: "1px solid #fecaca", background: "#fef2f2",
+                                                        color: "#dc2626", fontSize: "0.8rem", cursor: "pointer"
+                                                    }}
+                                                >
+                                                    {cancellingClosureId === c.id ? (
+                                                        <span className="spinner-border spinner-border-sm"></span>
+                                                    ) : (
+                                                        <><i className="bi bi-x-lg me-1"></i>Cancel</>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {/* ==================== KENNEL INFO MODAL ==================== */}
+            {showKennelModal && (
+                <div className="event-modal-overlay" onClick={() => { setShowKennelModal(false); setKennelInfo(null); }}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="event-modal-header">
+                            <h3>Kennel Details</h3>
+                            <button onClick={() => { setShowKennelModal(false); setKennelInfo(null); }}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            {kennelInfo ? (
+                                <>
+                                    {/* Images */}
+                                    {kennelInfo.images?.length > 0 && (
+                                        <div className="modal-event-images">
+                                            {kennelInfo.images.map((img, idx) => (
+                                                <img key={idx} src={img.image_url} alt={img.alt_text || kennelInfo.name} />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Basic Info */}
+                                    <div className="modal-section">
+                                        <h4>{kennelInfo.name}</h4>
+                                        <span className={`status-badge ${kennelInfo.is_active ? 'upcoming' : 'past'}`}>
+                                            {kennelInfo.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
+
+                                    {/* Address & Details */}
+                                    <div className="modal-section info-grid">
+                                        <div className="info-item">
+                                            <i className="bi bi-geo-alt"></i>
+                                            <span>{kennelInfo.street_address_1}{kennelInfo.street_address_2 ? `, ${kennelInfo.street_address_2}` : ""}</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <i className="bi bi-pin-map"></i>
+                                            <span>{kennelInfo.city}, {kennelInfo.state} - {kennelInfo.pin_code}</span>
+                                        </div>
+                                        <div className="info-item">
+                                            <i className="bi bi-percent"></i>
+                                            <span>Markup: {kennelInfo.markup}%</span>
+                                        </div>
+                                        {kennelInfo.owner && (
+                                            <div className="info-item">
+                                                <i className="bi bi-person"></i>
+                                                <span>Owner: {kennelInfo.owner.first_name} {kennelInfo.owner.last_name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Features */}
+                                    {kennelInfo.features?.length > 0 && (
+                                        <div className="modal-section">
+                                            <h5>Features</h5>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                                {kennelInfo.features.map((f, idx) => (
+                                                    <span key={idx} style={{
+                                                        padding: "4px 12px",
+                                                        background: "#f1f5f9",
+                                                        borderRadius: "20px",
+                                                        fontSize: "0.8rem",
+                                                        color: "#475569"
+                                                    }}>
+                                                        {f.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Rooms */}
+                                    {kennelInfo.rooms?.length > 0 && (
+                                        <div className="modal-section">
+                                            <h5>Room Types</h5>
+                                            <div className="pricing-list">
+                                                {kennelInfo.rooms.map((room, idx) => (
+                                                    <div key={idx} className="pricing-item">
+                                                        <span className="tier-label">{room.room_type_name}</span>
+                                                        <span className="tier-price">{room.count} rooms</span>
+                                                        <span className="tier-sold">
+                                                            S: ₹{room.price_small} · M: ₹{room.price_medium} · L: ₹{room.price_large}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Action: View Bookings */}
+                                    {permissions.canManageBookings && (
+                                        <div className="modal-actions">
+                                            <button
+                                                className="btn-view-registrations"
+                                                onClick={() => {
+                                                    setShowKennelModal(false);
+                                                    setKennelInfo(null);
+                                                    setBookingsKennelFilter(String(kennelInfo.id));
+                                                    setBookingsSearch("");
+                                                    setBookingsStatusFilter("all");
+                                                    setBookingsModeFilter("all");
+                                                    navigate("/admin/kennels-admin/bookings");
+                                                    fetchAllBookings(true);
+                                                }}
+                                            >
+                                                <i className="bi bi-calendar-check"></i>
+                                                View Bookings
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="modal-loading">
+                                    <div className="spinner-border" role="status"></div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Checkout Pending Payments Modal */}
+            {showCheckoutModal && checkoutBooking && (
+                <div className="event-modal-overlay" onClick={() => setShowCheckoutModal(false)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
+                        <div className="event-modal-header">
+                            <h3>Pending Payments</h3>
+                            <button onClick={() => setShowCheckoutModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            {/* Booking info */}
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", marginBottom: "4px" }}>
+                                    #{checkoutBooking.booking_id} · {checkoutBooking.first_name} {checkoutBooking.last_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                    {checkoutBooking.kennel_name} · {checkoutBooking.phone_number}
+                                </div>
+                            </div>
+
+                            {/* All paid state */}
+                            {!checkoutPending && (
+                                <div style={{
+                                    padding: "20px", borderRadius: "10px",
+                                    background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "20px",
+                                    textAlign: "center"
+                                }}>
+                                    <i className="bi bi-check-circle-fill" style={{ fontSize: "2rem", color: "#059669", display: "block", marginBottom: "8px" }}></i>
+                                    <div style={{ fontWeight: 600, color: "#065f46", fontSize: "1rem", marginBottom: "4px" }}>All Payments Received!</div>
+                                    <div style={{ fontSize: "0.85rem", color: "#059669" }}>You can now complete the checkout.</div>
+                                </div>
+                            )}
+
+                            {checkoutPending && (
+                                <>
+                                    {/* Warning */}
+                                    <div style={{
+                                        padding: "14px 16px", borderRadius: "10px",
+                                        background: "#fffbeb", border: "1px solid #fde68a", marginBottom: "20px"
+                                    }}>
+                                        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                                            <i className="bi bi-exclamation-triangle-fill" style={{ color: "#d97706", fontSize: "1.1rem", marginTop: "1px" }}></i>
+                                            <div style={{ fontSize: "0.85rem", color: "#92400e", lineHeight: 1.5 }}>
+                                                This booking has {checkoutPending.pending_extensions.length} pending extension payment{checkoutPending.pending_extensions.length !== 1 ? "s" : ""}. You can resend reminders or proceed with checkout anyway.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Online pending */}
+                            {checkoutPending && checkoutPending.online_pending_total > 0 && (
+                                <div style={{ marginBottom: "16px" }}>
+                                    <div style={{
+                                        display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px"
+                                    }}>
+                                        <i className="bi bi-globe" style={{ color: "#2563eb" }}></i>
+                                        <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>Online Payments Pending</span>
+                                        <span style={{
+                                            marginLeft: "auto", fontWeight: 700, color: "#2563eb", fontSize: "1rem"
+                                        }}>₹{checkoutPending.online_pending_total.toFixed(2)}</span>
+                                    </div>
+                                    {checkoutPending.pending_extensions.filter(e => e.payment_mode === "online").map((ext) => (
+                                        <div key={ext.id} style={{
+                                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                                            padding: "10px 14px", borderRadius: "8px",
+                                            background: "#eff6ff", border: "1px solid #dbeafe", marginBottom: "8px"
+                                        }}>
+                                            <div>
+                                                <div style={{ fontSize: "0.85rem", fontWeight: 500, color: "#1e293b" }}>
+                                                    +{ext.extra_days} night{ext.extra_days !== 1 ? "s" : ""} · ₹{ext.amount.toFixed(2)}
+                                                </div>
+                                                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                                                    {formatDate(ext.original_checkout)} → {formatDate(ext.new_checkout)}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", gap: "6px" }}>
+                                                {ext.link_url && (
+                                                    <button
+                                                        onClick={() => handleResendCheckoutEmail(ext)}
+                                                        disabled={resendingCheckoutId === ext.id}
+                                                        style={{
+                                                            padding: "5px 12px", borderRadius: "8px",
+                                                            border: "1px solid #dbeafe", background: "white",
+                                                            color: "#2563eb", fontSize: "0.75rem", fontWeight: 600,
+                                                            cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                            whiteSpace: "nowrap"
+                                                        }}
+                                                    >
+                                                        {resendingCheckoutId === ext.id ? (
+                                                            <span className="spinner-border spinner-border-sm"></span>
+                                                        ) : (
+                                                            <><i className="bi bi-envelope"></i> Resend</>
+                                                        )}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={async () => {
+                                                        setRefreshingCheckout(true);
+                                                        const response = await callServicesApi({
+                                                            action: "GET_BOOKING_EXTENSIONS",
+                                                            session_id,
+                                                            booking_id: checkoutBooking.booking_id
+                                                        });
+                                                        if (response?.success) {
+                                                            const pending = (response.extensions || []).filter(e => e.payment_status === "pending");
+                                                            if (pending.length === 0) {
+                                                                setCheckoutPending(null);
+                                                                setSuccessMsg("All payments received!");
+                                                            } else {
+                                                                const online = pending.filter(e => e.payment_mode === "online");
+                                                                const offline = pending.filter(e => e.payment_mode === "offline");
+                                                                setCheckoutPending({
+                                                                    ...checkoutPending,
+                                                                    pending_extensions: pending.map(p => ({
+                                                                        id: p.id,
+                                                                        amount: parseFloat(p.amount),
+                                                                        payment_mode: p.payment_mode,
+                                                                        extra_days: p.extra_days,
+                                                                        link_url: p.link_url,
+                                                                        original_checkout: p.original_checkout_date,
+                                                                        new_checkout: p.new_checkout_date
+                                                                    })),
+                                                                    online_pending_total: online.reduce((s, e) => s + parseFloat(e.amount), 0),
+                                                                    offline_pending_total: offline.reduce((s, e) => s + parseFloat(e.amount), 0)
+                                                                });
+                                                            }
+                                                        }
+                                                        setRefreshingCheckout(false);
+                                                    }}
+                                                    disabled={refreshingCheckout}
+                                                    style={{
+                                                        padding: "5px 10px", borderRadius: "8px",
+                                                        border: "1px solid #e2e8f0", background: "white",
+                                                        color: "#475569", fontSize: "0.75rem", fontWeight: 600,
+                                                        cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                        whiteSpace: "nowrap"
+                                                    }}
+                                                >
+                                                    {refreshingCheckout ? (
+                                                        <span className="spinner-border spinner-border-sm"></span>
+                                                    ) : (
+                                                        <i className="bi bi-arrow-clockwise"></i>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Offline pending */}
+                            {checkoutPending && checkoutPending.offline_pending_total > 0 && (
+                                <div style={{ marginBottom: "20px" }}>
+                                    <div style={{
+                                        display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px"
+                                    }}>
+                                        <i className="bi bi-shop" style={{ color: "#d97706" }}></i>
+                                        <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>Collect at Checkout</span>
+                                        <span style={{
+                                            marginLeft: "auto", fontWeight: 700, color: "#d97706", fontSize: "1rem"
+                                        }}>₹{checkoutPending.offline_pending_total.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{
+                                        padding: "14px 16px", borderRadius: "10px",
+                                        background: "#fffbeb", border: "1px solid #fde68a"
+                                    }}>
+                                        <div style={{ fontSize: "0.85rem", color: "#92400e", fontWeight: 500 }}>
+                                            Please collect ₹{checkoutPending.offline_pending_total.toFixed(2)} from the customer before completing checkout.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                <button
+                                    onClick={() => setShowCheckoutModal(false)}
+                                    style={{
+                                        flex: 1, padding: "12px", borderRadius: "10px",
+                                        border: "1px solid #e2e8f0", background: "white",
+                                        color: "#475569", fontSize: "0.9rem", fontWeight: 600,
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Go Back
+                                </button>
+                                <button
+                                    onClick={handleForceCheckout}
+                                    disabled={forcingCheckout}
+                                    style={{
+                                        flex: 1, padding: "12px", borderRadius: "10px",
+                                        border: "none", background: "linear-gradient(135deg, #059669, #047857)",
+                                        color: "white", fontSize: "0.9rem", fontWeight: 600,
+                                        cursor: "pointer", display: "flex", alignItems: "center",
+                                        justifyContent: "center", gap: "6px"
+                                    }}
+                                >
+                                    {forcingCheckout ? (
+                                        <><span className="spinner-border spinner-border-sm"></span> Checking out...</>
+                                    ) : (
+                                        <><i className="bi bi-check-lg"></i> Complete Checkout</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Extend Booking Modal */}
+            {showExtendModal && extendBooking && (
+                <div className="event-modal-overlay" onClick={() => setShowExtendModal(false)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "480px" }}>
+                        <div className="event-modal-header">
+                            <h3>Extend Booking</h3>
+                            <button onClick={() => setShowExtendModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            {/* Booking Info */}
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", marginBottom: "4px" }}>
+                                    #{extendBooking.booking_id} · {extendBooking.first_name} {extendBooking.last_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                    {extendBooking.kennel_name} · Current checkout: {formatDate(extendBooking.check_out_date)}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
+                                    Payment mode: <span className={`mode-badge ${extendBooking.mode === 'online' ? 'mode-online' : 'mode-offline'}`}>{extendBooking.mode}</span>
+                                </div>
+                            </div>
+
+                            {/* New Date */}
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>New Checkout Date *</label>
+                                <input
+                                    type="date"
+                                    value={extendNewDate}
+                                    min={(() => {
+                                        const d = new Date(extendBooking.check_out_date);
+                                        d.setDate(d.getDate() + 1);
+                                        return d.toISOString().split("T")[0];
+                                    })()}
+                                    onChange={(e) => handleExtendDateChange(e.target.value)}
+                                    className="manual-entry-select"
+                                />
+                            </div>
+
+                            {/* Price */}
+                            {extendNewDate && (
+                                <>
+                                    <div style={{ marginBottom: "16px" }}>
+                                        <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>
+                                            Extension Amount (₹)
+                                            <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginLeft: "8px" }}>
+                                                Calculated: ₹{extendCalculatedAmount}
+                                            </span>
+                                        </label>
+                                        <div style={{ position: "relative" }}>
+                                            <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "0.9rem" }}>₹</span>
+                                            <input
+                                                type="number"
+                                                value={extendAmount}
+                                                onChange={(e) => setExtendAmount(e.target.value)}
+                                                className="manual-entry-select"
+                                                style={{ paddingLeft: "28px" }}
+                                                min="0"
+                                                step="0.01"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Summary */}
+                                    <div style={{
+                                        padding: "14px 16px", borderRadius: "10px",
+                                        background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                                    }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#475569", marginBottom: "6px" }}>
+                                            <span>Extra days</span>
+                                            <span style={{ fontWeight: 600 }}>
+                                                {Math.ceil((new Date(extendNewDate) - new Date(extendBooking.check_out_date)) / (1000 * 60 * 60 * 24))} day(s)
+                                            </span>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#475569", marginBottom: "6px" }}>
+                                            <span>Extension amount</span>
+                                            <span style={{ fontWeight: 600 }}>₹{parseFloat(extendAmount || 0).toFixed(2)}</span>
+                                        </div>
+                                        {extendBooking.mode === "online" && parseFloat(extendAmount) > 0 && (
+                                            <div style={{
+                                                marginTop: "8px", padding: "8px 10px", borderRadius: "8px",
+                                                background: "#eff6ff", border: "1px solid #bfdbfe",
+                                                fontSize: "0.8rem", color: "#1e40af"
+                                            }}>
+                                                <i className="bi bi-info-circle me-2"></i>
+                                                A payment link will be sent to {extendBooking.email}
+                                            </div>
+                                        )}
+                                        {extendBooking.mode === "offline" && parseFloat(extendAmount) > 0 && (
+                                            <div style={{
+                                                marginTop: "8px", padding: "8px 10px", borderRadius: "8px",
+                                                background: "#fffbeb", border: "1px solid #fde68a",
+                                                fontSize: "0.8rem", color: "#92400e"
+                                            }}>
+                                                <i className="bi bi-info-circle me-2"></i>
+                                                Amount to be collected at checkout
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            <button
+                                className="manual-entry-submit"
+                                onClick={handleSubmitExtension}
+                                disabled={submittingExtend || !extendNewDate}
+                            >
+                                {submittingExtend ? (
+                                    <><span className="spinner-border spinner-border-sm"></span> Extending...</>
+                                ) : (
+                                    <><i className="bi bi-calendar-plus"></i> Confirm Extension</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Room Detail Modal */}
+            {selectedRoom && selectedRoom.booking && (
+                <div className="event-modal-overlay" onClick={() => setSelectedRoom(null)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "420px" }}>
+                        <div className="event-modal-header">
+                            <h3>
+                                {selectedRoom.room_type_name} — Room {selectedRoom.display_number}
+                                <span style={{
+                                    marginLeft: "10px", padding: "2px 10px", borderRadius: "10px",
+                                    fontSize: "0.7rem", fontWeight: 600, verticalAlign: "middle",
+                                    background: selectedRoom.booking?.status === "checked_in" ? "#fee2e2" : "#fef3c7",
+                                    color: selectedRoom.booking?.status === "checked_in" ? "#dc2626" : "#d97706"
+                                }}>
+                                    {selectedRoom.booking?.status === "checked_in" ? "Checked In" : "Booked"}
+                                </span>
+                            </h3>
+                            <button onClick={() => setSelectedRoom(null)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            <div className="modal-section">
+                                <h5>Pet Details</h5>
+                                <div className="modal-details-grid">
+                                    <div className="modal-detail">
+                                        <span className="detail-label">Name</span>
+                                        <span className="detail-value">{selectedRoom.booking.pet_name}</span>
+                                    </div>
+                                    <div className="modal-detail">
+                                        <span className="detail-label">Breed</span>
+                                        <span className="detail-value">{selectedRoom.booking.pet_breed}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-section">
+                                <h5>Guest Details</h5>
+                                <div className="modal-details-grid">
+                                    <div className="modal-detail">
+                                        <span className="detail-label">Name</span>
+                                        <span className="detail-value">{selectedRoom.booking.guest_name}</span>
+                                    </div>
+                                    <div className="modal-detail">
+                                        <span className="detail-label">Phone</span>
+                                        <span className="detail-value">{selectedRoom.booking.phone}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-section">
+                                <h5>Stay Details</h5>
+                                <div className="modal-details-grid">
+                                    <div className="modal-detail">
+                                        <span className="detail-label">Check-in</span>
+                                        <span className="detail-value">{formatDate(selectedRoom.booking.check_in)}</span>
+                                    </div>
+                                    <div className="modal-detail">
+                                        <span className="detail-label">Check-out</span>
+                                        <span className="detail-value">{formatDate(selectedRoom.booking.check_out)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Booking Detail Modal */}
+            {selectedBooking && (
+                <BookingDetailModal
+                    booking={selectedBooking}
+                    onClose={() => setSelectedBooking(null)}
+                />
+            )}
+
+            {/* Add User Modal */}
+            {showAddUserModal && (
+                <AddUserModal
+                    session_id={session_id}
+                    onClose={() => setShowAddUserModal(false)}
+                    onUserCreated={async (userId) => {
+                        setSuccessMsg("User created successfully.");
+                        setShowAddUserModal(false);
+                        if (userId) {
+                            setLookingUpUser(true);
+                            const response = await callServicesApi({
+                                action: "LOOKUP_USER",
+                                session_id,
+                                user_id: userId
+                            });
+                            if (response?.success && response.user) {
+                                setManualUser(response.user);
+                                setManualUserQuery(response.user.email);
+                                setUserLookupDone(true);
+                                setUserNotFound(false);
+                                fetchManualPets(userId);
+                            }
+                            setLookingUpUser(false);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Add Pet Modal */}
+            {showAddPetModal && manualUser && (
+                <AddPetModal
+                    onClose={() => setShowAddPetModal(false)}
+                    onSaved={() => {
+                        setShowAddPetModal(false);
+                        if (manualUser) fetchManualPets(manualUser.id);
+                    }}
+                    userId={manualUser.id}
+                />
+            )}
+        </div>
+    );
+};
+
+export default KennelsAdminPage;

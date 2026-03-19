@@ -29,6 +29,11 @@ const ManageUsers = () => {
     const [selectedEventIds, setSelectedEventIds] = useState([]);
     const [allEvents, setAllEvents] = useState([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
+    const [boardingAccessEnabled, setBoardingAccessEnabled] = useState(false);
+    const [selectedKennelIds, setSelectedKennelIds] = useState([]);
+    const [kennelPermissions, setKennelPermissions] = useState({});
+    const [allKennels, setAllKennels] = useState([]);
+    const [loadingKennels, setLoadingKennels] = useState(false);
     const [fetchingUsers, setFetchingUsers] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -105,8 +110,8 @@ const ManageUsers = () => {
     );
 
     const handleAccessChange = (value) => {
-        setAccessFilter(prev => 
-            prev.includes(value) 
+        setAccessFilter(prev =>
+            prev.includes(value)
                 ? prev.filter(v => v !== value)
                 : [...prev, value]
         );
@@ -130,6 +135,47 @@ const ManageUsers = () => {
         }
     };
 
+    const fetchAllKennels = async () => {
+        setLoadingKennels(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_KENNELS",
+                session_id: localStorage.getItem("session_id")
+            });
+            if (response?.success) {
+                setAllKennels(response.data || []);
+            }
+        } catch (err) {
+            console.error("Error fetching kennels:", err);
+        } finally {
+            setLoadingKennels(false);
+        }
+    };
+
+    const handleKennelToggle = (kennelId) => {
+        setSelectedKennelIds(prev => {
+            if (prev.includes(kennelId)) {
+                const updated = prev.filter(id => id !== kennelId);
+                const newPerms = { ...kennelPermissions };
+                delete newPerms[kennelId];
+                setKennelPermissions(newPerms);
+                return updated;
+            }
+            setKennelPermissions(prev => ({
+                ...prev,
+                [kennelId]: { can_manage_bookings: 0, can_manage_kennel: 0 }
+            }));
+            return [...prev, kennelId];
+        });
+    };
+
+    const handleKennelPermChange = (kennelId, key, value) => {
+        setKennelPermissions(prev => ({
+            ...prev,
+            [kennelId]: { ...prev[kennelId], [key]: value ? 1 : 0 }
+        }));
+    };
+
     const handleEventToggle = (eventId) => {
         setSelectedEventIds(prev =>
             prev.includes(eventId)
@@ -141,7 +187,7 @@ const ManageUsers = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
-        
+
         // Store password before sending (it gets hashed on backend)
         const plainPassword = formData.password_hashed;
 
@@ -149,8 +195,9 @@ const ManageUsers = () => {
         const submitData = {
             ...formData,
             has_events_access: eventsAccessEnabled && selectedEventIds.length > 0,
+            has_boarding_access: boardingAccessEnabled && selectedKennelIds.length > 0,
         };
-        
+
         let payload = {
             action: "ADD_USER",
             session_id: localStorage.getItem("session_id"),
@@ -175,6 +222,25 @@ const ManageUsers = () => {
                 }
             }
 
+            // Assign kennel employee roles if kennels were selected
+            if (boardingAccessEnabled && selectedKennelIds.length > 0 && res.user_id) {
+                for (const kennelId of selectedKennelIds) {
+                    try {
+                        const perms = kennelPermissions[kennelId] || {};
+                        await callServicesApi({
+                            action: "ASSIGN_KENNEL_EMPLOYEE",
+                            session_id: localStorage.getItem("session_id"),
+                            user_id: res.user_id,
+                            kennel_id: kennelId,
+                            can_manage_bookings: perms.can_manage_bookings || 0,
+                            can_manage_kennel: perms.can_manage_kennel || 0
+                        });
+                    } catch (err) {
+                        console.error(`Error assigning kennel ${kennelId}:`, err);
+                    }
+                }
+            }
+
             // Send welcome email
             try {
                 const emailHtml = getWelcomeUserEmailHtml({
@@ -184,7 +250,7 @@ const ManageUsers = () => {
                     phoneNumber: formData.phone_number,
                     password: plainPassword
                 });
-                
+
                 await callServicesApi({
                     action: "SEND_EMAIL",
                     session_id: localStorage.getItem("session_id"),
@@ -195,7 +261,7 @@ const ManageUsers = () => {
             } catch (emailErr) {
                 console.error("Failed to send welcome email:", emailErr);
             }
-            
+
             setSuccessMsg("User added successfully.");
             setFormData({
                 first_name: "",
@@ -212,6 +278,9 @@ const ManageUsers = () => {
             });
             setEventsAccessEnabled(false);
             setSelectedEventIds([]);
+            setBoardingAccessEnabled(false);
+            setSelectedKennelIds([]);
+            setKennelPermissions({});
             fetchUsers();
         } else {
             setErrorMsg(res?.message || "Failed to add user.");
@@ -498,8 +567,17 @@ const ManageUsers = () => {
                                     <label className="permission-checkbox">
                                         <input
                                             type="checkbox"
-                                            checked={formData.has_boarding_access}
-                                            onChange={(e) => setFormData({ ...formData, has_boarding_access: e.target.checked })}
+                                            checked={boardingAccessEnabled}
+                                            onChange={(e) => {
+                                                setBoardingAccessEnabled(e.target.checked);
+                                                if (e.target.checked && allKennels.length === 0) {
+                                                    fetchAllKennels();
+                                                }
+                                                if (!e.target.checked) {
+                                                    setSelectedKennelIds([]);
+                                                    setKennelPermissions({});
+                                                }
+                                            }}
                                         />
                                         <span className="checkmark"></span>
                                         <span className="permission-label">
@@ -581,6 +659,75 @@ const ManageUsers = () => {
                                                             </span>
                                                         </span>
                                                     </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {boardingAccessEnabled && (
+                                    <div className="events-access-selector">
+                                        <label>Select Kennels to Assign</label>
+                                        {loadingKennels ? (
+                                            <div className="manual-entry-loading">
+                                                <div className="spinner-border spinner-border-sm"></div>
+                                            </div>
+                                        ) : allKennels.length === 0 ? (
+                                            <p className="form-hint">No kennels found.</p>
+                                        ) : (
+                                            <div className="events-checkbox-list">
+                                                {allKennels.map(kennel => (
+                                                    <div key={kennel.id}>
+                                                        <label className="event-checkbox-item">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedKennelIds.includes(kennel.id)}
+                                                                onChange={() => handleKennelToggle(kennel.id)}
+                                                            />
+                                                            <span className="checkmark"></span>
+                                                            <span className="event-checkbox-info">
+                                                                <span className="event-checkbox-title">{kennel.name}</span>
+                                                                <span className="event-checkbox-meta">
+                                                                    {kennel.city}, {kennel.state} · {kennel.pin_code}
+                                                                    <span className={`event-checkbox-status ${kennel.is_active ? 'upcoming' : 'past'}`}>
+                                                                        {kennel.is_active ? "Active" : "Inactive"}
+                                                                    </span>
+                                                                </span>
+                                                            </span>
+                                                        </label>
+                                                        {selectedKennelIds.includes(kennel.id) && (
+                                                            <div style={{
+                                                                marginLeft: "32px", marginBottom: "12px", padding: "10px 14px",
+                                                                background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0"
+                                                            }}>
+                                                                <span style={{ fontSize: "0.8rem", color: "#64748b", display: "block", marginBottom: "8px" }}>
+                                                                    Permissions for {kennel.name}:
+                                                                </span>
+                                                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#94a3b8", marginBottom: "6px" }}>
+                                                                    <input type="checkbox" checked disabled style={{ width: "16px", height: "16px" }} />
+                                                                    Basic Access (My Kennels, Today's Activity, Occupancy)
+                                                                </label>
+                                                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#334155", marginBottom: "6px", cursor: "pointer" }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={kennelPermissions[kennel.id]?.can_manage_bookings === 1}
+                                                                        onChange={(e) => handleKennelPermChange(kennel.id, "can_manage_bookings", e.target.checked)}
+                                                                        style={{ width: "16px", height: "16px", accentColor: "#1e293b" }}
+                                                                    />
+                                                                    Manage Bookings (Bookings, Manual Booking)
+                                                                </label>
+                                                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#334155", cursor: "pointer" }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={kennelPermissions[kennel.id]?.can_manage_kennel === 1}
+                                                                        onChange={(e) => handleKennelPermChange(kennel.id, "can_manage_kennel", e.target.checked)}
+                                                                        style={{ width: "16px", height: "16px", accentColor: "#1e293b" }}
+                                                                    />
+                                                                    Manage Kennel (Profile, Revenue, Maintenance Closure)
+                                                                </label>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}

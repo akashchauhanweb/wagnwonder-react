@@ -192,6 +192,7 @@ const EarningsDashboard = () => {
         
         const total_revenue = filteredBookings.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
         const net_profit = filteredBookings.reduce((sum, b) => {
+            if (b.mode === "offline") return sum;
             const markup = parseFloat(b.kennel_markup || 0);
             return sum + (parseFloat(b.total_price || 0) * (markup / 100));
         }, 0);
@@ -204,6 +205,38 @@ const EarningsDashboard = () => {
             vendor_payout: total_revenue - net_profit,
             avg_booking_value: total_revenue / filteredBookings.length,
             avg_stay_duration: total_days / filteredBookings.length
+        };
+    }, [filteredBookings]);
+
+    // Kennel offline collection breakdown
+    const offlineCollection = useMemo(() => {
+        if (!filteredBookings.length) return { total: 0, bookings: 0, kennels: [] };
+
+        const offlineBookings = filteredBookings.filter(b => b.mode === "offline");
+        if (!offlineBookings.length) return { total: 0, bookings: 0, kennels: [] };
+
+        const total = offlineBookings.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+
+        const kennelStats = {};
+        offlineBookings.forEach(b => {
+            const id = b.kennel_id;
+            if (!kennelStats[id]) {
+                kennelStats[id] = {
+                    kennel_id: id,
+                    kennel_name: b.kennel_name,
+                    city: b.kennel_city,
+                    booking_count: 0,
+                    total_collected: 0
+                };
+            }
+            kennelStats[id].booking_count++;
+            kennelStats[id].total_collected += parseFloat(b.total_price || 0);
+        });
+
+        return {
+            total,
+            bookings: offlineBookings.length,
+            kennels: Object.values(kennelStats).sort((a, b) => b.total_collected - a.total_collected)
         };
     }, [filteredBookings]);
 
@@ -262,7 +295,7 @@ const EarningsDashboard = () => {
             kennelStats[id].booking_count++;
             const revenue = parseFloat(b.total_price || 0);
             kennelStats[id].total_revenue += revenue;
-            kennelStats[id].net_profit += revenue * (parseFloat(b.kennel_markup || 0) / 100);
+            kennelStats[id].net_profit += b.mode === "offline" ? 0 : revenue * (parseFloat(b.kennel_markup || 0) / 100);
         });
         
         return Object.values(kennelStats)
@@ -618,6 +651,51 @@ const EarningsDashboard = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Kennel Offline Collection */}
+                    {offlineCollection.bookings > 0 && (
+                        <div className="earnings-card" style={{ marginBottom: "1.5rem" }}>
+                            <div style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: "16px", borderBottom: "1px solid #f1f5f9" }}>
+                                <div className="summary-card-icon" style={{ background: "linear-gradient(135deg, #fff7ed, #ffedd5)", color: "#ea580c" }}>
+                                    <i className="bi bi-shop"></i>
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>Kennel Offline Collection</h3>
+                                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#94a3b8" }}>
+                                        Collected directly by kennels — no Wag N Wonder markup
+                                    </p>
+                                </div>
+                                <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                                    <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "#ea580c" }}>{formatCurrency(offlineCollection.total)}</span>
+                                    <span style={{ display: "block", fontSize: "0.8rem", color: "#94a3b8" }}>{offlineCollection.bookings} booking{offlineCollection.bookings !== 1 ? "s" : ""}</span>
+                                </div>
+                            </div>
+                            <div style={{ padding: "16px 24px" }}>
+                                <div className="earnings-table-wrapper">
+                                    <table className="earnings-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Kennel</th>
+                                                <th>City</th>
+                                                <th>Bookings</th>
+                                                <th>Collected</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {offlineCollection.kennels.map(k => (
+                                                <tr key={k.kennel_id}>
+                                                    <td className="kennel-name">{k.kennel_name}</td>
+                                                    <td>{k.city}</td>
+                                                    <td>{k.booking_count}</td>
+                                                    <td className="revenue">{formatCurrency(k.total_collected)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Comparison Cards */}
                     <div className="earnings-comparison-grid">

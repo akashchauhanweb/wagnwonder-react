@@ -4,8 +4,8 @@ import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { callServicesApi } from "../assets/js/servicesApi";
 import stateCityMap from "../assets/js/stateCityMap";
 import AddPetModal from "../assets/components/AddPetModal";
+import AddUserModal from "../assets/components/AddUserModal";
 import { getEventBookingEmailHtml } from "../assets/js/eventBookingEmail";
-import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 
 const ManageEvents = () => {
     const [activeTab, setActiveTab] = useState("list");
@@ -61,19 +61,6 @@ const ManageEvents = () => {
     const [loadingManualPets, setLoadingManualPets] = useState(false);
     const [showManualAddPetModal, setShowManualAddPetModal] = useState(false);
     const [showManualAddUser, setShowManualAddUser] = useState(false);
-    const [addingManualUser, setAddingManualUser] = useState(false);
-    const [manualNewUserForm, setManualNewUserForm] = useState({
-        first_name: "",
-        last_name: "",
-        email: "",
-        phone_number: "",
-        password_hashed: "",
-        user_type: "client",
-        has_admin_access: false,
-        has_boarding_access: false,
-        has_services_access: false,
-        has_clinic_access: false,
-    });
 
     const session_id = localStorage.getItem("session_id");
     const fileInputRef = useRef(null);
@@ -277,86 +264,6 @@ const ManageEvents = () => {
         if (manualEntryUser) {
             fetchManualEntryPets(manualEntryUser.id);
         }
-    };
-
-    // Handle adding new user in manual entry
-    const handleManualAddNewUser = async () => {
-        if (!manualNewUserForm.first_name || !manualNewUserForm.email || !manualNewUserForm.password_hashed) {
-            setErrorMsg("Please fill in required fields: First Name, Email, and Password.");
-            return;
-        }
-        
-        setAddingManualUser(true);
-        
-        // Store password before sending
-        const plainPassword = manualNewUserForm.password_hashed;
-        
-        const res = await callServicesApi({
-            action: "ADD_USER",
-            session_id,
-            ...manualNewUserForm
-        });
-        
-        if (res?.success) {
-            // Send welcome email
-            try {
-                const emailHtml = getWelcomeUserEmailHtml({
-                    firstName: manualNewUserForm.first_name,
-                    lastName: manualNewUserForm.last_name,
-                    email: manualNewUserForm.email,
-                    phoneNumber: manualNewUserForm.phone_number,
-                    password: plainPassword
-                });
-                
-                await callServicesApi({
-                    action: "SEND_EMAIL",
-                    session_id,
-                    email: manualNewUserForm.email,
-                    subject: "Welcome to Wag N Wonder - Your Account Details",
-                    html: emailHtml
-                });
-            } catch (emailErr) {
-                console.error("Failed to send welcome email:", emailErr);
-            }
-            
-            setSuccessMsg("User added successfully.");
-            
-            // Reset form
-            setManualNewUserForm({
-                first_name: "",
-                last_name: "",
-                email: "",
-                phone_number: "",
-                password_hashed: "",
-                user_type: "client",
-                has_admin_access: false,
-                has_boarding_access: false,
-                has_services_access: false,
-                has_clinic_access: false,
-            });
-            
-            // Refresh users and select the new user
-            await fetchManualEntryUsers();
-            setShowManualAddUser(false);
-            
-            // Auto-select the newly added user
-            if (res.data?.id) {
-                const newUserId = res.data.id;
-                setTimeout(() => {
-                    const newUser = manualEntryUsers.find(u => u.id === newUserId);
-                    if (newUser) {
-                        setManualEntryUser(newUser);
-                        if (manualEntryEvent?.requires_pet) {
-                            fetchManualEntryPets(newUserId);
-                        }
-                    }
-                }, 500);
-            }
-        } else {
-            setErrorMsg(res?.message || "Failed to add user.");
-        }
-        
-        setAddingManualUser(false);
     };
 
     // Submit manual entry booking
@@ -1301,7 +1208,7 @@ const ManageEvents = () => {
                                         {getFilteredRegistrations().flatMap((reg) => {
                                             const formData = parseFormData(reg.form_data);
                                             const pets = reg.pets && reg.pets.length > 0 ? reg.pets : [null];
-                                            
+
                                             return pets.map((pet, petIndex) => (
                                                 <tr key={`${reg.id}-${petIndex}`}>
                                                     <td className="order-id">{reg.order_id || `#${reg.id}`}</td>
@@ -1848,98 +1755,25 @@ const ManageEvents = () => {
                                     ) : (
                                         <>
                                             <select
-                                                value={showManualAddUser ? "__add_new__" : (manualEntryUser?.id || "")}
+                                                value={manualEntryUser?.id || ""}
                                                 onChange={(e) => {
                                                     if (e.target.value === "__add_new__") {
                                                         setShowManualAddUser(true);
-                                                        setManualEntryUser(null);
+                                                        e.target.value = manualEntryUser?.id || "";
                                                     } else {
-                                                        setShowManualAddUser(false);
                                                         handleManualUserSelect(e.target.value);
                                                     }
                                                 }}
                                                 className="manual-entry-select"
                                             >
                                                 <option value="">Choose a user...</option>
-                                                <option value="__add_new__">+ Add New User</option>
+                                                <option value="__add_new__">＋ Add New User</option>
                                                 {manualEntryUsers.map(user => (
                                                     <option key={user.id} value={user.id}>
                                                         {user.first_name} {user.last_name} ({user.email})
                                                     </option>
                                                 ))}
                                             </select>
-                                            
-                                            {/* Add New User Form */}
-                                            {showManualAddUser && (
-                                                <div className="manual-add-user-section">
-                                                    <h5>Add New User</h5>
-                                                    <div className="manual-add-user-grid">
-                                                        <div className="manual-field">
-                                                            <label>First Name *</label>
-                                                            <input
-                                                                type="text"
-                                                                placeholder="First Name"
-                                                                value={manualNewUserForm.first_name}
-                                                                onChange={(e) => setManualNewUserForm({ ...manualNewUserForm, first_name: e.target.value })}
-                                                            />
-                                                        </div>
-                                                        <div className="manual-field">
-                                                            <label>Last Name</label>
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Last Name"
-                                                                value={manualNewUserForm.last_name}
-                                                                onChange={(e) => setManualNewUserForm({ ...manualNewUserForm, last_name: e.target.value })}
-                                                            />
-                                                        </div>
-                                                        <div className="manual-field">
-                                                            <label>Email *</label>
-                                                            <input
-                                                                type="email"
-                                                                placeholder="Email"
-                                                                value={manualNewUserForm.email}
-                                                                onChange={(e) => setManualNewUserForm({ ...manualNewUserForm, email: e.target.value })}
-                                                            />
-                                                        </div>
-                                                        <div className="manual-field">
-                                                            <label>Phone</label>
-                                                            <input
-                                                                type="tel"
-                                                                placeholder="Phone"
-                                                                value={manualNewUserForm.phone_number}
-                                                                onChange={(e) => setManualNewUserForm({ ...manualNewUserForm, phone_number: e.target.value })}
-                                                            />
-                                                        </div>
-                                                        <div className="manual-field full-width">
-                                                            <label>Password *</label>
-                                                            <input
-                                                                type="password"
-                                                                placeholder="Password"
-                                                                value={manualNewUserForm.password_hashed}
-                                                                onChange={(e) => setManualNewUserForm({ ...manualNewUserForm, password_hashed: e.target.value })}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <button 
-                                                        type="button" 
-                                                        className="manual-add-user-btn"
-                                                        onClick={handleManualAddNewUser}
-                                                        disabled={addingManualUser}
-                                                    >
-                                                        {addingManualUser ? (
-                                                            <>
-                                                                <span className="spinner-border spinner-border-sm"></span>
-                                                                Adding...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <i className="bi bi-person-plus"></i>
-                                                                Add User
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            )}
                                         </>
                                     )}
                                 </div>
@@ -2252,34 +2086,48 @@ const ManageEvents = () => {
                                                 );
                                             })
                                             .map(a => (
-                                            <tr key={a.id}>
-                                                <td>{a.first_name} {a.last_name}</td>
-                                                <td>{a.email}</td>
-                                                <td>{a.phone_number || "-"}</td>
-                                                <td>{a.event_title}</td>
-                                                <td>{formatDate(a.created_at)}</td>
-                                                <td>
-                                                    <button
-                                                        className="btn-delete-event"
-                                                        onClick={() => handleRemoveRole(a.id)}
-                                                        disabled={removingRoleId === a.id}
-                                                        style={{ padding: "4px 12px", fontSize: "13px" }}
-                                                    >
-                                                        {removingRoleId === a.id ? (
-                                                            <span className="spinner-border spinner-border-sm"></span>
-                                                        ) : (
-                                                            <i className="bi bi-trash"></i>
-                                                        )}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                <tr key={a.id}>
+                                                    <td>{a.first_name} {a.last_name}</td>
+                                                    <td>{a.email}</td>
+                                                    <td>{a.phone_number || "-"}</td>
+                                                    <td>{a.event_title}</td>
+                                                    <td>{formatDate(a.created_at)}</td>
+                                                    <td>
+                                                        <button
+                                                            className="btn-delete-event"
+                                                            onClick={() => handleRemoveRole(a.id)}
+                                                            disabled={removingRoleId === a.id}
+                                                            style={{ padding: "4px 12px", fontSize: "13px" }}
+                                                        >
+                                                            {removingRoleId === a.id ? (
+                                                                <span className="spinner-border spinner-border-sm"></span>
+                                                            ) : (
+                                                                <i className="bi bi-trash"></i>
+                                                            )}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Add User Modal */}
+            {showManualAddUser && (
+                <AddUserModal
+                    session_id={session_id}
+                    onClose={() => setShowManualAddUser(false)}
+                    onUserCreated={async (userId) => {
+                        setSuccessMsg("User created successfully.");
+                        setShowManualAddUser(false);
+                        await fetchManualEntryUsers();
+                        if (userId) handleManualUserSelect(userId);
+                    }}
+                />
             )}
 
             {/* Add Pet Modal for Manual Entry */}
