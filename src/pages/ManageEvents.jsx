@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { imageCompressor } from "../assets/js/imageCompressor";
 import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { callServicesApi } from "../assets/js/servicesApi";
-import stateCityMap from "../assets/js/stateCityMap";
 import AddPetModal from "../assets/components/AddPetModal";
 import AddUserModal from "../assets/components/AddUserModal";
 import { getEventBookingEmailHtml } from "../assets/js/eventBookingEmail";
@@ -64,7 +63,26 @@ const ManageEvents = () => {
 
     const session_id = localStorage.getItem("session_id");
     const fileInputRef = useRef(null);
-    const stateCityMapJson = stateCityMap();
+    const [serviceCities, setServiceCities] = useState([]);
+
+    useEffect(() => {
+        const fetchServiceCities = async () => {
+            const response = await callServicesApi({
+                action: "GET_SERVICE_CITIES",
+                session_id
+            });
+            if (response?.success) {
+                setServiceCities(response.cities || []);
+            }
+        };
+        fetchServiceCities();
+    }, []);
+
+    const serviceCityMap = {};
+    serviceCities.filter(c => c.is_active).forEach(c => {
+        if (!serviceCityMap[c.state]) serviceCityMap[c.state] = [];
+        serviceCityMap[c.state].push(c);
+    });
 
     // Helper to format date for email
     const formatDateForEmail = (dateStr) => {
@@ -110,7 +128,7 @@ const ManageEvents = () => {
     const [formFields, setFormFields] = useState([]);
 
     const cityOptions = eventForm.state
-        ? Object.keys(stateCityMapJson[eventForm.state] || {})
+        ? (serviceCityMap[eventForm.state] || []).map(c => c.city)
         : [];
 
     // Fetch all events once and cache
@@ -1331,10 +1349,13 @@ const ManageEvents = () => {
                                         required
                                     >
                                         <option value="">Select State</option>
-                                        {Object.keys(stateCityMapJson).sort().map((state) => (
+                                        {Object.keys(serviceCityMap).sort().map((state) => (
                                             <option key={state} value={state}>{state}</option>
                                         ))}
                                     </select>
+                                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px", display: "block" }}>
+                                        State or city not listed? Add it from <strong>Service Cities</strong> in the menu.
+                                    </span>
                                 </div>
                                 <div className="form-group">
                                     <label>City *</label>
