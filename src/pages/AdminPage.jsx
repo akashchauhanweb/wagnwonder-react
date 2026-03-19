@@ -190,7 +190,7 @@ const AdminPage = () => {
                                         className={`admin-nav-item ${location.pathname === "/admin/events-revenue" ? "active" : ""}`}
                                     >
                                         <i className="bi bi-bar-chart-line-fill"></i>
-                                        <span>Events Revenue</span>
+                                        <span>Earnings Dashboard</span>
                                     </Link>
                                 </>
                             )}
@@ -219,7 +219,7 @@ const AdminPage = () => {
                                         className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/revenue" ? "active" : ""}`}
                                     >
                                         <i className="bi bi-bar-chart-line-fill"></i>
-                                        <span>Revenue</span>
+                                        <span>Earnings Dashboard</span>
                                     </Link>
                                     <Link
                                         to="/admin/kennels-admin/bookings"
@@ -317,7 +317,7 @@ const AdminPage = () => {
                                             </Link>
                                             <Link to="/admin/kennels-admin/revenue" className="admin-stat-card">
                                                 <i className="bi bi-bar-chart-line-fill"></i>
-                                                <span>Revenue</span>
+                                                <span>Earnings Dashboard</span>
                                             </Link>
                                             <Link to="/admin/kennels-admin/bookings" className="admin-stat-card">
                                                 <i className="bi bi-calendar-check-fill"></i>
@@ -354,7 +354,7 @@ const AdminPage = () => {
                                             </Link>
                                             <Link to="/admin/events-revenue" className="admin-stat-card">
                                                 <i className="bi bi-bar-chart-line-fill"></i>
-                                                <span>Events Revenue</span>
+                                                <span>Earnings Dashboard</span>
                                             </Link>
                                         </>
                                     )}
