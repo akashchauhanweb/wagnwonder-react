@@ -122,6 +122,27 @@ const KennelsAdminPage = () => {
     const [conflictingBookings, setConflictingBookings] = useState([]);
     const [cancellingClosureId, setCancellingClosureId] = useState(null);
 
+    // Notes
+    const [showNotesModal, setShowNotesModal] = useState(false);
+    const [notesBooking, setNotesBooking] = useState(null);
+    const [bookingNotes, setBookingNotes] = useState([]);
+    const [loadingNotes, setLoadingNotes] = useState(false);
+    const [newNote, setNewNote] = useState("");
+    const [submittingNote, setSubmittingNote] = useState(false);
+
+    // Check-in with note
+    const [showCheckInModal, setShowCheckInModal] = useState(false);
+    const [checkInBooking, setCheckInBooking] = useState(null);
+    const [checkInNote, setCheckInNote] = useState("");
+    const [submittingCheckIn, setSubmittingCheckIn] = useState(false);
+
+    // Checkout with notes
+    const [showCheckoutNotesModal, setShowCheckoutNotesModal] = useState(false);
+    const [checkoutNotesBooking, setCheckoutNotesBooking] = useState(null);
+    const [checkoutNotes, setCheckoutNotes] = useState([]);
+    const [loadingCheckoutNotes, setLoadingCheckoutNotes] = useState(false);
+    const [checkoutNote, setCheckoutNote] = useState("");
+
     // Checkout pending payments modal
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [checkoutBooking, setCheckoutBooking] = useState(null);
@@ -934,6 +955,119 @@ const KennelsAdminPage = () => {
                 setErrorMsg(response?.message || "Failed to remove employee.");
             }
         } catch { setErrorMsg("Error removing employee."); }
+    };
+
+    const fetchBookingNotes = async (bookingId) => {
+        setLoadingNotes(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_BOOKING_NOTES",
+                session_id,
+                booking_id: bookingId
+            });
+            if (response?.success) {
+                setBookingNotes(response.notes || []);
+            }
+        } catch (err) {
+            console.error("Error fetching notes:", err);
+        } finally {
+            setLoadingNotes(false);
+        }
+    };
+
+    const handleAddNote = async (bookingId, noteType = "during_stay") => {
+        if (!newNote.trim()) return;
+        setSubmittingNote(true);
+        try {
+            const response = await callServicesApi({
+                action: "ADD_BOOKING_NOTE",
+                session_id,
+                booking_id: bookingId,
+                note: newNote.trim(),
+                note_type: noteType,
+                created_by: userData.id
+            });
+            if (response?.success) {
+                setNewNote("");
+                fetchBookingNotes(bookingId);
+            } else {
+                setErrorMsg(response?.message || "Failed to add note.");
+            }
+        } catch { setErrorMsg("Error adding note."); }
+        finally { setSubmittingNote(false); }
+    };
+
+    const openNotesModal = (booking) => {
+        setNotesBooking(booking);
+        setBookingNotes([]);
+        setNewNote("");
+        setShowNotesModal(true);
+        fetchBookingNotes(booking.booking_id);
+    };
+
+    const handleCheckInWithNote = async () => {
+        if (!checkInBooking) return;
+        setSubmittingCheckIn(true);
+        try {
+            const response = await callServicesApi({
+                action: "UPDATE_BOOKING_STATUS",
+                session_id,
+                booking_id: checkInBooking.booking_id,
+                new_status: "checked_in",
+                note: checkInNote.trim(),
+                created_by: userData.id
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                setShowCheckInModal(false);
+                setCheckInBooking(null);
+                setCheckInNote("");
+                setBookingsCached(false);
+                await fetchAllBookings(true);
+            } else {
+                setErrorMsg(response?.message || "Failed to check in.");
+            }
+        } catch { setErrorMsg("Error checking in."); }
+        finally { setSubmittingCheckIn(false); }
+    };
+
+    const openCheckoutWithNotes = async (booking) => {
+        setCheckoutNotesBooking(booking);
+        setCheckoutNotes([]);
+        setCheckoutNote("");
+        setShowCheckoutNotesModal(true);
+        setLoadingCheckoutNotes(true);
+        try {
+            const response = await callServicesApi({
+                action: "GET_BOOKING_NOTES",
+                session_id,
+                booking_id: booking.booking_id
+            });
+            if (response?.success) {
+                setCheckoutNotes(response.notes || []);
+            }
+        } catch (err) {
+            console.error("Error fetching notes:", err);
+        } finally {
+            setLoadingCheckoutNotes(false);
+        }
+    };
+
+    const handleProceedCheckout = async () => {
+        // Save checkout note if provided
+        if (checkoutNote.trim()) {
+            await callServicesApi({
+                action: "ADD_BOOKING_NOTE",
+                session_id,
+                booking_id: checkoutNotesBooking.booking_id,
+                note: checkoutNote.trim(),
+                note_type: "check_out",
+                created_by: userData.id
+            });
+        }
+        setShowCheckoutNotesModal(false);
+        // Proceed with normal checkout flow (which may show pending payments modal)
+        handleUpdateBookingStatus(checkoutNotesBooking.booking_id, "completed");
     };
 
     const handleUpdateBookingStatus = async (bookingId, newStatus, forceCheckout = false) => {
@@ -2133,8 +2267,7 @@ const KennelsAdminPage = () => {
                                                             <div style={{ display: "flex", gap: "6px" }}>
                                                                 {b.status === "booked" && (
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); handleUpdateBookingStatus(b.booking_id, "checked_in"); }}
-                                                                        disabled={updatingBookingId === b.booking_id}
+                                                                        onClick={(e) => { e.stopPropagation(); setCheckInBooking(b); setCheckInNote(""); setShowCheckInModal(true); }}
                                                                         style={{
                                                                             padding: "5px 12px", borderRadius: "8px", border: "1px solid #dbeafe",
                                                                             background: "#eff6ff", color: "#2563eb", fontSize: "0.75rem",
@@ -2142,11 +2275,20 @@ const KennelsAdminPage = () => {
                                                                             transition: "all 0.2s", whiteSpace: "nowrap"
                                                                         }}
                                                                     >
-                                                                        {updatingBookingId === b.booking_id ? (
-                                                                            <span className="spinner-border spinner-border-sm"></span>
-                                                                        ) : (
-                                                                            <><i className="bi bi-box-arrow-in-right"></i> Check In</>
-                                                                        )}
+                                                                        <i className="bi bi-box-arrow-in-right"></i> Check In
+                                                                    </button>
+                                                                )}
+                                                                {b.status === "checked_in" && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); openNotesModal(b); }}
+                                                                        style={{
+                                                                            padding: "5px 12px", borderRadius: "8px", border: "1px solid #e2e8f0",
+                                                                            background: "#f8fafc", color: "#475569", fontSize: "0.75rem",
+                                                                            fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                            transition: "all 0.2s", whiteSpace: "nowrap"
+                                                                        }}
+                                                                    >
+                                                                        <i className="bi bi-journal-text"></i> Notes
                                                                     </button>
                                                                 )}
                                                                 {b.status === "checked_in" && (
@@ -2164,7 +2306,7 @@ const KennelsAdminPage = () => {
                                                                 )}
                                                                 {b.status === "checked_in" && (
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); handleUpdateBookingStatus(b.booking_id, "completed"); }}
+                                                                        onClick={(e) => { e.stopPropagation(); openCheckoutWithNotes(b); }}
                                                                         disabled={updatingBookingId === b.booking_id}
                                                                         style={{
                                                                             padding: "5px 12px", borderRadius: "8px", border: "1px solid #d1fae5",
@@ -4174,6 +4316,280 @@ const KennelsAdminPage = () => {
                                     ) : (
                                         <><i className="bi bi-check-lg"></i> Complete Checkout</>
                                     )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Check-In Modal */}
+            {showCheckInModal && checkInBooking && (
+                <div className="event-modal-overlay" onClick={() => setShowCheckInModal(false)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "440px" }}>
+                        <div className="event-modal-header">
+                            <h3>Check In</h3>
+                            <button onClick={() => setShowCheckInModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", marginBottom: "4px" }}>
+                                    #{checkInBooking.booking_id} · {checkInBooking.first_name} {checkInBooking.last_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                    {checkInBooking.kennel_name} · {checkInBooking.pets?.map(p => p.pet_name).join(", ")}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>
+                                    Check-in Note <span style={{ color: "#94a3b8" }}>(optional)</span>
+                                </label>
+                                <textarea
+                                    value={checkInNote}
+                                    onChange={(e) => setCheckInNote(e.target.value)}
+                                    placeholder="e.g. Pet seemed anxious, owner requested extra blanket..."
+                                    rows={3}
+                                    style={{
+                                        width: "100%", padding: "10px 14px", borderRadius: "10px",
+                                        border: "1px solid #e2e8f0", fontSize: "0.88rem", resize: "vertical",
+                                        fontFamily: "inherit"
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                <button
+                                    onClick={() => setShowCheckInModal(false)}
+                                    style={{
+                                        flex: 1, padding: "12px", borderRadius: "10px",
+                                        border: "1px solid #e2e8f0", background: "white",
+                                        color: "#475569", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCheckInWithNote}
+                                    disabled={submittingCheckIn}
+                                    style={{
+                                        flex: 1, padding: "12px", borderRadius: "10px",
+                                        border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                                        color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                    }}
+                                >
+                                    {submittingCheckIn ? (
+                                        <><span className="spinner-border spinner-border-sm"></span> Checking in...</>
+                                    ) : (
+                                        <><i className="bi bi-box-arrow-in-right"></i> Check In</>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Notes Modal (during stay) */}
+            {showNotesModal && notesBooking && (
+                <div className="event-modal-overlay" onClick={() => setShowNotesModal(false)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "500px" }}>
+                        <div className="event-modal-header">
+                            <h3>Booking Notes</h3>
+                            <button onClick={() => setShowNotesModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", marginBottom: "4px" }}>
+                                    #{notesBooking.booking_id} · {notesBooking.first_name} {notesBooking.last_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                    {notesBooking.kennel_name} · {notesBooking.pets?.map(p => p.pet_name).join(", ")}
+                                </div>
+                            </div>
+
+                            {/* Timeline */}
+                            {loadingNotes ? (
+                                <div style={{ textAlign: "center", padding: "20px" }}>
+                                    <div className="spinner-border spinner-border-sm"></div>
+                                </div>
+                            ) : bookingNotes.length === 0 ? (
+                                <div style={{ textAlign: "center", padding: "20px", color: "#94a3b8", fontSize: "0.88rem" }}>
+                                    <i className="bi bi-journal" style={{ fontSize: "1.5rem", display: "block", marginBottom: "8px", opacity: 0.5 }}></i>
+                                    No notes yet
+                                </div>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px", maxHeight: "300px", overflowY: "auto" }}>
+                                    {bookingNotes.map(note => (
+                                        <div key={note.id} style={{
+                                            padding: "12px 14px", borderRadius: "10px",
+                                            background: note.note_type === "check_in" ? "#eff6ff" : note.note_type === "check_out" ? "#f0fdf4" : "#f8fafc",
+                                            border: `1px solid ${note.note_type === "check_in" ? "#dbeafe" : note.note_type === "check_out" ? "#bbf7d0" : "#e2e8f0"}`
+                                        }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                                <span style={{
+                                                    fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em",
+                                                    color: note.note_type === "check_in" ? "#2563eb" : note.note_type === "check_out" ? "#059669" : "#64748b"
+                                                }}>
+                                                    {note.note_type === "check_in" ? "Check-in" : note.note_type === "check_out" ? "Check-out" : "During Stay"}
+                                                </span>
+                                                <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                                                    {new Date(note.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: "0.88rem", color: "#1e293b", lineHeight: 1.5 }}>{note.note}</div>
+                                            <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "4px" }}>
+                                                — {note.first_name} {note.last_name}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Add note */}
+                            <div style={{ display: "flex", gap: "8px" }}>
+                                <textarea
+                                    value={newNote}
+                                    onChange={(e) => setNewNote(e.target.value)}
+                                    placeholder="Add a note..."
+                                    rows={2}
+                                    style={{
+                                        flex: 1, padding: "10px 14px", borderRadius: "10px",
+                                        border: "1px solid #e2e8f0", fontSize: "0.88rem", resize: "none",
+                                        fontFamily: "inherit"
+                                    }}
+                                />
+                                <button
+                                    onClick={() => handleAddNote(notesBooking.booking_id)}
+                                    disabled={submittingNote || !newNote.trim()}
+                                    style={{
+                                        padding: "10px 16px", borderRadius: "10px",
+                                        border: "none", background: "#1e293b", color: "white",
+                                        fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+                                        alignSelf: "flex-end", whiteSpace: "nowrap"
+                                    }}
+                                >
+                                    {submittingNote ? (
+                                        <span className="spinner-border spinner-border-sm"></span>
+                                    ) : (
+                                        <i className="bi bi-send"></i>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Checkout Notes Modal */}
+            {showCheckoutNotesModal && checkoutNotesBooking && (
+                <div className="event-modal-overlay" onClick={() => setShowCheckoutNotesModal(false)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "500px" }}>
+                        <div className="event-modal-header">
+                            <h3>Check Out</h3>
+                            <button onClick={() => setShowCheckoutNotesModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", marginBottom: "4px" }}>
+                                    #{checkoutNotesBooking.booking_id} · {checkoutNotesBooking.first_name} {checkoutNotesBooking.last_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                                    {checkoutNotesBooking.kennel_name} · {checkoutNotesBooking.pets?.map(p => p.pet_name).join(", ")}
+                                </div>
+                            </div>
+
+                            {/* Previous notes timeline */}
+                            {loadingCheckoutNotes ? (
+                                <div style={{ textAlign: "center", padding: "20px" }}>
+                                    <div className="spinner-border spinner-border-sm"></div>
+                                </div>
+                            ) : checkoutNotes.length > 0 && (
+                                <div style={{ marginBottom: "20px" }}>
+                                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+                                        <i className="bi bi-journal-text me-2"></i>Stay Notes ({checkoutNotes.length})
+                                    </div>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "250px", overflowY: "auto" }}>
+                                        {checkoutNotes.map(note => (
+                                            <div key={note.id} style={{
+                                                padding: "10px 14px", borderRadius: "8px",
+                                                background: note.note_type === "check_in" ? "#eff6ff" : note.note_type === "check_out" ? "#f0fdf4" : "#f8fafc",
+                                                border: `1px solid ${note.note_type === "check_in" ? "#dbeafe" : note.note_type === "check_out" ? "#bbf7d0" : "#e2e8f0"}`
+                                            }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                                                    <span style={{
+                                                        fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em",
+                                                        color: note.note_type === "check_in" ? "#2563eb" : note.note_type === "check_out" ? "#059669" : "#64748b"
+                                                    }}>
+                                                        {note.note_type === "check_in" ? "Check-in" : note.note_type === "check_out" ? "Check-out" : "During Stay"}
+                                                    </span>
+                                                    <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                                                        {new Date(note.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: "0.85rem", color: "#1e293b", lineHeight: 1.5 }}>{note.note}</div>
+                                                <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "2px" }}>— {note.first_name} {note.last_name}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Checkout note */}
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>
+                                    Check-out Note <span style={{ color: "#94a3b8" }}>(optional)</span>
+                                </label>
+                                <textarea
+                                    value={checkoutNote}
+                                    onChange={(e) => setCheckoutNote(e.target.value)}
+                                    placeholder="e.g. Pet was playful and healthy, no issues during stay..."
+                                    rows={3}
+                                    style={{
+                                        width: "100%", padding: "10px 14px", borderRadius: "10px",
+                                        border: "1px solid #e2e8f0", fontSize: "0.88rem", resize: "vertical",
+                                        fontFamily: "inherit"
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                <button
+                                    onClick={() => setShowCheckoutNotesModal(false)}
+                                    style={{
+                                        flex: 1, padding: "12px", borderRadius: "10px",
+                                        border: "1px solid #e2e8f0", background: "white",
+                                        color: "#475569", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleProceedCheckout}
+                                    style={{
+                                        flex: 1, padding: "12px", borderRadius: "10px",
+                                        border: "none", background: "linear-gradient(135deg, #059669, #047857)",
+                                        color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                    }}
+                                >
+                                    <i className="bi bi-check-lg"></i> Proceed to Checkout
                                 </button>
                             </div>
                         </div>
