@@ -5319,6 +5319,12 @@ input[type="date"].hero-input:invalid {
     color: #dc2626;
 }
 
+.booking-status.status-no-show {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
 /* Stay Grid */
 .booking-stay-grid {
     display: grid;
@@ -9178,6 +9184,11 @@ input[type="date"].hero-input:invalid {
 .booking-status-badge.status-cancelled {
     background: #fee2e2;
     color: #dc2626;
+}
+
+.booking-status-badge.status-no-show {
+    background: #fef2f2;
+    color: #991b1b;
 }
 
 .mode-badge {
@@ -13196,6 +13207,10 @@ input[type="date"].hero-input:invalid {
 
 .status-item.status-cancelled .status-bar {
     background: linear-gradient(90deg, #f87171, #dc2626);
+}
+
+.status-item.status-no-show .status-bar {
+    background: #991b1b;
 }
 
 .status-revenue {

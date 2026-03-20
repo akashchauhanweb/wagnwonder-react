@@ -133,6 +133,13 @@ const KennelsAdminPage = () => {
     const [newNote, setNewNote] = useState("");
     const [submittingNote, setSubmittingNote] = useState(false);
 
+    // Admin cancel booking
+    const [showAdminCancelModal, setShowAdminCancelModal] = useState(false);
+    const [adminCancelBooking, setAdminCancelBooking] = useState(null);
+    const [adminCancelPreview, setAdminCancelPreview] = useState(null);
+    const [adminCancelLoading, setAdminCancelLoading] = useState(false);
+    const [adminCancelProcessing, setAdminCancelProcessing] = useState(false);
+
     // Check-in with note
     const [showCheckInModal, setShowCheckInModal] = useState(false);
     const [checkInBooking, setCheckInBooking] = useState(null);
@@ -1073,6 +1080,61 @@ const KennelsAdminPage = () => {
         handleUpdateBookingStatus(checkoutNotesBooking.booking_id, "completed");
     };
 
+    const openAdminCancelModal = async (booking) => {
+        setAdminCancelBooking(booking);
+        setAdminCancelPreview(null);
+        setShowAdminCancelModal(true);
+        setAdminCancelLoading(true);
+        try {
+            const response = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id,
+                booking_id: booking.booking_id,
+                refund_method: "wallet",
+                preview: true
+            });
+            if (response?.success && response.preview) {
+                setAdminCancelPreview(response);
+            }
+        } catch (err) {
+            console.error("Error fetching cancel preview:", err);
+        } finally {
+            setAdminCancelLoading(false);
+        }
+    };
+
+    const confirmAdminCancel = async () => {
+        if (!adminCancelBooking) return;
+        setAdminCancelProcessing(true);
+        try {
+            const response = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id,
+                booking_id: adminCancelBooking.booking_id,
+                refund_method: "wallet"
+            });
+            if (response?.success) {
+                let msg = "Booking cancelled.";
+                if (response.refund_summary?.wallet_refund > 0) {
+                    msg += ` ₹${Math.round(response.refund_summary.wallet_refund)} refunded to customer's wallet.`;
+                }
+                if (response.refund_summary?.cancellation_fee > 0) {
+                    msg += ` Cancellation fee: ₹${Math.round(response.refund_summary.cancellation_fee)}.`;
+                }
+                setSuccessMsg(msg);
+                setBookingsCached(false);
+                setExtensionsCached(false);
+                await fetchAllBookings(true);
+                setShowAdminCancelModal(false);
+                setAdminCancelBooking(null);
+                setAdminCancelPreview(null);
+            } else {
+                setErrorMsg(response?.message || "Failed to cancel booking.");
+            }
+        } catch { setErrorMsg("Error cancelling booking."); }
+        finally { setAdminCancelProcessing(false); }
+    };
+
     const handleUpdateBookingStatus = async (bookingId, newStatus, forceCheckout = false) => {
         setUpdatingBookingId(bookingId);
         try {
@@ -1893,7 +1955,7 @@ const KennelsAdminPage = () => {
 
                 // Filtered by date + status
                 const filtered = allValid.filter(b =>
-                    ["booked", "completed", "checked_in"].includes(b.status) && filterByDate(b, revDateRange)
+                    ["booked", "completed", "checked_in", "no_show"].includes(b.status) && filterByDate(b, revDateRange)
                 );
                 const allFiltered = allValid.filter(b => filterByDate(b, revDateRange));
 
@@ -1908,7 +1970,7 @@ const KennelsAdminPage = () => {
                 const avgStay = filtered.length > 0 ? totalDays / filtered.length : 0;
 
                 // Comparisons (ignore date filter)
-                const locFiltered = allValid.filter(b => ["booked", "completed", "checked_in"].includes(b.status));
+                const locFiltered = allValid.filter(b => ["booked", "completed", "checked_in", "no_show"].includes(b.status));
                 const calcRev = (bookings, start, end) => bookings.filter(b => {
                     const d = new Date(b.created_at); d.setHours(0, 0, 0, 0);
                     return end ? (d >= start && d <= end) : d >= start;
@@ -2402,6 +2464,7 @@ const KennelsAdminPage = () => {
                                         <option value="checked_in">Checked In</option>
                                         <option value="completed">Completed</option>
                                         <option value="cancelled">Cancelled</option>
+                                        <option value="no_show">No Show</option>
                                     </select>
                                 </div>
                                 <div className="status-filter">
@@ -2438,11 +2501,11 @@ const KennelsAdminPage = () => {
                             ) : (() => {
                                 const activeBookings = filteredBookings.filter(b => b.status === "booked" || b.status === "checked_in");
                                 const completedBookings = filteredBookings.filter(b => b.status === "completed");
-                                const cancelledBookings = filteredBookings.filter(b => b.status === "cancelled");
+                                const cancelledBookings = filteredBookings.filter(b => b.status === "cancelled" || b.status === "no_show");
 
                                 const BookingCard = ({ b }) => {
                                     const isCompleted = b.status === "completed";
-                                    const isCancelled = b.status === "cancelled";
+                                    const isCancelled = b.status === "cancelled" || b.status === "no_show";
                                     const today = new Date().toISOString().split("T")[0];
                                     const checkIn = new Date(b.check_in_date).toISOString().split("T")[0];
                                     const checkOut = new Date(b.check_out_date).toISOString().split("T")[0];
@@ -2492,7 +2555,7 @@ const KennelsAdminPage = () => {
                                                         background: isCompleted ? "#d1fae5" : isCancelled ? "#fee2e2" : isCheckedIn ? "#dbeafe" : isOngoing ? "#e0e7ff" : "#f1f5f9",
                                                         color: isCompleted ? "#059669" : isCancelled ? "#dc2626" : isCheckedIn ? "#2563eb" : isOngoing ? "#4f46e5" : "#64748b"
                                                     }}>
-                                                        {isCheckedIn ? "Checked In" : isOngoing ? "Ongoing" : isUpcoming ? "Upcoming" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                                                        {isCheckedIn ? "Checked In" : b.status === "no_show" ? "No Show" : isOngoing ? "Ongoing" : isUpcoming ? "Upcoming" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                                                     </span>
                                                 </div>
 
@@ -2597,18 +2660,20 @@ const KennelsAdminPage = () => {
                                                                         )}
                                                                     </button>
                                                                 )}
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleUpdateBookingStatus(b.booking_id, "cancelled"); }}
-                                                                    disabled={updatingBookingId === b.booking_id}
-                                                                    style={{
-                                                                        padding: "5px 12px", borderRadius: "8px", border: "1px solid #fee2e2",
-                                                                        background: "#fef2f2", color: "#dc2626", fontSize: "0.75rem",
-                                                                        fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
-                                                                        transition: "all 0.2s", whiteSpace: "nowrap"
-                                                                    }}
-                                                                >
-                                                                    <i className="bi bi-x-lg"></i> Cancel
-                                                                </button>
+                                                                {b.status === "booked" && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); openAdminCancelModal(b); }}
+                                                                        disabled={updatingBookingId === b.booking_id}
+                                                                        style={{
+                                                                            padding: "5px 12px", borderRadius: "8px", border: "1px solid #fee2e2",
+                                                                            background: "#fef2f2", color: "#dc2626", fontSize: "0.75rem",
+                                                                            fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                            transition: "all 0.2s", whiteSpace: "nowrap"
+                                                                        }}
+                                                                    >
+                                                                        <i className="bi bi-x-lg"></i> Cancel
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         )}
 
@@ -3476,10 +3541,10 @@ const KennelsAdminPage = () => {
                                                     <span style={{ fontWeight: 600, color: "#1e293b" }}>₹{b.total_price}</span>
                                                     <span style={{
                                                         padding: "2px 8px", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600,
-                                                        background: b.status === "completed" ? "#d1fae5" : b.status === "cancelled" ? "#fee2e2" : b.status === "checked_in" ? "#dbeafe" : "#e0e7ff",
-                                                        color: b.status === "completed" ? "#059669" : b.status === "cancelled" ? "#dc2626" : b.status === "checked_in" ? "#2563eb" : "#4f46e5"
+                                                        background: b.status === "completed" ? "#d1fae5" : (b.status === "cancelled" || b.status === "no_show") ? "#fee2e2" : b.status === "checked_in" ? "#dbeafe" : "#e0e7ff",
+                                                        color: b.status === "completed" ? "#059669" : (b.status === "cancelled" || b.status === "no_show") ? "#dc2626" : b.status === "checked_in" ? "#2563eb" : "#4f46e5"
                                                     }}>
-                                                        {b.status === "checked_in" ? "Checked In" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                                                        {b.status === "checked_in" ? "Checked In" : b.status === "no_show" ? "No Show" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -3545,10 +3610,10 @@ const KennelsAdminPage = () => {
                                                     <span style={{ fontWeight: 600, color: "#1e293b" }}>₹{b.total_price}</span>
                                                     <span style={{
                                                         padding: "2px 8px", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600,
-                                                        background: b.status === "completed" ? "#d1fae5" : b.status === "cancelled" ? "#fee2e2" : b.status === "checked_in" ? "#dbeafe" : "#e0e7ff",
-                                                        color: b.status === "completed" ? "#059669" : b.status === "cancelled" ? "#dc2626" : b.status === "checked_in" ? "#2563eb" : "#4f46e5"
+                                                        background: b.status === "completed" ? "#d1fae5" : (b.status === "cancelled" || b.status === "no_show") ? "#fee2e2" : b.status === "checked_in" ? "#dbeafe" : "#e0e7ff",
+                                                        color: b.status === "completed" ? "#059669" : (b.status === "cancelled" || b.status === "no_show") ? "#dc2626" : b.status === "checked_in" ? "#2563eb" : "#4f46e5"
                                                     }}>
-                                                        {b.status === "checked_in" ? "Checked In" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                                                        {b.status === "checked_in" ? "Checked In" : b.status === "no_show" ? "No Show" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -5054,6 +5119,143 @@ const KennelsAdminPage = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Admin Cancel Booking Modal */}
+            {showAdminCancelModal && adminCancelBooking && (
+                <div className="event-modal-overlay" onClick={() => !adminCancelProcessing && setShowAdminCancelModal(false)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "460px" }}>
+                        <div className="event-modal-header">
+                            <h3>Cancel Booking</h3>
+                            <button onClick={() => !adminCancelProcessing && setShowAdminCancelModal(false)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            {/* Booking info */}
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "16px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b", marginBottom: "4px" }}>
+                                    #{adminCancelBooking.booking_id} · {adminCancelBooking.first_name} {adminCancelBooking.last_name}
+                                </div>
+                                <div style={{ fontSize: "0.82rem", color: "#64748b", display: "flex", flexDirection: "column", gap: "3px" }}>
+                                    <span><i className="bi bi-house-door me-2"></i>{adminCancelBooking.kennel_name}</span>
+                                    <span><i className="bi bi-calendar me-2"></i>{formatDate(adminCancelBooking.check_in_date)} → {formatDate(adminCancelBooking.check_out_date)}</span>
+                                    {adminCancelBooking.pets?.length > 0 && (
+                                        <span><i className="bi bi-heart me-2"></i>{adminCancelBooking.pets.map(p => p.pet_name).join(", ")}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {adminCancelLoading ? (
+                                <div style={{ textAlign: "center", padding: "30px 0" }}>
+                                    <div className="spinner-border spinner-border-sm"></div>
+                                    <p style={{ color: "#64748b", fontSize: "0.85rem", marginTop: "10px" }}>Calculating refund...</p>
+                                </div>
+                            ) : adminCancelPreview ? (
+                                <>
+                                    {/* Time-based tier */}
+                                    <div style={{
+                                        padding: "10px 14px", borderRadius: "8px", marginBottom: "16px",
+                                        background: adminCancelPreview.no_show ? "#1e293b" : adminCancelPreview.hours_before_checkin < 72 ? "#fef2f2" : "#f0fdf4",
+                                        border: `1px solid ${adminCancelPreview.no_show ? "#1e293b" : adminCancelPreview.hours_before_checkin < 72 ? "#fecaca" : "#bbf7d0"}`,
+                                        fontSize: "0.82rem",
+                                        color: adminCancelPreview.no_show ? "#ffffff" : adminCancelPreview.hours_before_checkin < 72 ? "#dc2626" : "#059669"
+                                    }}>
+                                        <i className={`bi ${adminCancelPreview.no_show ? "bi-exclamation-octagon" : adminCancelPreview.hours_before_checkin < 72 ? "bi-exclamation-triangle" : "bi-clock"} me-2`}></i>
+                                        {adminCancelPreview.no_show
+                                            ? "No-show — check-in date has passed. No refund will be issued."
+                                            : `${Math.round(adminCancelPreview.hours_before_checkin)} hours before check-in — ${adminCancelPreview.display_fee_percent}% cancellation fee`
+                                        }
+                                    </div>
+
+                                    {/* Refund breakdown */}
+                                    <div style={{
+                                        background: "#f8fafc", borderRadius: "10px", padding: "16px",
+                                        border: "1px solid #e2e8f0", marginBottom: "16px"
+                                    }}>
+                                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+                                            Refund Breakdown
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>
+                                            <span>Booking Total</span>
+                                            <span>₹{adminCancelPreview.total_price}</span>
+                                        </div>
+                                        {adminCancelPreview.wallet_portion > 0 && (
+                                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#7c3aed", marginBottom: "4px" }}>
+                                                <span>Wallet portion</span>
+                                                <span>₹{adminCancelPreview.wallet_portion}</span>
+                                            </div>
+                                        )}
+                                        {adminCancelPreview.online_portion > 0 && (
+                                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#2563eb", marginBottom: "4px" }}>
+                                                <span>Online portion</span>
+                                                <span>₹{adminCancelPreview.online_portion}</span>
+                                            </div>
+                                        )}
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#dc2626", marginBottom: "6px" }}>
+                                            <span>Cancellation Fee ({adminCancelPreview.display_fee_percent}%)</span>
+                                            <span>−₹{adminCancelPreview.total_fee}</span>
+                                        </div>
+                                        <div style={{
+                                            display: "flex", justifyContent: "space-between",
+                                            fontSize: "0.95rem", fontWeight: 700, color: "#059669",
+                                            paddingTop: "8px", borderTop: "1px dashed #e2e8f0"
+                                        }}>
+                                            <span>Customer Gets Back</span>
+                                            <span>₹{adminCancelPreview.total_refund}</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{
+                                        padding: "10px 14px", borderRadius: "8px",
+                                        background: "#f5f3ff", border: "1px solid #e9d5ff", marginBottom: "20px",
+                                        fontSize: "0.82rem", color: "#6b21a8"
+                                    }}>
+                                        <i className="bi bi-wallet2 me-2"></i>
+                                        ₹{adminCancelPreview.total_refund} will be credited to the customer's Woof Wallet instantly.
+                                    </div>
+
+                                    <div style={{ display: "flex", gap: "10px" }}>
+                                        <button
+                                            onClick={() => { setShowAdminCancelModal(false); setAdminCancelBooking(null); setAdminCancelPreview(null); }}
+                                            disabled={adminCancelProcessing}
+                                            style={{
+                                                flex: 1, padding: "12px", borderRadius: "10px",
+                                                border: "1px solid #e2e8f0", background: "white",
+                                                color: "#475569", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                            }}
+                                        >
+                                            Keep Booking
+                                        </button>
+                                        <button
+                                            onClick={confirmAdminCancel}
+                                            disabled={adminCancelProcessing}
+                                            style={{
+                                                flex: 1, padding: "12px", borderRadius: "10px",
+                                                border: "none", background: "#dc2626",
+                                                color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                            }}
+                                        >
+                                            {adminCancelProcessing ? (
+                                                <><span className="spinner-border spinner-border-sm"></span> Cancelling...</>
+                                            ) : (
+                                                <><i className="bi bi-x-circle"></i> Cancel & Refund</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{ textAlign: "center", padding: "20px", color: "#dc2626" }}>
+                                    <p>Failed to load refund details. Please try again.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

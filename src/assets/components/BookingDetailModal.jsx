@@ -13,6 +13,7 @@ const BookingDetailModal = ({ booking, onClose }) => {
             case 'booked': return 'status-booked';
             case 'completed': return 'status-completed';
             case 'cancelled': return 'status-cancelled';
+            case 'no_show': return 'status-no-show';
             default: return '';
         }
     };
@@ -39,7 +40,7 @@ const BookingDetailModal = ({ booking, onClose }) => {
                             <span className="modal-booking-id">Booking #{booking.booking_id}</span>
                         </div>
                         <span className={`booking-status-badge ${getStatusBadgeClass(booking.status)}`}>
-                            {booking.status}
+                            {booking.status === "checked_in" ? "Checked In" : booking.status === "no_show" ? "No Show" : booking.status}
                         </span>
                     </div>
 

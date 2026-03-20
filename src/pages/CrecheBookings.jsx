@@ -8,43 +8,96 @@ export default function CrecheBookings() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [activeFilter, setActiveFilter] = useState("active");
-    const [cancellingId, setCancellingId] = useState(null);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelBooking, setCancelBooking] = useState(null);
+    const [cancelPreview, setCancelPreview] = useState(null);
+    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [refundMethod, setRefundMethod] = useState("wallet");
+    const [processingCancel, setProcessingCancel] = useState(false);
 
-    const handleCancelBooking = async (booking) => {
-        const walletAmt = parseFloat(booking.wallet_amount || 0);
-        let confirmMsg = `Are you sure you want to cancel booking #${booking.booking_id} at ${booking.kennel_name}?`;
-        if (walletAmt > 0) {
-            confirmMsg += `\n\n${Math.floor(walletAmt)} Woofs will be refunded to your wallet.`;
-        }
-        if (!window.confirm(confirmMsg)) return;
-
-        setCancellingId(booking.booking_id);
+    const openCancelModal = async (booking) => {
+        setCancelBooking(booking);
+        setCancelPreview(null);
+        setRefundMethod("wallet");
+        setShowCancelModal(true);
+        setLoadingPreview(true);
         try {
             const res = await callServicesApi({
-                action: "UPDATE_BOOKING_STATUS",
+                action: "CANCEL_BOOKING",
                 session_id: localStorage.getItem("session_id"),
                 booking_id: booking.booking_id,
-                new_status: "cancelled"
+                refund_method: "wallet",
+                preview: true
+            });
+            if (res?.success && res.preview) {
+                setCancelPreview(res);
+            }
+        } catch (err) {
+            console.error("Error fetching cancel preview:", err);
+        } finally {
+            setLoadingPreview(false);
+        }
+    };
+
+    const updatePreview = async (method) => {
+        setRefundMethod(method);
+        if (!cancelBooking) return;
+        setLoadingPreview(true);
+        try {
+            const res = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id: localStorage.getItem("session_id"),
+                booking_id: cancelBooking.booking_id,
+                refund_method: method,
+                preview: true
+            });
+            if (res?.success && res.preview) {
+                setCancelPreview(res);
+            }
+        } catch (err) {
+            console.error("Error updating preview:", err);
+        } finally {
+            setLoadingPreview(false);
+        }
+    };
+
+    const confirmCancel = async () => {
+        if (!cancelBooking) return;
+        setProcessingCancel(true);
+        try {
+            const res = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id: localStorage.getItem("session_id"),
+                booking_id: cancelBooking.booking_id,
+                refund_method: refundMethod
             });
             if (res?.success) {
-                // Update local state
                 setBookings(prev => prev.map(b =>
-                    b.booking_id === booking.booking_id ? { ...b, status: "cancelled" } : b
+                    b.booking_id === cancelBooking.booking_id ? { ...b, status: res.new_status || "cancelled" } : b
                 ));
                 localStorage.removeItem("bookings");
-                // Refresh wallet balance if woofs were refunded
-                if (res.wallet_refunded > 0) {
-                    localStorage.setItem("woof_balance", parseFloat(localStorage.getItem("woof_balance") || "0") + res.wallet_refunded);
-                }
+                // Refresh wallet balance from DB
+                try {
+                    const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+                    const walletRes = await callServicesApi({
+                        action: "GET_WALLET_BALANCE",
+                        session_id: localStorage.getItem("session_id"),
+                        user_id: user.id
+                    });
+                    if (walletRes?.success) localStorage.setItem("woof_balance", walletRes.balance);
+                } catch (e) { console.error("Failed to refresh wallet balance:", e); }
+                setShowCancelModal(false);
+                setCancelBooking(null);
+                setCancelPreview(null);
                 setActiveFilter("cancelled");
             } else {
                 alert(res?.message || "Failed to cancel booking.");
             }
         } catch (err) {
-            console.error("Error cancelling booking:", err);
-            alert("Something went wrong. Please try again.");
+            console.error("Error cancelling:", err);
+            alert("Something went wrong.");
         } finally {
-            setCancellingId(null);
+            setProcessingCancel(false);
         }
     };
 
@@ -92,6 +145,7 @@ export default function CrecheBookings() {
             case 'checked_in': return 'status-checked-in';
             case 'completed': return 'status-completed';
             case 'cancelled': return 'status-cancelled';
+            case 'no_show': return 'status-no-show';
             default: return '';
         }
     };
@@ -136,7 +190,7 @@ export default function CrecheBookings() {
             ) : bookings.filter(b => {
                 if (activeFilter === "active") return b.status === "booked" || b.status === "checked_in";
                 if (activeFilter === "past") return b.status === "completed";
-                if (activeFilter === "cancelled") return b.status === "cancelled";
+                if (activeFilter === "cancelled") return b.status === "cancelled" || b.status === "no_show";
                 return false;
             }).length === 0 ? (
                 <div className="bookings-empty">
@@ -151,12 +205,12 @@ export default function CrecheBookings() {
                     {bookings.filter(b => {
                         if (activeFilter === "active") return b.status === "booked" || b.status === "checked_in";
                         if (activeFilter === "past") return b.status === "completed";
-                        if (activeFilter === "cancelled") return b.status === "cancelled";
+                        if (activeFilter === "cancelled") return b.status === "cancelled" || b.status === "no_show";
                         return false;
                     }).map((booking) => {
                         const isActive = booking.status === "booked" || booking.status === "checked_in";
                         const isCompleted = booking.status === "completed";
-                        const isCancelled = booking.status === "cancelled";
+                        const isCancelled = booking.status === "cancelled" || booking.status === "no_show";
 
                         return (
                             <div key={booking.booking_id} className={`booking-card ${isCancelled ? "booking-card-cancelled" : ""}`}>
@@ -176,7 +230,7 @@ export default function CrecheBookings() {
                                             </div>
                                         </div>
                                         <span className={`booking-status ${getStatusColor(booking.status)}`}>
-                                            {booking.status === "checked_in" ? "Checked In" : booking.status}
+                                            {booking.status === "checked_in" ? "Checked In" : booking.status === "no_show" ? "No Show" : booking.status}
                                         </span>
                                     </div>
 
@@ -297,12 +351,12 @@ export default function CrecheBookings() {
                                                 className="booking-action-btn"
                                                 onClick={() => navigate("/account/my-tickets", {
                                                     state: {
-                                                    prefillTicket: {
-                                                        subject: "booking",
-                                                        message: `Help needed for Booking #${booking.booking_id}\nKennel: ${booking.kennel_name}\nCheck-in: ${formatDate(booking.check_in_date)}\nCheck-out: ${formatDate(booking.check_out_date)}\nPets: ${booking.pets?.map(p => p.pet_name).join(", ")}\n\nIssue: `,
-                                                        booking_id: booking.booking_id
+                                                        prefillTicket: {
+                                                            subject: "booking",
+                                                            message: `Help needed for Booking #${booking.booking_id}\nKennel: ${booking.kennel_name}\nCheck-in: ${formatDate(booking.check_in_date)}\nCheck-out: ${formatDate(booking.check_out_date)}\nPets: ${booking.pets?.map(p => p.pet_name).join(", ")}\n\nIssue: `,
+                                                            booking_id: booking.booking_id
+                                                        }
                                                     }
-                                                }
                                                 })}
                                             >
                                                 <i className="bi bi-life-preserver"></i>
@@ -311,14 +365,9 @@ export default function CrecheBookings() {
                                             {booking.status === "booked" && (
                                                 <button
                                                     className="booking-action-btn booking-cancel-btn"
-                                                    onClick={(e) => { e.stopPropagation(); handleCancelBooking(booking); }}
-                                                    disabled={cancellingId === booking.booking_id}
+                                                    onClick={(e) => { e.stopPropagation(); openCancelModal(booking); }}
                                                 >
-                                                    {cancellingId === booking.booking_id ? (
-                                                        <><span className="spinner-border spinner-border-sm"></span> Cancelling...</>
-                                                    ) : (
-                                                        <><i className="bi bi-x-circle"></i> Cancel Booking</>
-                                                    )}
+                                                    <i className="bi bi-x-circle"></i> Cancel Booking
                                                 </button>
                                             )}
                                         </div>
@@ -327,6 +376,171 @@ export default function CrecheBookings() {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Cancel & Refund Modal */}
+            {showCancelModal && cancelBooking && (
+                <div style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    background: "rgba(0,0,0,0.5)", zIndex: 9999,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: "20px"
+                }} onClick={() => !processingCancel && setShowCancelModal(false)}>
+                    <div style={{
+                        background: "white", borderRadius: "16px", maxWidth: "480px",
+                        width: "100%", maxHeight: "90vh", overflowY: "auto"
+                    }} onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div style={{
+                            padding: "20px 24px", borderBottom: "1px solid #f1f5f9",
+                            display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}>
+                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>Cancel Booking</h3>
+                            <button onClick={() => !processingCancel && setShowCancelModal(false)}
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", color: "#94a3b8" }}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+
+                        <div style={{ padding: "20px 24px" }}>
+                            {/* Booking info */}
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b" }}>
+                                    #{cancelBooking.booking_id} · {cancelBooking.kennel_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>
+                                    {formatDate(cancelBooking.check_in_date)} → {formatDate(cancelBooking.check_out_date)} · ₹{cancelBooking.total_price}
+                                </div>
+                            </div>
+
+                            {loadingPreview ? (
+                                <div style={{ textAlign: "center", padding: "30px 0" }}>
+                                    <div className="spinner-border spinner-border-sm"></div>
+                                    <p style={{ color: "#64748b", fontSize: "0.85rem", marginTop: "10px" }}>Calculating refund...</p>
+                                </div>
+                            ) : cancelPreview ? (
+                                <>
+                                    {/* Time warning */}
+                                    <div style={{
+                                        padding: "10px 14px", borderRadius: "8px", marginBottom: "16px",
+                                        background: cancelPreview.no_show ? "#1e293b" : cancelPreview.hours_before_checkin < 72 ? "#fef2f2" : "#f0fdf4",
+                                        border: `1px solid ${cancelPreview.no_show ? "#1e293b" : cancelPreview.hours_before_checkin < 72 ? "#fecaca" : "#bbf7d0"}`,
+                                        fontSize: "0.82rem",
+                                        color: cancelPreview.no_show ? "#ffffff" : cancelPreview.hours_before_checkin < 72 ? "#dc2626" : "#059669"
+                                    }}>
+                                        <i className={`bi ${cancelPreview.no_show ? "bi-exclamation-octagon" : cancelPreview.hours_before_checkin < 72 ? "bi-exclamation-triangle" : "bi-clock"} me-2`}></i>
+                                        {cancelPreview.no_show
+                                            ? "Check-in date has passed. No refund will be issued."
+                                            : cancelPreview.hours_before_checkin < 72
+                                                ? "Less than 72 hours before check-in — higher cancellation fee applies."
+                                                : "More than 72 hours before check-in — lower cancellation fee applies."
+                                        }
+                                    </div>
+
+                                    {/* Refund method selection */}
+                                    {!cancelPreview.no_show && (
+                                        <div style={{ marginBottom: "20px" }}>
+                                            <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+                                                {cancelPreview.online_portion > 0 ? "Refund online payment to:" : "Refund to:"}
+                                            </p>
+                                            {[
+                                                { value: "wallet", label: "Woof Wallet", sublabel: "Instant refund", icon: "bi-wallet2", color: "#7c3aed" },
+                                                ...(cancelPreview.booking_mode !== "wallet" ? [{ value: "original", label: "Original Payment", sublabel: "5-7 business days", icon: "bi-credit-card", color: "#2563eb" }] : [])
+                                            ].map(opt => (
+                                                <div key={opt.value}
+                                                    onClick={() => updatePreview(opt.value)}
+                                                    style={{
+                                                        display: "flex", alignItems: "center", gap: "12px",
+                                                        padding: "14px 16px", borderRadius: "10px", marginBottom: "8px",
+                                                        border: refundMethod === opt.value ? `2px solid ${opt.color}` : "1px solid #e2e8f0",
+                                                        background: refundMethod === opt.value ? `${opt.color}08` : "white",
+                                                        cursor: "pointer", transition: "all 0.15s"
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: "18px", height: "18px", borderRadius: "50%",
+                                                        border: refundMethod === opt.value ? `5px solid ${opt.color}` : "2px solid #cbd5e1",
+                                                        flexShrink: 0
+                                                    }} />
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>
+                                                            <i className={`bi ${opt.icon} me-2`}></i>{opt.label}
+                                                        </div>
+                                                        <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.sublabel}</div>
+                                                    </div>
+                                                    <span style={{
+                                                        padding: "2px 8px", borderRadius: "8px", fontSize: "0.72rem",
+                                                        fontWeight: 600, background: "#f0fdf4", color: "#059669"
+                                                    }}>
+                                                        {opt.value === "wallet" ? `${cancelPreview.wallet_rate}% fee` : `${cancelPreview.original_rate}% fee`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Refund breakdown */}
+                                    <div style={{
+                                        background: "#f8fafc", borderRadius: "10px", padding: "16px",
+                                        border: "1px solid #e2e8f0", marginBottom: "20px"
+                                    }}>
+                                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>Refund Breakdown</div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>
+                                            <span>Booking Total</span>
+                                            <span>₹{cancelPreview.total_price}</span>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#dc2626", marginBottom: "6px" }}>
+                                            <span>Cancellation Fee</span>
+                                            <span>−₹{cancelPreview.total_fee}</span>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", fontWeight: 700, color: "#059669", paddingTop: "8px", borderTop: "1px dashed #e2e8f0" }}>
+                                            <span>You Get Back</span>
+                                            <span>₹{cancelPreview.total_refund}</span>
+                                        </div>
+                                        {cancelPreview.wallet_refund > 0 && cancelPreview.online_refund > 0 && (
+                                            <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "8px" }}>
+                                                <div>Wallet: ₹{cancelPreview.wallet_refund} (instant)</div>
+                                                <div>{refundMethod === "wallet" ? "Wallet" : "Original"}: ₹{cancelPreview.online_refund} ({refundMethod === "wallet" ? "instant" : "5-7 days"})</div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div style={{ display: "flex", gap: "10px" }}>
+                                        <button onClick={() => setShowCancelModal(false)} disabled={processingCancel}
+                                            style={{
+                                                flex: 1, padding: "12px", borderRadius: "10px",
+                                                border: "1px solid #e2e8f0", background: "white",
+                                                color: "#475569", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                            }}>
+                                            Keep Booking
+                                        </button>
+                                        <button onClick={confirmCancel} disabled={processingCancel}
+                                            style={{
+                                                flex: 1, padding: "12px", borderRadius: "10px",
+                                                border: "none", background: "#dc2626",
+                                                color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                            }}>
+                                            {processingCancel ? (
+                                                <><span className="spinner-border spinner-border-sm"></span> Cancelling...</>
+                                            ) : (
+                                                <><i className="bi bi-x-circle"></i> Cancel & Refund</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{ textAlign: "center", padding: "20px", color: "#dc2626" }}>
+                                    <p>Failed to load refund details. Please try again.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
