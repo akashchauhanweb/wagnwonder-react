@@ -4,6 +4,7 @@ import { callServicesApi } from "../assets/js/servicesApi";
 
 const MENU_ITEMS = [
     { path: "/account/info", icon: "bi-person-fill", label: "Personal Info" },
+    { path: "/account/wallet", icon: "bi-wallet2", label: "Woof Wallet" },
     { path: "/account/pets", icon: "bi-heart-pulse-fill", label: "Your Pets" },
     { path: "/account/creche-bookings", icon: "bi-house-heart-fill", label: "Creche Bookings" },
     { path: "/account/event-bookings", icon: "bi-calendar-event-fill", label: "Event Tickets" },
@@ -88,7 +89,7 @@ function Account() {
     };
 
     const isBaseRoute = location.pathname === "/account";
-    const isAdmin = user?.permissions?.includes("master_console") || user?.permissions?.includes("events");
+    const isAdmin = user?.user_type === "admin" || user?.permissions?.length > 0;
 
     return (
         <div className="account-page">

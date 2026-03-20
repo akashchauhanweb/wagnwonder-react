@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useLocation } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 import FAQSection from "../assets/components/FAQSection";
 
@@ -25,8 +25,14 @@ const MyTickets = () => {
         );
     }, [tickets]);
 
+    const location = useLocation();
+
     useEffect(() => {
         window.scrollTo(0, 0);
+        // Auto-open new ticket modal if prefill data is passed
+        if (location.state?.prefillTicket) {
+            setShowNewTicketModal(true);
+        }
     }, []);
 
     const fetchMessages = async (ticketId) => {
@@ -363,6 +369,7 @@ const MyTickets = () => {
                         setTimeout(() => setSuccessMsg(""), 3000);
                     }}
                     userData={userData}
+                    prefill={location.state?.prefillTicket || null}
                 />
             )}
 
@@ -389,10 +396,10 @@ const MyTickets = () => {
 };
 
 // New Ticket Modal Component
-const NewTicketModal = ({ onClose, onSuccess, userData }) => {
+const NewTicketModal = ({ onClose, onSuccess, userData, prefill }) => {
     const [formData, setFormData] = useState({
-        subject: "",
-        message: ""
+        subject: prefill?.subject || "",
+        message: prefill?.message || ""
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -418,7 +425,8 @@ const NewTicketModal = ({ onClose, onSuccess, userData }) => {
                 subject: formData.subject,
                 message: formData.message,
                 user_id: userData.user_id,
-                source: "app"
+                source: "app",
+                booking_id: prefill?.booking_id || null
             });
 
             if (response?.success) {

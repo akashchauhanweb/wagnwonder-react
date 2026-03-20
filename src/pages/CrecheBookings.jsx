@@ -1,10 +1,105 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
 
 export default function CrecheBookings() {
+    const navigate = useNavigate();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [activeFilter, setActiveFilter] = useState("active");
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelBooking, setCancelBooking] = useState(null);
+    const [cancelPreview, setCancelPreview] = useState(null);
+    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [refundMethod, setRefundMethod] = useState("wallet");
+    const [processingCancel, setProcessingCancel] = useState(false);
+
+    const openCancelModal = async (booking) => {
+        setCancelBooking(booking);
+        setCancelPreview(null);
+        setRefundMethod("wallet");
+        setShowCancelModal(true);
+        setLoadingPreview(true);
+        try {
+            const res = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id: localStorage.getItem("session_id"),
+                booking_id: booking.booking_id,
+                refund_method: "wallet",
+                preview: true
+            });
+            if (res?.success && res.preview) {
+                setCancelPreview(res);
+            }
+        } catch (err) {
+            console.error("Error fetching cancel preview:", err);
+        } finally {
+            setLoadingPreview(false);
+        }
+    };
+
+    const updatePreview = async (method) => {
+        setRefundMethod(method);
+        if (!cancelBooking) return;
+        setLoadingPreview(true);
+        try {
+            const res = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id: localStorage.getItem("session_id"),
+                booking_id: cancelBooking.booking_id,
+                refund_method: method,
+                preview: true
+            });
+            if (res?.success && res.preview) {
+                setCancelPreview(res);
+            }
+        } catch (err) {
+            console.error("Error updating preview:", err);
+        } finally {
+            setLoadingPreview(false);
+        }
+    };
+
+    const confirmCancel = async () => {
+        if (!cancelBooking) return;
+        setProcessingCancel(true);
+        try {
+            const res = await callServicesApi({
+                action: "CANCEL_BOOKING",
+                session_id: localStorage.getItem("session_id"),
+                booking_id: cancelBooking.booking_id,
+                refund_method: refundMethod
+            });
+            if (res?.success) {
+                setBookings(prev => prev.map(b =>
+                    b.booking_id === cancelBooking.booking_id ? { ...b, status: res.new_status || "cancelled" } : b
+                ));
+                localStorage.removeItem("bookings");
+                // Refresh wallet balance from DB
+                try {
+                    const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+                    const walletRes = await callServicesApi({
+                        action: "GET_WALLET_BALANCE",
+                        session_id: localStorage.getItem("session_id"),
+                        user_id: user.id
+                    });
+                    if (walletRes?.success) localStorage.setItem("woof_balance", walletRes.balance);
+                } catch (e) { console.error("Failed to refresh wallet balance:", e); }
+                setShowCancelModal(false);
+                setCancelBooking(null);
+                setCancelPreview(null);
+                setActiveFilter("cancelled");
+            } else {
+                alert(res?.message || "Failed to cancel booking.");
+            }
+        } catch (err) {
+            console.error("Error cancelling:", err);
+            alert("Something went wrong.");
+        } finally {
+            setProcessingCancel(false);
+        }
+    };
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -47,8 +142,10 @@ export default function CrecheBookings() {
     const getStatusColor = (status) => {
         switch (status) {
             case 'booked': return 'status-booked';
+            case 'checked_in': return 'status-checked-in';
             case 'completed': return 'status-completed';
             case 'cancelled': return 'status-cancelled';
+            case 'no_show': return 'status-no-show';
             default: return '';
         }
     };
@@ -60,6 +157,27 @@ export default function CrecheBookings() {
                 {!loading && <span className="bookings-count">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</span>}
             </div>
 
+            <div className="event-bookings-filters">
+                <button
+                    className={activeFilter === "active" ? "active" : ""}
+                    onClick={() => setActiveFilter("active")}
+                >
+                    Active
+                </button>
+                <button
+                    className={activeFilter === "past" ? "active" : ""}
+                    onClick={() => setActiveFilter("past")}
+                >
+                    Past
+                </button>
+                <button
+                    className={activeFilter === "cancelled" ? "active" : ""}
+                    onClick={() => setActiveFilter("cancelled")}
+                >
+                    Cancelled
+                </button>
+            </div>
+
             {loading ? (
                 <div className="bookings-loading">
                     <div className="spinner-border" role="status" />
@@ -69,69 +187,360 @@ export default function CrecheBookings() {
                     <i className="bi bi-exclamation-circle"></i>
                     <p>{error}</p>
                 </div>
-            ) : bookings.length === 0 ? (
+            ) : bookings.filter(b => {
+                if (activeFilter === "active") return b.status === "booked" || b.status === "checked_in";
+                if (activeFilter === "past") return b.status === "completed";
+                if (activeFilter === "cancelled") return b.status === "cancelled" || b.status === "no_show";
+                return false;
+            }).length === 0 ? (
                 <div className="bookings-empty">
                     <div className="bookings-empty-icon">
                         <i className="bi bi-calendar-x"></i>
                     </div>
-                    <h3>No bookings yet</h3>
-                    <p>When you book a stay for your pet, it will appear here.</p>
+                    <h3>No {activeFilter} bookings</h3>
+                    <p>{activeFilter === "active" ? "When you book a stay for your pet, it will appear here." : activeFilter === "past" ? "Your completed bookings will appear here." : "No cancelled bookings."}</p>
                 </div>
             ) : (
                 <div className="bookings-list">
-                    {bookings.map((booking) => (
-                        <div key={booking.booking_id} className="booking-card">
-                            <div className="booking-card-header">
-                                <div className="booking-kennel">
-                                    <i className="bi bi-house-heart-fill"></i>
-                                    <span>{booking.kennel_name}</span>
-                                </div>
-                                <span className={`booking-status ${getStatusColor(booking.status)}`}>
-                                    {booking.status}
-                                </span>
-                            </div>
+                    {bookings.filter(b => {
+                        if (activeFilter === "active") return b.status === "booked" || b.status === "checked_in";
+                        if (activeFilter === "past") return b.status === "completed";
+                        if (activeFilter === "cancelled") return b.status === "cancelled" || b.status === "no_show";
+                        return false;
+                    }).map((booking) => {
+                        const isActive = booking.status === "booked" || booking.status === "checked_in";
+                        const isCompleted = booking.status === "completed";
+                        const isCancelled = booking.status === "cancelled" || booking.status === "no_show";
 
-                            <div className="booking-details-card">
-                                <div className="booking-id-row">
-                                    <span className="booking-id-label">Booking ID:</span>
-                                    <span className="booking-id-value">#{booking.booking_id}</span>
-                                </div>
-                                <div className="booking-pets-row">
-                                    <span className="booking-pets-label">For:</span>
-                                    {booking.pets.map((pet) => (
-                                        <span key={pet.pet_id} className="booking-pet-tag">
-                                            <i className="bi bi-paw"></i>
-                                            {pet.pet_name}
+                        return (
+                            <div key={booking.booking_id} className={`booking-card ${isCancelled ? "booking-card-cancelled" : ""}`}>
+                                {/* Top accent bar */}
+                                <div className={`booking-card-accent ${isActive ? "accent-active" : isCompleted ? "accent-completed" : "accent-cancelled"}`}></div>
+
+                                <div className="booking-card-inner">
+                                    {/* Header: Kennel + Status + ID */}
+                                    <div className="booking-card-header">
+                                        <div className="booking-kennel">
+                                            <div className="booking-kennel-icon">
+                                                <i className="bi bi-house-heart-fill"></i>
+                                            </div>
+                                            <div>
+                                                <span className="booking-kennel-name">{booking.kennel_name}</span>
+                                                <span className="booking-id-inline">#{booking.booking_id}</span>
+                                            </div>
+                                        </div>
+                                        <span className={`booking-status ${getStatusColor(booking.status)}`}>
+                                            {booking.status === "checked_in" ? "Checked In" : booking.status === "no_show" ? "No Show" : booking.status}
                                         </span>
-                                    ))}
+                                    </div>
+
+                                    {/* Stay details grid */}
+                                    <div className="booking-stay-grid">
+                                        <div className="booking-stay-item">
+                                            <i className="bi bi-box-arrow-in-right"></i>
+                                            <div>
+                                                <span className="stay-label">Check-in</span>
+                                                <span className="stay-value">{formatDate(booking.check_in_date)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="booking-stay-item">
+                                            <i className="bi bi-box-arrow-right"></i>
+                                            <div>
+                                                <span className="stay-label">Check-out</span>
+                                                <span className="stay-value">{formatDate(booking.check_out_date)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="booking-stay-item">
+                                            <i className="bi bi-moon-fill"></i>
+                                            <div>
+                                                <span className="stay-label">Duration</span>
+                                                <span className="stay-value">{booking.days} night{booking.days !== 1 ? 's' : ''}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Pets */}
+                                    <div className="booking-pets-section">
+                                        {booking.pets.map((pet) => (
+                                            <div key={pet.pet_id} className="booking-pet-chip">
+                                                <div className="pet-chip-avatar">
+                                                    {pet.pet_photo ? (
+                                                        <img src={pet.pet_photo} alt={pet.pet_name} />
+                                                    ) : (
+                                                        <i className="bi bi-heart-pulse-fill"></i>
+                                                    )}
+                                                </div>
+                                                <div className="pet-chip-info">
+                                                    <span className="pet-chip-name">{pet.pet_name}</span>
+                                                    <span className="pet-chip-breed">{pet.pet_breed}</span>
+                                                </div>
+                                                <span className="pet-chip-price">₹{pet.total_price}</span>
+                                            </div>
+                                        ))}
+
+                                        {/* Consolidated extension line */}
+                                        {booking.extensions?.length > 0 && (() => {
+                                            const totalExtraDays = booking.extensions.reduce((sum, ext) => sum + ext.extra_days, 0);
+                                            const totalAmount = booking.extensions.reduce((sum, ext) => sum + parseFloat(ext.amount), 0);
+                                            const paidCount = booking.extensions.filter(ext => ext.payment_status === "paid").length;
+                                            const totalCount = booking.extensions.length;
+
+                                            let paymentLabel, paymentColor;
+                                            if (paidCount === totalCount) {
+                                                paymentLabel = "Paid";
+                                                paymentColor = "#059669";
+                                            } else if (paidCount > 0) {
+                                                paymentLabel = "Partially Paid";
+                                                paymentColor = "#d97706";
+                                            } else {
+                                                paymentLabel = "Not Paid";
+                                                paymentColor = "#dc2626";
+                                            }
+
+                                            return (
+                                                <div className="booking-extension-chip">
+                                                    <div className="extension-chip-icon">
+                                                        <i className="bi bi-calendar-plus"></i>
+                                                    </div>
+                                                    <div className="pet-chip-info">
+                                                        <span className="pet-chip-name">Extension (+{totalExtraDays} night{totalExtraDays !== 1 ? 's' : ''})</span>
+                                                        <span className="pet-chip-breed" style={{ color: paymentColor }}>{paymentLabel}</span>
+                                                    </div>
+                                                    <span className="pet-chip-price">₹{totalAmount.toFixed(2)}</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    {/* Footer: Total */}
+                                    <div className="booking-footer">
+                                        <div className="booking-mode">
+                                            <i className={`bi ${booking.mode === "wallet" ? "bi-wallet2" : booking.mode === "partial" ? "bi-wallet2" : booking.mode === "online" ? "bi-globe" : "bi-shop"}`}></i>
+                                            {booking.mode === "wallet" ? "Wallet" : booking.mode === "partial" ? "Wallet + Online" : booking.mode === "online" ? "Online" : "Offline"}
+                                        </div>
+                                        <div className="booking-total">
+                                            <span>Total</span>
+                                            <span className="total-amount">₹{booking.total_price}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    {!isCompleted && !isCancelled && (
+                                        <div className="booking-actions">
+                                            {booking.kennel_lat && booking.kennel_lng && (
+                                                <a
+                                                    href={`https://www.google.com/maps/dir/?api=1&destination=${booking.kennel_lat},${booking.kennel_lng}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="booking-action-btn"
+                                                >
+                                                    <i className="bi bi-geo-alt"></i>
+                                                    Get Directions
+                                                </a>
+                                            )}
+                                            {booking.owner_phone && (
+                                                <a
+                                                    href={`tel:${booking.owner_phone}`}
+                                                    className="booking-action-btn"
+                                                >
+                                                    <i className="bi bi-telephone"></i>
+                                                    Call Kennel
+                                                </a>
+                                            )}
+                                            <button
+                                                className="booking-action-btn"
+                                                onClick={() => navigate("/account/my-tickets", {
+                                                    state: {
+                                                        prefillTicket: {
+                                                            subject: "booking",
+                                                            message: `Help needed for Booking #${booking.booking_id}\nKennel: ${booking.kennel_name}\nCheck-in: ${formatDate(booking.check_in_date)}\nCheck-out: ${formatDate(booking.check_out_date)}\nPets: ${booking.pets?.map(p => p.pet_name).join(", ")}\n\nIssue: `,
+                                                            booking_id: booking.booking_id
+                                                        }
+                                                    }
+                                                })}
+                                            >
+                                                <i className="bi bi-life-preserver"></i>
+                                                Help
+                                            </button>
+                                            {booking.status === "booked" && (
+                                                <button
+                                                    className="booking-action-btn booking-cancel-btn"
+                                                    onClick={(e) => { e.stopPropagation(); openCancelModal(booking); }}
+                                                >
+                                                    <i className="bi bi-x-circle"></i> Cancel Booking
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="booking-dates">
-                                    <div className="booking-date">
-                                        <span className="date-label">Check-in</span>
-                                        <span className="date-value">{formatDate(booking.check_in_date)}</span>
-                                    </div>
-                                    <div className="booking-date-arrow">
-                                        <i className="bi bi-arrow-right"></i>
-                                    </div>
-                                    <div className="booking-date">
-                                        <span className="date-label">Check-out</span>
-                                        <span className="date-value">{formatDate(booking.check_out_date)}</span>
-                                    </div>
-                                    <div className="booking-nights">
-                                        <i className="bi bi-moon-fill"></i>
-                                        {booking.days} night{booking.days !== 1 ? 's' : ''}
-                                    </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Cancel & Refund Modal */}
+            {showCancelModal && cancelBooking && (
+                <div style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    background: "rgba(0,0,0,0.5)", zIndex: 9999,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: "20px"
+                }} onClick={() => !processingCancel && setShowCancelModal(false)}>
+                    <div style={{
+                        background: "white", borderRadius: "16px", maxWidth: "480px",
+                        width: "100%", maxHeight: "90vh", overflowY: "auto"
+                    }} onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div style={{
+                            padding: "20px 24px", borderBottom: "1px solid #f1f5f9",
+                            display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}>
+                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>Cancel Booking</h3>
+                            <button onClick={() => !processingCancel && setShowCancelModal(false)}
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem", color: "#94a3b8" }}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+
+                        <div style={{ padding: "20px 24px" }}>
+                            {/* Booking info */}
+                            <div style={{
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "20px"
+                            }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1e293b" }}>
+                                    #{cancelBooking.booking_id} · {cancelBooking.kennel_name}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>
+                                    {formatDate(cancelBooking.check_in_date)} → {formatDate(cancelBooking.check_out_date)} · ₹{cancelBooking.total_price}
                                 </div>
                             </div>
 
-                            <div className="booking-footer">
-                                <div className="booking-total">
-                                    <span>Total</span>
-                                    <span className="total-amount">₹{booking.total_price}</span>
+                            {loadingPreview ? (
+                                <div style={{ textAlign: "center", padding: "30px 0" }}>
+                                    <div className="spinner-border spinner-border-sm"></div>
+                                    <p style={{ color: "#64748b", fontSize: "0.85rem", marginTop: "10px" }}>Calculating refund...</p>
                                 </div>
-                            </div>
+                            ) : cancelPreview ? (
+                                <>
+                                    {/* Time warning */}
+                                    <div style={{
+                                        padding: "10px 14px", borderRadius: "8px", marginBottom: "16px",
+                                        background: cancelPreview.no_show ? "#1e293b" : cancelPreview.hours_before_checkin < 72 ? "#fef2f2" : "#f0fdf4",
+                                        border: `1px solid ${cancelPreview.no_show ? "#1e293b" : cancelPreview.hours_before_checkin < 72 ? "#fecaca" : "#bbf7d0"}`,
+                                        fontSize: "0.82rem",
+                                        color: cancelPreview.no_show ? "#ffffff" : cancelPreview.hours_before_checkin < 72 ? "#dc2626" : "#059669"
+                                    }}>
+                                        <i className={`bi ${cancelPreview.no_show ? "bi-exclamation-octagon" : cancelPreview.hours_before_checkin < 72 ? "bi-exclamation-triangle" : "bi-clock"} me-2`}></i>
+                                        {cancelPreview.no_show
+                                            ? "Check-in date has passed. No refund will be issued."
+                                            : cancelPreview.hours_before_checkin < 72
+                                                ? "Less than 72 hours before check-in — higher cancellation fee applies."
+                                                : "More than 72 hours before check-in — lower cancellation fee applies."
+                                        }
+                                    </div>
+
+                                    {/* Refund method selection */}
+                                    {!cancelPreview.no_show && (
+                                        <div style={{ marginBottom: "20px" }}>
+                                            <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+                                                {cancelPreview.online_portion > 0 ? "Refund online payment to:" : "Refund to:"}
+                                            </p>
+                                            {[
+                                                { value: "wallet", label: "Woof Wallet", sublabel: "Instant refund", icon: "bi-wallet2", color: "#7c3aed" },
+                                                ...(cancelPreview.booking_mode !== "wallet" ? [{ value: "original", label: "Original Payment", sublabel: "5-7 business days", icon: "bi-credit-card", color: "#2563eb" }] : [])
+                                            ].map(opt => (
+                                                <div key={opt.value}
+                                                    onClick={() => updatePreview(opt.value)}
+                                                    style={{
+                                                        display: "flex", alignItems: "center", gap: "12px",
+                                                        padding: "14px 16px", borderRadius: "10px", marginBottom: "8px",
+                                                        border: refundMethod === opt.value ? `2px solid ${opt.color}` : "1px solid #e2e8f0",
+                                                        background: refundMethod === opt.value ? `${opt.color}08` : "white",
+                                                        cursor: "pointer", transition: "all 0.15s"
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: "18px", height: "18px", borderRadius: "50%",
+                                                        border: refundMethod === opt.value ? `5px solid ${opt.color}` : "2px solid #cbd5e1",
+                                                        flexShrink: 0
+                                                    }} />
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>
+                                                            <i className={`bi ${opt.icon} me-2`}></i>{opt.label}
+                                                        </div>
+                                                        <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{opt.sublabel}</div>
+                                                    </div>
+                                                    <span style={{
+                                                        padding: "2px 8px", borderRadius: "8px", fontSize: "0.72rem",
+                                                        fontWeight: 600, background: "#f0fdf4", color: "#059669"
+                                                    }}>
+                                                        {opt.value === "wallet" ? `${cancelPreview.wallet_rate}% fee` : `${cancelPreview.original_rate}% fee`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Refund breakdown */}
+                                    <div style={{
+                                        background: "#f8fafc", borderRadius: "10px", padding: "16px",
+                                        border: "1px solid #e2e8f0", marginBottom: "20px"
+                                    }}>
+                                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>Refund Breakdown</div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#64748b", marginBottom: "6px" }}>
+                                            <span>Booking Total</span>
+                                            <span>₹{cancelPreview.total_price}</span>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#dc2626", marginBottom: "6px" }}>
+                                            <span>Cancellation Fee</span>
+                                            <span>−₹{cancelPreview.total_fee}</span>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", fontWeight: 700, color: "#059669", paddingTop: "8px", borderTop: "1px dashed #e2e8f0" }}>
+                                            <span>You Get Back</span>
+                                            <span>₹{cancelPreview.total_refund}</span>
+                                        </div>
+                                        {cancelPreview.wallet_refund > 0 && cancelPreview.online_refund > 0 && (
+                                            <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "8px" }}>
+                                                <div>Wallet: ₹{cancelPreview.wallet_refund} (instant)</div>
+                                                <div>{refundMethod === "wallet" ? "Wallet" : "Original"}: ₹{cancelPreview.online_refund} ({refundMethod === "wallet" ? "instant" : "5-7 days"})</div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div style={{ display: "flex", gap: "10px" }}>
+                                        <button onClick={() => setShowCancelModal(false)} disabled={processingCancel}
+                                            style={{
+                                                flex: 1, padding: "12px", borderRadius: "10px",
+                                                border: "1px solid #e2e8f0", background: "white",
+                                                color: "#475569", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                            }}>
+                                            Keep Booking
+                                        </button>
+                                        <button onClick={confirmCancel} disabled={processingCancel}
+                                            style={{
+                                                flex: 1, padding: "12px", borderRadius: "10px",
+                                                border: "none", background: "#dc2626",
+                                                color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                            }}>
+                                            {processingCancel ? (
+                                                <><span className="spinner-border spinner-border-sm"></span> Cancelling...</>
+                                            ) : (
+                                                <><i className="bi bi-x-circle"></i> Cancel & Refund</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{ textAlign: "center", padding: "20px", color: "#dc2626" }}>
+                                    <p>Failed to load refund details. Please try again.</p>
+                                </div>
+                            )}
                         </div>
-                    ))}
+                    </div>
                 </div>
             )}
         </div>

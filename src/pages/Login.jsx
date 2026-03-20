@@ -49,6 +49,7 @@ function Login() {
             if (response && response.success) {
                 localStorage.setItem("session_id", response.session_id);
                 localStorage.setItem("user_data", JSON.stringify(response.user_data));
+                localStorage.setItem("woof_balance", response.woof_balance || 0);
                 
                 // Check for redirect destination
                 const redirectPath = localStorage.getItem("redirect_after_login");

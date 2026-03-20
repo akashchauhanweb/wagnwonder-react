@@ -32,9 +32,14 @@ import Events from './pages/Events.jsx';
 import EventDetails from './pages/EventDetails.jsx';
 import EventBookingReview from './pages/EventBookingReview.jsx';
 import EventBookings from './pages/EventBookings.jsx';
+import EventsRevenue from './pages/EventsRevenue.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import WhatsAppButton from './assets/components/WhatsAppButton.jsx';
 import EventsAdminPage from './pages/EventsAdminPage.jsx';
+import KennelsAdminPage from './pages/KennelsAdminPage.jsx';
+import KennelTickets from './pages/KennelTickets.jsx';
+import ManageServiceCities from './pages/ManageServiceCities.jsx';
+import WoofWallet from './pages/WoofWallet.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
 
@@ -82,6 +87,7 @@ function AppContent() {
           <Route path="creche-bookings" element={<CrecheBookings />} />
           <Route path="event-bookings" element={<EventBookings />} />
           <Route path="my-tickets" element={<MyTickets />} />
+          <Route path="wallet" element={<WoofWallet />} />
         </Route>
         <Route path="/admin" element={<AdminPage />}>
           <Route path="earnings" element={<EarningsDashboard />} />
@@ -89,10 +95,15 @@ function AppContent() {
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="manage-pets" element={<ManagePets />} />
           <Route path="manage-kennels" element={<ManageKennels />} />
+          <Route path="manage-cities" element={<ManageServiceCities />} />
           <Route path="manage-bookings" element={<ManageBookings />} />
           <Route path="manage-events" element={<ManageEvents />} />
           <Route path="support-tickets" element={<SupportTickets />} />
+          <Route path="kennels-admin" element={<KennelsAdminPage />} />
+          <Route path="kennels-admin/:section" element={<KennelsAdminPage />} />
+          <Route path="kennel-tickets" element={<KennelTickets />} />
           <Route path="events-admin" element={<EventsAdminPage />} />
+          <Route path="events-revenue" element={<EventsRevenue />} />
         </Route>
       </Routes>
 

@@ -3,7 +3,6 @@ import { imageCompressor } from "../assets/js/imageCompressor";
 import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { callServicesApi } from "../assets/js/servicesApi";
 import { useLoading } from "../contexts/LoadingContext";
-import stateCityMap from "../assets/js/stateCityMap";
 import { getWelcomeUserEmailHtml } from "../assets/js/welcomeUserEmail";
 
 const ManageKennels = () => {
@@ -90,9 +89,30 @@ const ManageKennels = () => {
         r.name.toLowerCase().includes(roomTypeSearch.toLowerCase())
     );
 
-    const stateCityMapJson = stateCityMap();
+    const [serviceCities, setServiceCities] = useState([]);
+
+    useEffect(() => {
+        const fetchServiceCities = async () => {
+            const response = await callServicesApi({
+                action: "GET_SERVICE_CITIES",
+                session_id
+            });
+            if (response?.success) {
+                setServiceCities(response.cities || []);
+            }
+        };
+        fetchServiceCities();
+    }, []);
+
+    // Group service cities by state
+    const serviceCityMap = {};
+    serviceCities.filter(c => c.is_active).forEach(c => {
+        if (!serviceCityMap[c.state]) serviceCityMap[c.state] = [];
+        serviceCityMap[c.state].push(c);
+    });
+
     const cityOptions = kennelForm.state
-        ? Object.keys(stateCityMapJson[kennelForm.state] || {})
+        ? (serviceCityMap[kennelForm.state] || []).map(c => c.city)
         : [];
 
     const detectLocation = () => {
@@ -883,10 +903,13 @@ const ManageKennels = () => {
                                         onChange={(e) => setKennelForm({ ...kennelForm, state: e.target.value, city: "" })}
                                     >
                                         <option value="">Select State</option>
-                                        {Object.keys(stateCityMapJson).map(state => (
+                                        {Object.keys(serviceCityMap).sort().map(state => (
                                             <option key={state} value={state}>{state}</option>
                                         ))}
                                     </select>
+                                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px", display: "block" }}>
+                                        State or city not listed? Add it from <strong>Service Cities</strong> in the menu.
+                                    </span>
                                 </div>
                                 <div className="form-field">
                                     <label>City *</label>

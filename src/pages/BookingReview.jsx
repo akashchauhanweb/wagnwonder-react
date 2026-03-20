@@ -10,6 +10,15 @@ export default function BookingReview() {
     const [isProcessing, setIsProcessing] = useState(false);
     const IS_DEV = import.meta.env.VITE_IS_DEV === '1' ? 1 : 0;
     const ENV_NAME = import.meta.env.VITE_IS_DEV === '1' ? 'sandbox' : 'production';
+
+    // Wallet state — read from localStorage, no API call
+    const [walletBalance] = useState(() => parseFloat(localStorage.getItem("woof_balance") || "0"));
+    const [useWallet, setUseWallet] = useState(false);
+
+    const walletDeduction = useWallet ? Math.min(walletBalance, total) : 0;
+    const onlineAmount = total - walletDeduction;
+    const paymentMode = walletDeduction >= total ? "wallet" : walletDeduction > 0 ? "partial" : "online";
+
     useEffect(() => {
         window.scrollTo(0, 0);
         const script = document.createElement("script");
@@ -45,16 +54,53 @@ export default function BookingReview() {
         setIsProcessing(true);
         localStorage.setItem(
             "pending_booking",
-            JSON.stringify({ kennel, checkin, checkout, breakdown, total, days, room_type_id })
+            JSON.stringify({ kennel, checkin, checkout, breakdown, total, days, room_type_id, walletDeduction, paymentMode })
         );
         try {
             let customer_data = JSON.parse(localStorage.getItem("user_data"));
+
+            // Full wallet payment — no Cashfree needed
+            if (paymentMode === "wallet") {
+                const bookingPayload = {
+                    action: "CREATE_BOOKING_ENTRY",
+                    session_id: localStorage.getItem("session_id"),
+                    user_id: customer_data.id,
+                    kennel_id: kennel.kennel_id,
+                    room_type_id: room_type_id,
+                    check_in_date: checkin,
+                    check_out_date: checkout,
+                    days: days,
+                    total_price: total,
+                    wallet_amount: walletDeduction,
+                    mode: "wallet",
+                    order_id: `WALLET_${Date.now()}`,
+                    cf_order_id: null,
+                    pets: breakdown.map((p) => ({
+                        pet_id: p.id,
+                        price_per_day: p.perDay,
+                        days: p.days,
+                        total_price: p.total,
+                    })),
+                };
+
+                const res = await callServicesApi(bookingPayload);
+                if (res?.success) {
+                    localStorage.removeItem("pending_booking");
+                    navigate("/payment-status?wallet_success=1");
+                } else {
+                    console.error("Wallet booking failed:", res);
+                    setIsProcessing(false);
+                }
+                return;
+            }
+
+            // Online or partial — go through Cashfree for the online amount
             let payload = {
                 action: "CREATE_PAYMENT_SESSION",
                 session_id: localStorage.getItem("session_id"),
                 customer_id: customer_data.id.toString().padStart(3, '0'),
                 customer_phone: customer_data.phone_number,
-                order_amount: total
+                order_amount: onlineAmount
             }
             const data = await callServicesApi(payload);
             if (!data.payment_session_id) {
@@ -165,15 +211,71 @@ export default function BookingReview() {
                     </div>
                 </div>
 
+                {/* Wallet Section */}
+                <div className="booking-review-card">
+                    <div className="booking-review-card-header">
+                        <i className="bi bi-wallet2"></i>
+                        <h3>Woof Wallet</h3>
+                    </div>
+                    <div style={{ padding: "4px 0" }}>
+                        <div style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "14px 16px", borderRadius: "10px",
+                            background: useWallet ? "#fef2f2" : "#f8fafc",
+                            border: useWallet ? "1.5px solid #D84A39" : "1px solid #e2e8f0",
+                            cursor: "pointer", transition: "all 0.2s"
+                        }}
+                            onClick={() => setUseWallet(!useWallet)}
+                        >
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                <div style={{
+                                    width: "20px", height: "20px", borderRadius: "4px",
+                                    border: useWallet ? "none" : "2px solid #cbd5e1",
+                                    background: useWallet ? "#D84A39" : "white",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    transition: "all 0.2s", flexShrink: 0
+                                }}>
+                                    {useWallet && <i className="bi bi-check" style={{ color: "white", fontSize: "0.75rem", fontWeight: 700 }}></i>}
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e293b" }}>
+                                        Pay with Woofs
+                                    </div>
+                                    <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "1px" }}>
+                                        Balance: {Math.floor(walletBalance).toLocaleString("en-IN")} Woofs
+                                    </div>
+                                </div>
+                            </div>
+                            {useWallet && (
+                                <div style={{ fontWeight: 700, color: "#D84A39", fontSize: "0.95rem" }}>
+                                    −{walletDeduction.toLocaleString("en-IN")} Woofs
+                                </div>
+                            )}
+                        </div>
+                        {useWallet && onlineAmount > 0 && (
+                            <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "8px", paddingLeft: "4px" }}>
+                                <i className="bi bi-info-circle me-1"></i>
+                                Remaining ₹{onlineAmount.toLocaleString("en-IN")} will be charged via online payment.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Total Card */}
                 <div className="booking-review-total-card">
                     <div className="booking-review-total-row">
                         <span>Subtotal ({breakdown.length} {breakdown.length === 1 ? 'pet' : 'pets'} × {days} {days === 1 ? 'night' : 'nights'})</span>
                         <span>₹{total}</span>
                     </div>
+                    {useWallet && walletDeduction > 0 && (
+                        <div className="booking-review-total-row" style={{ color: "#059669" }}>
+                            <span><i className="bi bi-wallet2 me-1"></i>Woof Wallet</span>
+                            <span>−₹{walletDeduction.toLocaleString("en-IN")}</span>
+                        </div>
+                    )}
                     <div className="booking-review-total-row total">
-                        <span>Total Amount</span>
-                        <span>₹{total}</span>
+                        <span>{paymentMode === "wallet" ? "Pay with Woofs" : "Pay Online"}</span>
+                        <span>{paymentMode === "wallet" ? `${walletDeduction} Woofs` : `₹${onlineAmount.toLocaleString("en-IN")}`}</span>
                     </div>
                     <button 
                         className="booking-review-pay-btn" 
@@ -185,16 +287,21 @@ export default function BookingReview() {
                                 <span className="spinner-border spinner-border-sm" role="status" />
                                 Processing...
                             </>
+                        ) : paymentMode === "wallet" ? (
+                            <>
+                                <i className="bi bi-wallet2"></i>
+                                Pay {walletDeduction} Woofs
+                            </>
                         ) : (
                             <>
                                 <i className="bi bi-shield-lock-fill"></i>
-                                Pay ₹{total}
+                                Pay ₹{onlineAmount.toLocaleString("en-IN")}
                             </>
                         )}
                     </button>
                     <p className="booking-review-secure">
                         <i className="bi bi-lock-fill"></i>
-                        Secured by Cashfree Payments
+                        {paymentMode === "wallet" ? "Paid instantly from your Woof Wallet" : "Secured by Cashfree Payments"}
                     </p>
                 </div>
             </div>

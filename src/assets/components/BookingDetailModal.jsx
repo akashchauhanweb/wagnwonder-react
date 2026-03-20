@@ -13,11 +13,14 @@ const BookingDetailModal = ({ booking, onClose }) => {
             case 'booked': return 'status-booked';
             case 'completed': return 'status-completed';
             case 'cancelled': return 'status-cancelled';
+            case 'no_show': return 'status-no-show';
             default: return '';
         }
     };
 
     const getModeBadgeClass = (mode) => {
+        if (mode === 'wallet') return 'mode-wallet';
+        if (mode === 'partial') return 'mode-partial';
         return mode === 'online' ? 'mode-online' : 'mode-offline';
     };
 
@@ -37,7 +40,7 @@ const BookingDetailModal = ({ booking, onClose }) => {
                             <span className="modal-booking-id">Booking #{booking.booking_id}</span>
                         </div>
                         <span className={`booking-status-badge ${getStatusBadgeClass(booking.status)}`}>
-                            {booking.status}
+                            {booking.status === "checked_in" ? "Checked In" : booking.status === "no_show" ? "No Show" : booking.status}
                         </span>
                     </div>
 
@@ -59,7 +62,7 @@ const BookingDetailModal = ({ booking, onClose }) => {
                             <div className="modal-detail">
                                 <span className="detail-label">Payment Mode</span>
                                 <span className={`mode-badge ${getModeBadgeClass(booking.mode)}`}>
-                                    {booking.mode}
+                                    {booking.mode === 'partial' ? 'Wallet + Online' : booking.mode.charAt(0).toUpperCase() + booking.mode.slice(1)}
                                 </span>
                             </div>
                         </div>

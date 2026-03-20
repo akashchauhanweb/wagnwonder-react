@@ -161,6 +161,7 @@ export default function EventBookings() {
 
                                     <div className="event-booking-tickets">
                                         <div className="ticket-info">
+                                            <span className="ticket-label">Ticket Type:</span>
                                             <span className="ticket-type">{booking.ticket_type}</span>
                                             <span className="ticket-count">× {booking.ticket_count}</span>
                                         </div>

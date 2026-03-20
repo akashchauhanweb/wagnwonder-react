@@ -10,6 +10,7 @@ const MENU_ITEMS = [
     { path: "/admin/manage-users", icon: "bi-people-fill", label: "Manage Users" },
     { path: "/admin/manage-pets", icon: "bi-heart-pulse-fill", label: "Manage Pets" },
     { path: "/admin/manage-kennels", icon: "bi-house-door-fill", label: "Manage Kennels" },
+    { path: "/admin/manage-cities", icon: "bi-geo-alt-fill", label: "Service Cities" },
     { path: "/admin/manage-bookings", icon: "bi-calendar-check-fill", label: "Manage Bookings" },
     { path: "/admin/manage-events", icon: "bi-calendar-event", label: "Manage Events" },
     { path: "/admin/support-tickets", icon: "bi-chat-dots-fill", label: "Support Tickets" },
@@ -19,10 +20,11 @@ const AdminPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const userData = JSON.parse(localStorage.getItem("user_data"));
-    
+
     const [supportTickets, setSupportTickets] = useState([]);
     const [ticketsLoading, setTicketsLoading] = useState(true);
     const [pendingTicketCount, setPendingTicketCount] = useState(0);
+    const [pendingKennelTicketCount, setPendingKennelTicketCount] = useState(0);
 
     const fetchSupportTickets = async () => {
         const session_id = localStorage.getItem("session_id");
@@ -52,16 +54,47 @@ const AdminPage = () => {
         }
     };
 
+    const fetchKennelTicketCount = async () => {
+        const session_id = localStorage.getItem("session_id");
+        try {
+            const kennelRes = await callServicesApi({
+                action: "GET_MANAGED_KENNELS",
+                session_id,
+                user_id: userData.id
+            });
+            if (kennelRes?.success && kennelRes.kennels?.length > 0) {
+                const ticketRes = await callServicesApi({
+                    action: "GET_KENNEL_TICKETS",
+                    session_id,
+                    kennel_ids: kennelRes.kennels.map(k => k.id)
+                });
+                if (ticketRes?.success) {
+                    const pending = (ticketRes.tickets || []).filter(t =>
+                        t.status === "open" || (t.status === "in_progress" && t.last_reply_by === "user")
+                    ).length;
+                    setPendingKennelTicketCount(pending);
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching kennel ticket count:", err);
+        }
+    };
+
     const isSuperAdmin = userData?.permissions?.includes("master_console");
     const isEventsAdmin = userData?.permissions?.includes("events");
+    const isBoardingAdmin = userData?.permissions?.includes("boarding");
+
 
     useEffect(() => {
         if (isSuperAdmin) {
             fetchSupportTickets();
         }
+        if (isBoardingAdmin) {
+            fetchKennelTicketCount();
+        }
     }, []);
 
-    if (!userData || (!isSuperAdmin && !isEventsAdmin)) {
+    if (!userData || (!isSuperAdmin && !isEventsAdmin && !isBoardingAdmin)) {
         localStorage.clear();
         return <Navigate to="/login" />;
     }
@@ -108,7 +141,13 @@ const AdminPage = () => {
                             </div>
                             <div className="admin-user-info">
                                 <h3>{userData.first_name} {userData.last_name}</h3>
-                                <p>{isSuperAdmin ? "Administrator" : "Events Manager"}</p>
+                                <p>{
+                                    isSuperAdmin ? "Administrator" :
+                                        (isBoardingAdmin && isEventsAdmin) ? "Events & Boarding Admin" :
+                                            isBoardingAdmin ? "Boarding Admin" :
+                                                isEventsAdmin ? "Events Manager" :
+                                                    "User"
+                                }</p>
                             </div>
                         </div>
 
@@ -146,6 +185,92 @@ const AdminPage = () => {
                                         <i className="bi bi-calendar-event-fill"></i>
                                         <span>My Events</span>
                                     </Link>
+                                    <Link
+                                        to="/admin/events-revenue"
+                                        className={`admin-nav-item ${location.pathname === "/admin/events-revenue" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-bar-chart-line-fill"></i>
+                                        <span>Earnings Dashboard</span>
+                                    </Link>
+                                </>
+                            )}
+
+                            {isBoardingAdmin && (
+                                <>
+                                    <div className="admin-nav-divider">
+                                        <span>BOARDING ADMIN</span>
+                                    </div>
+                                    <Link
+                                        to="/admin/kennels-admin/kennels"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/kennels" || location.pathname === "/admin/kennels-admin" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-house-door-fill"></i>
+                                        <span>My Kennels</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/profile"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/profile" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-pencil-square"></i>
+                                        <span>Kennel Profile</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/revenue"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/revenue" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-bar-chart-line-fill"></i>
+                                        <span>Earnings Dashboard</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/bookings"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/bookings" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-calendar-check-fill"></i>
+                                        <span>Bookings</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/today"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/today" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-calendar-day-fill"></i>
+                                        <span>Today's Activity</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/occupancy"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/occupancy" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-grid-3x3-gap-fill"></i>
+                                        <span>Occupancy</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/employees"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/employees" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-person-badge-fill"></i>
+                                        <span>Employees</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennel-tickets"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennel-tickets" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-chat-dots-fill"></i>
+                                        <span>Support Tickets</span>
+                                        {pendingKennelTicketCount > 0 && (
+                                            <span className="admin-unread-badge">{pendingKennelTicketCount}</span>
+                                        )}
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/closure"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/closure" ? "active" : ""}`}
+                                        style={location.pathname !== "/admin/kennels-admin/closure" ? {
+                                            background: "linear-gradient(135deg, #fff5f5, #fee2e2)",
+                                            border: "1px solid #fecaca",
+                                            color: "#dc2626"
+                                        } : {}}
+                                    >
+                                        <i className="bi bi-exclamation-triangle-fill" style={{ color: location.pathname === "/admin/kennels-admin/closure" ? undefined : "#dc2626" }}></i>
+                                        <span>Maintenance Closure</span>
+                                    </Link>
                                 </>
                             )}
 
@@ -164,7 +289,7 @@ const AdminPage = () => {
                                 Back to menu
                             </button>
                         )}
-                        
+
                         {isBaseAdminRoute ? (
                             <div className="admin-welcome">
                                 <div className="admin-welcome-icon">
@@ -172,7 +297,7 @@ const AdminPage = () => {
                                 </div>
                                 <h2>Welcome, {userData.first_name}!</h2>
                                 <p>Manage your dashboard using the menu on the left or get started below.</p>
-                                
+
                                 <div className="admin-quick-stats">
                                     {isSuperAdmin && MENU_ITEMS.map((item) => (
                                         <Link key={item.path} to={item.path} className="admin-stat-card">
@@ -180,11 +305,58 @@ const AdminPage = () => {
                                             <span>{item.label}</span>
                                         </Link>
                                     ))}
+                                    {isBoardingAdmin && (
+                                        <>
+                                            <Link to="/admin/kennels-admin/kennels" className="admin-stat-card">
+                                                <i className="bi bi-house-door-fill"></i>
+                                                <span>My Kennels</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/profile" className="admin-stat-card">
+                                                <i className="bi bi-pencil-square"></i>
+                                                <span>Kennel Profile</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/revenue" className="admin-stat-card">
+                                                <i className="bi bi-bar-chart-line-fill"></i>
+                                                <span>Earnings Dashboard</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/bookings" className="admin-stat-card">
+                                                <i className="bi bi-calendar-check-fill"></i>
+                                                <span>Bookings</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/today" className="admin-stat-card">
+                                                <i className="bi bi-calendar-day-fill"></i>
+                                                <span>Today's Activity</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/occupancy" className="admin-stat-card">
+                                                <i className="bi bi-grid-3x3-gap-fill"></i>
+                                                <span>Occupancy</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/employees" className="admin-stat-card">
+                                                <i className="bi bi-person-badge-fill"></i>
+                                                <span>Employees</span>
+                                            </Link>
+
+                                            <Link to="/admin/kennel-tickets" className="admin-stat-card">
+                                                <i className="bi bi-chat-dots-fill"></i>
+                                                <span>Support Tickets</span>
+                                            </Link>
+                                            <Link to="/admin/kennels-admin/closure" className="admin-stat-card" style={{ borderColor: "#fecaca", background: "#fff5f5" }}>
+                                                <i className="bi bi-exclamation-triangle-fill" style={{ color: "#dc2626" }}></i>
+                                                <span style={{ color: "#dc2626" }}>Maintenance Closure</span>
+                                            </Link>
+                                        </>
+                                    )}
                                     {isEventsAdmin && (
-                                        <Link to="/admin/events-admin" className="admin-stat-card">
-                                            <i className="bi bi-calendar-event-fill"></i>
-                                            <span>My Events</span>
-                                        </Link>
+                                        <>
+                                            <Link to="/admin/events-admin" className="admin-stat-card">
+                                                <i className="bi bi-calendar-event-fill"></i>
+                                                <span>My Events</span>
+                                            </Link>
+                                            <Link to="/admin/events-revenue" className="admin-stat-card">
+                                                <i className="bi bi-bar-chart-line-fill"></i>
+                                                <span>Earnings Dashboard</span>
+                                            </Link>
+                                        </>
                                     )}
                                 </div>
                             </div>
