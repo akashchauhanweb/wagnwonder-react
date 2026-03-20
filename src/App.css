@@ -5524,6 +5524,22 @@ input[type="date"].hero-input:invalid {
     font-size: 0.9rem;
 }
 
+.booking-action-btn.booking-cancel-btn {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.booking-action-btn.booking-cancel-btn:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.booking-action-btn.booking-cancel-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 @media (max-width: 576px) {
     .booking-actions {
         flex-direction: column;

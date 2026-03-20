@@ -8,6 +8,45 @@ export default function CrecheBookings() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [activeFilter, setActiveFilter] = useState("active");
+    const [cancellingId, setCancellingId] = useState(null);
+
+    const handleCancelBooking = async (booking) => {
+        const walletAmt = parseFloat(booking.wallet_amount || 0);
+        let confirmMsg = `Are you sure you want to cancel booking #${booking.booking_id} at ${booking.kennel_name}?`;
+        if (walletAmt > 0) {
+            confirmMsg += `\n\n${Math.floor(walletAmt)} Woofs will be refunded to your wallet.`;
+        }
+        if (!window.confirm(confirmMsg)) return;
+
+        setCancellingId(booking.booking_id);
+        try {
+            const res = await callServicesApi({
+                action: "UPDATE_BOOKING_STATUS",
+                session_id: localStorage.getItem("session_id"),
+                booking_id: booking.booking_id,
+                new_status: "cancelled"
+            });
+            if (res?.success) {
+                // Update local state
+                setBookings(prev => prev.map(b =>
+                    b.booking_id === booking.booking_id ? { ...b, status: "cancelled" } : b
+                ));
+                localStorage.removeItem("bookings");
+                // Refresh wallet balance if woofs were refunded
+                if (res.wallet_refunded > 0) {
+                    localStorage.setItem("woof_balance", parseFloat(localStorage.getItem("woof_balance") || "0") + res.wallet_refunded);
+                }
+                setActiveFilter("cancelled");
+            } else {
+                alert(res?.message || "Failed to cancel booking.");
+            }
+        } catch (err) {
+            console.error("Error cancelling booking:", err);
+            alert("Something went wrong. Please try again.");
+        } finally {
+            setCancellingId(null);
+        }
+    };
 
     const fetchBookings = async () => {
         setLoading(true);
@@ -269,6 +308,19 @@ export default function CrecheBookings() {
                                                 <i className="bi bi-life-preserver"></i>
                                                 Help
                                             </button>
+                                            {booking.status === "booked" && (
+                                                <button
+                                                    className="booking-action-btn booking-cancel-btn"
+                                                    onClick={(e) => { e.stopPropagation(); handleCancelBooking(booking); }}
+                                                    disabled={cancellingId === booking.booking_id}
+                                                >
+                                                    {cancellingId === booking.booking_id ? (
+                                                        <><span className="spinner-border spinner-border-sm"></span> Cancelling...</>
+                                                    ) : (
+                                                        <><i className="bi bi-x-circle"></i> Cancel Booking</>
+                                                    )}
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>

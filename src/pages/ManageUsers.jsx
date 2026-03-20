@@ -39,6 +39,27 @@ const ManageUsers = () => {
     const [showPassword, setShowPassword] = useState(false);
     const { setLoading } = useLoading();
 
+    // Wallet summary state
+    const [walletData, setWalletData] = useState(null);
+    const [loadingWallet, setLoadingWallet] = useState(false);
+    const [walletSearch, setWalletSearch] = useState("");
+    const [walletView, setWalletView] = useState("users"); // "users" or "transactions"
+
+    const fetchWalletSummary = async () => {
+        setLoadingWallet(true);
+        try {
+            const res = await callServicesApi({
+                action: "GET_WALLET_SUMMARY",
+                session_id: localStorage.getItem("session_id")
+            });
+            if (res?.success) setWalletData(res);
+        } catch (err) {
+            console.error("Error fetching wallet summary:", err);
+        } finally {
+            setLoadingWallet(false);
+        }
+    };
+
     const fetchUsers = async () => {
         setFetchingUsers(true);
         const res = await callServicesApi({
@@ -325,6 +346,13 @@ const ManageUsers = () => {
                 >
                     <i className="bi bi-person-plus"></i>
                     Add User
+                </button>
+                <button
+                    className={`submenu-item ${activeTab === "wallet" ? "active" : ""}`}
+                    onClick={() => { setActiveTab("wallet"); if (!walletData) fetchWalletSummary(); }}
+                >
+                    <i className="bi bi-wallet2"></i>
+                    Wallet Summary
                 </button>
             </div>
 
@@ -750,6 +778,224 @@ const ManageUsers = () => {
                             )}
                         </button>
                     </form>
+                </div>
+            )}
+        {/* Wallet Summary Tab */}
+            {activeTab === "wallet" && (
+                <div>
+                    {loadingWallet ? (
+                        <div className="manage-users-loading">
+                            <div className="spinner-border" role="status" />
+                        </div>
+                    ) : !walletData ? (
+                        <div className="manage-users-empty">
+                            <i className="bi bi-wallet2"></i>
+                            <p>Failed to load wallet data</p>
+                        </div>
+                    ) : (() => {
+                        const o = walletData.overview;
+                        const filteredWallets = walletData.user_wallets.filter(u => {
+                            if (!walletSearch.trim()) return true;
+                            const s = walletSearch.toLowerCase();
+                            return (
+                                u.first_name?.toLowerCase().includes(s) ||
+                                u.last_name?.toLowerCase().includes(s) ||
+                                u.email?.toLowerCase().includes(s) ||
+                                u.phone_number?.includes(s)
+                            );
+                        });
+
+                        const formatCurrency = (amt) => `₹${Math.round(amt).toLocaleString("en-IN")}`;
+                        const formatWoofs = (amt) => `${Math.floor(amt).toLocaleString("en-IN")}`;
+                        const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+                        return (
+                            <>
+                                {/* Overview Cards */}
+                                <div style={{
+                                    display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                                    gap: "12px", marginBottom: "24px"
+                                }}>
+                                    {[
+                                        { label: "Active Wallets", value: o.active_wallets, icon: "bi-people-fill", color: "#2563eb", bg: "#eff6ff" },
+                                        { label: "Woofs in Circulation", value: formatWoofs(o.total_balance), icon: "bi-coin", color: "#d97706", bg: "#fffbeb" },
+                                        { label: "Money Collected", value: formatCurrency(o.total_money_collected), icon: "bi-cash-stack", color: "#059669", bg: "#ecfdf5" },
+                                        { label: "Woofs Purchased", value: formatWoofs(o.total_woofs_purchased), icon: "bi-plus-circle-fill", color: "#059669", bg: "#ecfdf5" },
+                                        { label: "Woofs Spent", value: formatWoofs(o.total_woofs_spent), icon: "bi-dash-circle-fill", color: "#dc2626", bg: "#fef2f2" },
+                                        { label: "Woofs Refunded", value: formatWoofs(o.total_woofs_refunded), icon: "bi-arrow-counterclockwise", color: "#7c3aed", bg: "#f5f3ff" },
+                                    ].map((card, idx) => (
+                                        <div key={idx} style={{
+                                            background: "white", borderRadius: "12px", padding: "16px 18px",
+                                            border: "1px solid #e2e8f0"
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                                <div style={{
+                                                    width: "32px", height: "32px", borderRadius: "8px",
+                                                    background: card.bg, display: "flex", alignItems: "center",
+                                                    justifyContent: "center"
+                                                }}>
+                                                    <i className={`bi ${card.icon}`} style={{ color: card.color, fontSize: "0.9rem" }}></i>
+                                                </div>
+                                                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>{card.label}</span>
+                                            </div>
+                                            <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#1e293b" }}>{card.value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Sub-tabs */}
+                                <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                                    <button
+                                        onClick={() => setWalletView("users")}
+                                        style={{
+                                            padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0",
+                                            background: walletView === "users" ? "#1e293b" : "white",
+                                            color: walletView === "users" ? "white" : "#64748b",
+                                            fontWeight: 600, fontSize: "0.82rem", cursor: "pointer"
+                                        }}
+                                    >
+                                        <i className="bi bi-people me-1"></i>User Balances
+                                    </button>
+                                    <button
+                                        onClick={() => setWalletView("transactions")}
+                                        style={{
+                                            padding: "8px 16px", borderRadius: "8px", border: "1px solid #e2e8f0",
+                                            background: walletView === "transactions" ? "#1e293b" : "white",
+                                            color: walletView === "transactions" ? "white" : "#64748b",
+                                            fontWeight: 600, fontSize: "0.82rem", cursor: "pointer"
+                                        }}
+                                    >
+                                        <i className="bi bi-clock-history me-1"></i>Recent Transactions
+                                    </button>
+                                    <button
+                                        onClick={() => fetchWalletSummary()}
+                                        disabled={loadingWallet}
+                                        style={{
+                                            marginLeft: "auto", padding: "8px 12px", borderRadius: "8px",
+                                            border: "1px solid #e2e8f0", background: "white", color: "#64748b",
+                                            cursor: "pointer", fontSize: "0.82rem"
+                                        }}
+                                    >
+                                        <i className={`bi bi-arrow-clockwise ${loadingWallet ? 'spinning' : ''}`}></i>
+                                    </button>
+                                </div>
+
+                                {/* User Balances */}
+                                {walletView === "users" && (
+                                    <>
+                                        <div style={{ marginBottom: "12px" }}>
+                                            <div className="filter-input-wrapper">
+                                                <i className="bi bi-search"></i>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search by name, email, or phone..."
+                                                    value={walletSearch}
+                                                    onChange={(e) => setWalletSearch(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        {filteredWallets.length === 0 ? (
+                                            <div className="manage-users-empty">
+                                                <i className="bi bi-wallet2"></i>
+                                                <p>No wallets found</p>
+                                            </div>
+                                        ) : (
+                                            <div className="manage-users-table-wrapper">
+                                                <table className="manage-users-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>User</th>
+                                                            <th>Email</th>
+                                                            <th>Phone</th>
+                                                            <th style={{ textAlign: "right" }}>Balance</th>
+                                                            <th style={{ textAlign: "right" }}>Topped Up</th>
+                                                            <th style={{ textAlign: "right" }}>Spent</th>
+                                                            <th>Last Activity</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {filteredWallets.map((u) => (
+                                                            <tr key={u.user_id}>
+                                                                <td className="user-name">
+                                                                    <div className="user-name-inner">
+                                                                        <div className="user-avatar">
+                                                                            {u.first_name?.charAt(0)}{u.last_name?.charAt(0)}
+                                                                        </div>
+                                                                        <span>{u.first_name} {u.last_name}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="user-email">{u.email}</td>
+                                                                <td className="user-phone">{u.phone_number}</td>
+                                                                <td style={{ textAlign: "right", fontWeight: 700, color: u.balance > 0 ? "#059669" : "#94a3b8" }}>
+                                                                    {formatWoofs(u.balance)}
+                                                                </td>
+                                                                <td style={{ textAlign: "right", color: "#64748b" }}>
+                                                                    {formatWoofs(u.total_topup)}
+                                                                </td>
+                                                                <td style={{ textAlign: "right", color: "#64748b" }}>
+                                                                    {formatWoofs(u.total_spent)}
+                                                                </td>
+                                                                <td style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                                                                    {u.last_transaction ? formatDate(u.last_transaction) : "—"}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Recent Transactions */}
+                                {walletView === "transactions" && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        {walletData.recent_transactions.length === 0 ? (
+                                            <div className="manage-users-empty">
+                                                <i className="bi bi-clock-history"></i>
+                                                <p>No transactions yet</p>
+                                            </div>
+                                        ) : walletData.recent_transactions.map((tx) => (
+                                            <div key={tx.id} style={{
+                                                display: "flex", alignItems: "center", gap: "14px",
+                                                padding: "14px 16px", background: "white", borderRadius: "10px",
+                                                border: "1px solid #f1f5f9"
+                                            }}>
+                                                <div style={{
+                                                    width: "36px", height: "36px", borderRadius: "10px",
+                                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                                    background: tx.type === "topup" ? "#ecfdf5" : tx.type === "refund" ? "#f5f3ff" : "#fef2f2",
+                                                    flexShrink: 0
+                                                }}>
+                                                    <i className={`bi ${tx.type === "topup" ? "bi-plus-circle-fill" : tx.type === "refund" ? "bi-arrow-counterclockwise" : "bi-dash-circle-fill"}`}
+                                                        style={{ color: tx.type === "topup" ? "#059669" : tx.type === "refund" ? "#7c3aed" : "#dc2626", fontSize: "1rem" }}></i>
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#1e293b" }}>
+                                                        {tx.first_name} {tx.last_name}
+                                                        <span style={{ fontWeight: 400, color: "#94a3b8", marginLeft: "8px", fontSize: "0.78rem" }}>{tx.email}</span>
+                                                    </div>
+                                                    <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "2px" }}>
+                                                        {tx.description || tx.type}
+                                                        {tx.money_paid ? ` · Paid ${formatCurrency(tx.money_paid)}` : ""}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "2px" }}>
+                                                        {formatDate(tx.created_at)}
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    fontWeight: 700, fontSize: "0.95rem",
+                                                    color: tx.type === "spend" ? "#dc2626" : "#059669"
+                                                }}>
+                                                    {tx.type === "spend" ? "−" : "+"}{formatWoofs(tx.amount)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
         </div>
