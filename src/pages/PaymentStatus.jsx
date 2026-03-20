@@ -90,6 +90,84 @@ export default function PaymentStatus() {
     };
 
     const verifyPayment = async (currentRetry) => {
+        // Handle full wallet payment (no Cashfree involved)
+        const walletSuccess = new URLSearchParams(location.search).get("wallet_success");
+        if (walletSuccess === "1") {
+            setStatus("paid");
+            setMessage("Your booking has been confirmed!");
+            setTransactionId("WALLET");
+            try {
+                const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+
+                if (bookingType === "event") {
+                    // Event wallet booking — send confirmation email
+                    const saved = JSON.parse(localStorage.getItem("pending_event_booking") || "{}");
+                    if (saved.event) {
+                        const allPets = JSON.parse(localStorage.getItem("pets") || "[]");
+                        const selectedPetDetails = (saved.selectedPets || []).map(petId => {
+                            const pet = allPets.find(p => String(p.id) === String(petId));
+                            return pet ? { name: pet.name, breed: pet.breed } : { name: `Pet #${petId}`, breed: '-' };
+                        });
+                        const emailHtml = getEventBookingEmailHtml({
+                            userName: user.first_name || "Guest",
+                            eventTitle: saved.event.title,
+                            eventDate: formatDate(saved.event.event_date),
+                            eventTime: formatTime(saved.event.event_time),
+                            venue: saved.event.venue,
+                            city: saved.event.city,
+                            ticketType: saved.selectedTier.label,
+                            ticketCount: saved.ticketCount,
+                            totalPrice: saved.total,
+                            orderId: "WALLET",
+                            transactionId: "Woof Wallet",
+                            pets: selectedPetDetails
+                        });
+                        await sendConfirmationEmail({
+                            email: user.email,
+                            subject: `Booking Confirmed: ${saved.event.title} - Wag N Wonder`,
+                            html: emailHtml
+                        });
+                    }
+                    localStorage.removeItem("pending_event_booking");
+                    localStorage.removeItem("event_bookings");
+                } else {
+                    // Kennel wallet booking — send confirmation email
+                    const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
+                    if (saved.kennel) {
+                        const emailHtml = getBoardingBookingEmailHtml({
+                            userName: user.first_name || "Guest",
+                            kennelName: saved.kennel.kennel_name,
+                            checkIn: formatDate(saved.checkin),
+                            checkOut: formatDate(saved.checkout),
+                            days: saved.days,
+                            pets: saved.breakdown.map(p => ({ name: p.name, breed: p.breed, total: p.total })),
+                            totalPrice: saved.total,
+                            orderId: "WALLET",
+                            transactionId: "Woof Wallet"
+                        });
+                        await sendConfirmationEmail({
+                            email: user.email,
+                            subject: `Boarding Confirmed: ${saved.kennel.kennel_name} - Wag N Wonder`,
+                            html: emailHtml
+                        });
+                    }
+                    localStorage.removeItem("pending_booking");
+                    localStorage.removeItem("bookings");
+                }
+
+                // Refresh wallet balance in localStorage
+                const walletRes = await callServicesApi({
+                    action: "GET_WALLET_BALANCE",
+                    session_id: localStorage.getItem("session_id"),
+                    user_id: user.id
+                });
+                if (walletRes?.success) localStorage.setItem("woof_balance", walletRes.balance);
+            } catch (e) {
+                console.error("Failed to send wallet booking email:", e);
+            }
+            return;
+        }
+
         try {
             let payload = {
                 action: "VERIFY_PAYMENT",
@@ -110,6 +188,7 @@ export default function PaymentStatus() {
                         const saved = JSON.parse(savedEventBooking);
                         const user = JSON.parse(localStorage.getItem("user_data") || "{}");
 
+                        const eventWalletDed = saved.walletDeduction || 0;
                         const eventBookingPayload = {
                             action: "CREATE_EVENT_BOOKING_ENTRY",
                             session_id: localStorage.getItem("session_id"),
@@ -118,11 +197,12 @@ export default function PaymentStatus() {
                             pricing_id: saved.selectedTier.id,
                             ticket_count: saved.ticketCount,
                             total_price: saved.total,
+                            wallet_amount: eventWalletDed,
                             form_data: saved.formData || {},
                             pets: saved.selectedPets || [],
                             order_id: orderId,
                             cf_order_id: data.cf_order_id,
-                            mode: "online"
+                            mode: saved.paymentMode || "online"
                         };
 
                         await callServicesApi(eventBookingPayload);
@@ -159,6 +239,15 @@ export default function PaymentStatus() {
                         
                         localStorage.removeItem("pending_event_booking");
                         localStorage.removeItem("event_bookings");
+                        // Refresh wallet balance if wallet was used
+                        if (eventWalletDed > 0) {
+                            const walletRes = await callServicesApi({
+                                action: "GET_WALLET_BALANCE",
+                                session_id: localStorage.getItem("session_id"),
+                                user_id: user.id
+                            });
+                            if (walletRes?.success) localStorage.setItem("woof_balance", walletRes.balance);
+                        }
                     } catch (e) {
                         console.error("Failed to create event booking entry:", e);
                     }
@@ -168,6 +257,7 @@ export default function PaymentStatus() {
                         const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
                         const user = JSON.parse(localStorage.getItem("user_data") || "{}");
 
+                        const walletDed = saved.walletDeduction || 0;
                         const bookingPayload = {
                             user_id: user.id,
                             action: "CREATE_BOOKING_ENTRY",
@@ -178,7 +268,8 @@ export default function PaymentStatus() {
                             check_out_date: saved.checkout,
                             days: saved.days,
                             total_price: saved.total,
-                            mode: "online",
+                            wallet_amount: walletDed,
+                            mode: saved.paymentMode || "online",
                             order_id: orderId,
                             cf_order_id: data.cf_order_id,
                             pets: saved.breakdown.map((p) => ({
@@ -216,6 +307,15 @@ export default function PaymentStatus() {
                         
                         localStorage.removeItem("pending_booking");
                         localStorage.removeItem("bookings");
+                        // Refresh wallet balance if wallet was used
+                        if (saved.walletDeduction > 0) {
+                            const walletRes = await callServicesApi({
+                                action: "GET_WALLET_BALANCE",
+                                session_id: localStorage.getItem("session_id"),
+                                user_id: user.id
+                            });
+                            if (walletRes?.success) localStorage.setItem("woof_balance", walletRes.balance);
+                        }
                     } catch (e) {
                         console.error("Failed to create booking entry:", e);
                     }

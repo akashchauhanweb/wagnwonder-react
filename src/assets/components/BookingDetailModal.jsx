@@ -18,6 +18,8 @@ const BookingDetailModal = ({ booking, onClose }) => {
     };
 
     const getModeBadgeClass = (mode) => {
+        if (mode === 'wallet') return 'mode-wallet';
+        if (mode === 'partial') return 'mode-partial';
         return mode === 'online' ? 'mode-online' : 'mode-offline';
     };
 
@@ -59,7 +61,7 @@ const BookingDetailModal = ({ booking, onClose }) => {
                             <div className="modal-detail">
                                 <span className="detail-label">Payment Mode</span>
                                 <span className={`mode-badge ${getModeBadgeClass(booking.mode)}`}>
-                                    {booking.mode}
+                                    {booking.mode === 'partial' ? 'Wallet + Online' : booking.mode.charAt(0).toUpperCase() + booking.mode.slice(1)}
                                 </span>
                             </div>
                         </div>

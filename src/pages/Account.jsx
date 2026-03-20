@@ -4,6 +4,7 @@ import { callServicesApi } from "../assets/js/servicesApi";
 
 const MENU_ITEMS = [
     { path: "/account/info", icon: "bi-person-fill", label: "Personal Info" },
+    { path: "/account/wallet", icon: "bi-wallet2", label: "Woof Wallet" },
     { path: "/account/pets", icon: "bi-heart-pulse-fill", label: "Your Pets" },
     { path: "/account/creche-bookings", icon: "bi-house-heart-fill", label: "Creche Bookings" },
     { path: "/account/event-bookings", icon: "bi-calendar-event-fill", label: "Event Tickets" },

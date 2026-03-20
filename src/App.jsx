@@ -39,6 +39,7 @@ import EventsAdminPage from './pages/EventsAdminPage.jsx';
 import KennelsAdminPage from './pages/KennelsAdminPage.jsx';
 import KennelTickets from './pages/KennelTickets.jsx';
 import ManageServiceCities from './pages/ManageServiceCities.jsx';
+import WoofWallet from './pages/WoofWallet.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
 
@@ -86,6 +87,7 @@ function AppContent() {
           <Route path="creche-bookings" element={<CrecheBookings />} />
           <Route path="event-bookings" element={<EventBookings />} />
           <Route path="my-tickets" element={<MyTickets />} />
+          <Route path="wallet" element={<WoofWallet />} />
         </Route>
         <Route path="/admin" element={<AdminPage />}>
           <Route path="earnings" element={<EarningsDashboard />} />

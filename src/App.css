@@ -296,6 +296,50 @@ body.modal-open {
   }
 }
 
+/* Wallet Button */
+.header-wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #D84A39;
+  background: rgba(216, 74, 57, 0.08);
+  border: 1.5px solid rgba(216, 74, 57, 0.2);
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-wallet-btn:hover {
+  background: rgba(216, 74, 57, 0.14);
+  border-color: rgba(216, 74, 57, 0.35);
+  transform: translateY(-1px);
+}
+
+.header-wallet-btn i {
+  font-size: 0.9rem;
+}
+
+.header-wallet-btn .header-wallet-balance {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.header-wallet-btn .header-wallet-label {
+  display: none;
+  font-size: 0.78rem;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+@media (min-width: 768px) {
+  .header-wallet-btn .header-wallet-label {
+    display: inline;
+  }
+}
+
 /* Mobile Menu Toggle */
 .header-mobile-toggle {
   display: flex;
@@ -9138,6 +9182,17 @@ input[type="date"].hero-input:invalid {
     background: #fef3c7;
     color: #d97706;
 }
+
+.mode-badge.mode-wallet {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.mode-badge.mode-partial {
+    background: #e0e7ff;
+    color: #4f46e5;
+}
+
 /* Bookings Table */
 .bookings-table-wrapper {
     overflow-x: auto;

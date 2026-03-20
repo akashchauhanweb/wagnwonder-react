@@ -72,6 +72,8 @@ const ManageBookings = () => {
     };
 
     const getModeClass = (mode) => {
+        if (mode === 'wallet') return 'mode-wallet';
+        if (mode === 'partial') return 'mode-partial';
         return mode === 'online' ? 'mode-online' : 'mode-offline';
     };
 
@@ -210,7 +212,7 @@ const ManageBookings = () => {
                                     <td className="booking-total-cell">₹{booking.total_price.toFixed(0)}</td>
                                     <td>
                                         <span className={`mode-badge ${getModeClass(booking.mode)}`}>
-                                            {booking.mode}
+                                            {booking.mode === 'partial' ? 'Wallet + Online' : booking.mode.charAt(0).toUpperCase() + booking.mode.slice(1)}
                                         </span>
                                     </td>
                                     <td>

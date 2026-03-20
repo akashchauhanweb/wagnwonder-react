@@ -2412,6 +2412,8 @@ const KennelsAdminPage = () => {
                                         <option value="all">All Modes</option>
                                         <option value="online">Online</option>
                                         <option value="offline">Offline</option>
+                                        <option value="wallet">Wallet</option>
+                                        <option value="partial">Wallet + Online</option>
                                     </select>
                                 </div>
                                 <button
@@ -2612,7 +2614,7 @@ const KennelsAdminPage = () => {
 
                                                         <div style={{ textAlign: "right", minWidth: "70px" }}>
                                                             <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#1e293b" }}>₹{b.total_price}</div>
-                                                            <span className={`mode-badge ${b.mode === 'online' ? 'mode-online' : 'mode-offline'}`} style={{ marginLeft: 0 }}>{b.mode}</span>
+                                                            <span className={`mode-badge ${b.mode === 'wallet' ? 'mode-wallet' : b.mode === 'partial' ? 'mode-partial' : b.mode === 'online' ? 'mode-online' : 'mode-offline'}`} style={{ marginLeft: 0 }}>{b.mode === 'partial' ? 'Wallet + Online' : b.mode.charAt(0).toUpperCase() + b.mode.slice(1)}</span>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+// import { callServicesApi } from '../js/servicesApi';
 import logo from '../images/horizontal-compressed.png';
 import boardingIcon from '../icons/boarding.png';
 import eventsIcon from '../icons/events.png';
@@ -80,6 +81,18 @@ function Header() {
 
                 {/* Right Section */}
                 <div className="header-actions">
+                    {/* Wallet Button - only when logged in */}
+                    {isLoggedIn && (
+                        <button
+                            className="header-wallet-btn"
+                            onClick={() => navigate("/account/wallet")}
+                            aria-label="Woof Wallet"
+                        >
+                            <i className="bi bi-wallet2"></i>
+                            <span className="header-wallet-balance">{Math.floor(parseFloat(localStorage.getItem("woof_balance") || "0")).toLocaleString("en-IN")}</span>
+                            <span className="header-wallet-label">Woofs</span>
+                        </button>
+                    )}
                     {/* User Button */}
                     <button 
                         className="header-user-btn"

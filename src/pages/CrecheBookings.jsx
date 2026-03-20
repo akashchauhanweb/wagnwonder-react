@@ -77,6 +77,12 @@ export default function CrecheBookings() {
                 >
                     Past
                 </button>
+                <button
+                    className={activeFilter === "cancelled" ? "active" : ""}
+                    onClick={() => setActiveFilter("cancelled")}
+                >
+                    Cancelled
+                </button>
             </div>
 
             {loading ? (
@@ -88,17 +94,27 @@ export default function CrecheBookings() {
                     <i className="bi bi-exclamation-circle"></i>
                     <p>{error}</p>
                 </div>
-            ) : bookings.filter(b => activeFilter === "active" ? b.status !== "completed" : b.status === "completed").length === 0 ? (
+            ) : bookings.filter(b => {
+                if (activeFilter === "active") return b.status === "booked" || b.status === "checked_in";
+                if (activeFilter === "past") return b.status === "completed";
+                if (activeFilter === "cancelled") return b.status === "cancelled";
+                return false;
+            }).length === 0 ? (
                 <div className="bookings-empty">
                     <div className="bookings-empty-icon">
                         <i className="bi bi-calendar-x"></i>
                     </div>
-                    <h3>No {activeFilter === "active" ? "active" : "past"} bookings</h3>
-                    <p>{activeFilter === "active" ? "When you book a stay for your pet, it will appear here." : "Your completed bookings will appear here."}</p>
+                    <h3>No {activeFilter} bookings</h3>
+                    <p>{activeFilter === "active" ? "When you book a stay for your pet, it will appear here." : activeFilter === "past" ? "Your completed bookings will appear here." : "No cancelled bookings."}</p>
                 </div>
             ) : (
                 <div className="bookings-list">
-                    {bookings.filter(b => activeFilter === "active" ? b.status !== "completed" : b.status === "completed").map((booking) => {
+                    {bookings.filter(b => {
+                        if (activeFilter === "active") return b.status === "booked" || b.status === "checked_in";
+                        if (activeFilter === "past") return b.status === "completed";
+                        if (activeFilter === "cancelled") return b.status === "cancelled";
+                        return false;
+                    }).map((booking) => {
                         const isActive = booking.status === "booked" || booking.status === "checked_in";
                         const isCompleted = booking.status === "completed";
                         const isCancelled = booking.status === "cancelled";
@@ -206,8 +222,8 @@ export default function CrecheBookings() {
                                     {/* Footer: Total */}
                                     <div className="booking-footer">
                                         <div className="booking-mode">
-                                            <i className={`bi ${booking.mode === "online" ? "bi-globe" : "bi-shop"}`}></i>
-                                            {booking.mode === "online" ? "Online" : "Offline"}
+                                            <i className={`bi ${booking.mode === "wallet" ? "bi-wallet2" : booking.mode === "partial" ? "bi-wallet2" : booking.mode === "online" ? "bi-globe" : "bi-shop"}`}></i>
+                                            {booking.mode === "wallet" ? "Wallet" : booking.mode === "partial" ? "Wallet + Online" : booking.mode === "online" ? "Online" : "Offline"}
                                         </div>
                                         <div className="booking-total">
                                             <span>Total</span>
