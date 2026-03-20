@@ -17533,3 +17533,133 @@ input[type="date"].hero-input:invalid {
     background: #f1f5f9;
     color: #64748b;
 }
+
+/* ========== Pagination ========== */
+.pagination-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    margin-top: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.pagination-per-page {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    font-size: 0.8rem;
+    color: #334155;
+    cursor: pointer;
+    outline: none;
+}
+
+.pagination-per-page:focus {
+    border-color: #94a3b8;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pagination-btn {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.pagination-btn:hover:not(:disabled):not(.active) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-btn.pagination-nav {
+    font-size: 0.75rem;
+}
+
+.pagination-dots {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+/* User theme (red/orange) */
+.pagination-user .pagination-btn.active {
+    background: #D84A39;
+    border-color: #D84A39;
+    color: white;
+    font-weight: 700;
+}
+
+.pagination-user .pagination-per-page:focus {
+    border-color: #D84A39;
+}
+
+/* Admin theme (dark blue) */
+.pagination-admin .pagination-btn.active {
+    background: #1e293b;
+    border-color: #1e293b;
+    color: white;
+    font-weight: 700;
+}
+
+.pagination-admin .pagination-per-page:focus {
+    border-color: #1e293b;
+}
+
+@media (max-width: 576px) {
+    .pagination-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .pagination-info {
+        justify-content: space-between;
+    }
+
+    .pagination-controls {
+        justify-content: center;
+    }
+
+    .pagination-btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+
+    .pagination-dots {
+        min-width: 24px;
+    }
+}
