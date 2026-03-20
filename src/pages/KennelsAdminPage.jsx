@@ -152,6 +152,7 @@ const KennelsAdminPage = () => {
     const [checkoutNotes, setCheckoutNotes] = useState([]);
     const [loadingCheckoutNotes, setLoadingCheckoutNotes] = useState(false);
     const [checkoutNote, setCheckoutNote] = useState("");
+    const [processingCheckout, setProcessingCheckout] = useState(false);
 
     // Checkout pending payments modal
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -1064,6 +1065,7 @@ const KennelsAdminPage = () => {
     };
 
     const handleProceedCheckout = async () => {
+        setProcessingCheckout(true);
         // Save checkout note if provided
         if (checkoutNote.trim()) {
             await callServicesApi({
@@ -1076,6 +1078,7 @@ const KennelsAdminPage = () => {
             });
         }
         setShowCheckoutNotesModal(false);
+        setProcessingCheckout(false);
         // Proceed with normal checkout flow (which may show pending payments modal)
         handleUpdateBookingStatus(checkoutNotesBooking.booking_id, "completed");
     };
@@ -4912,6 +4915,7 @@ const KennelsAdminPage = () => {
                             <div style={{ display: "flex", gap: "10px" }}>
                                 <button
                                     onClick={() => setShowCheckoutNotesModal(false)}
+                                    disabled={processingCheckout}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
                                         border: "1px solid #e2e8f0", background: "white",
@@ -4922,14 +4926,20 @@ const KennelsAdminPage = () => {
                                 </button>
                                 <button
                                     onClick={handleProceedCheckout}
+                                    disabled={processingCheckout}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
                                         border: "none", background: "linear-gradient(135deg, #059669, #047857)",
                                         color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
-                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                                        opacity: processingCheckout ? 0.7 : 1
                                     }}
                                 >
-                                    <i className="bi bi-check-lg"></i> Proceed to Checkout
+                                    {processingCheckout ? (
+                                        <><span className="spinner-border spinner-border-sm"></span> Processing...</>
+                                    ) : (
+                                        <><i className="bi bi-check-lg"></i> Proceed to Checkout</>
+                                    )}
                                 </button>
                             </div>
                         </div>
