@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
+import { getCancellationEmailHtml } from "../assets/js/cancellationEmail";
 import Pagination from "../assets/components/Pagination";
 
 export default function CrecheBookings() {
@@ -79,6 +80,33 @@ export default function CrecheBookings() {
                     b.booking_id === cancelBooking.booking_id ? { ...b, status: res.new_status || "cancelled" } : b
                 ));
                 localStorage.removeItem("bookings");
+
+                // Send cancellation email
+                try {
+                    const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+                    const refundSummary = res.refund_summary || {};
+                    await callServicesApi({
+                        action: "SEND_EMAIL",
+                        session_id: localStorage.getItem("session_id"),
+                        email: user.email,
+                        subject: res.new_status === "no_show" ? "Booking No-Show - Wag N Wonder" : "Booking Cancelled - Wag N Wonder",
+                        html: getCancellationEmailHtml({
+                            userName: `${user.first_name} ${user.last_name}`,
+                            kennelName: cancelBooking.kennel_name,
+                            bookingId: cancelBooking.booking_id,
+                            checkIn: formatDate(cancelBooking.check_in_date),
+                            checkOut: formatDate(cancelBooking.check_out_date),
+                            days: cancelBooking.days,
+                            pets: cancelBooking.pets?.map(p => ({ name: p.pet_name, breed: p.pet_breed })) || [],
+                            totalPrice: cancelBooking.total_price,
+                            cancellationFee: refundSummary.cancellation_fee || 0,
+                            walletRefund: refundSummary.wallet_refund || 0,
+                            onlineRefund: refundSummary.online_refund || 0,
+                            refundMethod: refundSummary.refund_method || "wallet",
+                            isNoShow: refundSummary.no_show || false
+                        })
+                    });
+                } catch (e) { console.error("Failed to send cancellation email:", e); }
                 // Refresh wallet balance from DB
                 try {
                     const user = JSON.parse(localStorage.getItem("user_data") || "{}");
@@ -444,6 +472,32 @@ export default function CrecheBookings() {
                                                             <i className="bi bi-x-circle"></i> Cancel Booking
                                                         </button>
                                                     )}
+                                                </div>
+                                            )}
+
+                                            {/* Post-checkout actions (3 days after checkout) */}
+                                            {isCompleted && (() => {
+                                                const checkoutDate = new Date(booking.check_out_date);
+                                                const threeDaysAfter = new Date(checkoutDate);
+                                                threeDaysAfter.setDate(threeDaysAfter.getDate() + 3);
+                                                return new Date() <= threeDaysAfter;
+                                            })() && (
+                                                <div className="booking-actions">
+                                                    <button
+                                                        className="booking-action-btn"
+                                                        onClick={() => navigate("/account/my-tickets", {
+                                                            state: {
+                                                                prefillTicket: {
+                                                                    subject: "booking",
+                                                                    message: `Help needed for Booking #${booking.booking_id}\nKennel: ${booking.kennel_name}\nCheck-in: ${formatDate(booking.check_in_date)}\nCheck-out: ${formatDate(booking.check_out_date)}\nPets: ${booking.pets?.map(p => p.pet_name).join(", ")}\n\nIssue: `,
+                                                                    booking_id: booking.booking_id
+                                                                }
+                                                            }
+                                                        })}
+                                                    >
+                                                        <i className="bi bi-life-preserver"></i>
+                                                        Help
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>

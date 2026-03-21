@@ -9,6 +9,7 @@ import BookingDetailModal from "../assets/components/BookingDetailModal";
 import AddPetModal from "../assets/components/AddPetModal";
 import Pagination from "../assets/components/Pagination";
 import { getExtensionPaymentEmailHtml } from "../assets/js/extensionPaymentEmail";
+import { getCancellationEmailHtml } from "../assets/js/cancellationEmail";
 
 const KennelsAdminPage = () => {
     const userData = JSON.parse(localStorage.getItem("user_data"));
@@ -33,7 +34,7 @@ const KennelsAdminPage = () => {
     const [bookingsModeFilter, setBookingsModeFilter] = useState("all");
     const [bookingsTab, setBookingsTab] = useState("active");
     const [bookingsPage, setBookingsPage] = useState(1);
-    const [activeSubTab, setActiveSubTab] = useState("checked_in");
+    const [activeSubTab, setActiveSubTab] = useState("all");
     const [selectedBooking, setSelectedBooking] = useState(null);
 
     // Revenue
@@ -1161,6 +1162,32 @@ const KennelsAdminPage = () => {
                     msg += ` Cancellation fee: ₹${Math.round(response.refund_summary.cancellation_fee)}.`;
                 }
                 setSuccessMsg(msg);
+
+                // Send cancellation email to customer
+                try {
+                    const refundSummary = response.refund_summary || {};
+                    await callServicesApi({
+                        action: "SEND_EMAIL",
+                        session_id,
+                        email: adminCancelBooking.email,
+                        subject: response.new_status === "no_show" ? "Booking No-Show - Wag N Wonder" : "Booking Cancelled - Wag N Wonder",
+                        html: getCancellationEmailHtml({
+                            userName: `${adminCancelBooking.first_name} ${adminCancelBooking.last_name}`,
+                            kennelName: adminCancelBooking.kennel_name,
+                            bookingId: adminCancelBooking.booking_id,
+                            checkIn: formatDate(adminCancelBooking.check_in_date),
+                            checkOut: formatDate(adminCancelBooking.check_out_date),
+                            days: adminCancelBooking.days,
+                            pets: adminCancelBooking.pets?.map(p => ({ name: p.pet_name, breed: p.pet_breed })) || [],
+                            totalPrice: adminCancelBooking.total_price,
+                            cancellationFee: refundSummary.cancellation_fee || 0,
+                            walletRefund: refundSummary.wallet_refund || 0,
+                            onlineRefund: refundSummary.online_refund || 0,
+                            refundMethod: refundSummary.refund_method || "wallet",
+                            isNoShow: refundSummary.no_show || false
+                        })
+                    });
+                } catch (e) { console.error("Failed to send cancellation email:", e); }
                 setBookingsCached(false);
                 setExtensionsCached(false);
                 await fetchAllBookings(true);
@@ -2565,11 +2592,15 @@ const KennelsAdminPage = () => {
                                 const completedBookings = filteredBookings.filter(b => b.status === "completed");
                                 const cancelledBookings = filteredBookings.filter(b => b.status === "cancelled" || b.status === "no_show");
                                 const currentList = bookingsTab === "active"
-                                    ? activeBookings.filter(b => b.status === activeSubTab)
+                                    ? (activeSubTab === "all" ? activeBookings : activeBookings.filter(b => b.status === activeSubTab))
                                     : bookingsTab === "completed" ? completedBookings : cancelledBookings;
 
                                 const sortedList = bookingsTab === "active"
-                                    ? [...currentList].sort((a, b) => new Date(a.check_in_date) - new Date(b.check_in_date))
+                                    ? [...currentList].sort((a, b) => {
+                                        if (a.status === "checked_in" && b.status !== "checked_in") return -1;
+                                        if (a.status !== "checked_in" && b.status === "checked_in") return 1;
+                                        return new Date(a.check_in_date) - new Date(b.check_in_date);
+                                    })
                                     : currentList;
 
                                 const totalPages = Math.ceil(sortedList.length / 10);
@@ -2782,6 +2813,23 @@ const KennelsAdminPage = () => {
                                             <>
                                                 <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
                                                     <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "20px", padding: "3px" }}>
+                                                        <button
+                                                            onClick={() => { setActiveSubTab("all"); setBookingsPage(1); }}
+                                                            style={{
+                                                                padding: "6px 16px", borderRadius: "18px", border: "none", cursor: "pointer",
+                                                                fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px",
+                                                                background: activeSubTab === "all" ? "#1e293b" : "transparent",
+                                                                color: activeSubTab === "all" ? "white" : "#64748b",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            All
+                                                            <span style={{
+                                                                padding: "0px 6px", borderRadius: "10px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: activeSubTab === "all" ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                                                                color: activeSubTab === "all" ? "white" : "#94a3b8"
+                                                            }}>{activeBookings.length}</span>
+                                                        </button>
                                                         <button
                                                             onClick={() => { setActiveSubTab("checked_in"); setBookingsPage(1); }}
                                                             style={{

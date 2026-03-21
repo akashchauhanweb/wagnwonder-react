@@ -277,7 +277,7 @@ function HeroForm() {
                                             onChange={(date) => {
                                                 setCheckInValue(date);
                                                 // Auto-adjust checkout if needed
-                                                if (checkOutValue <= date) {
+                                                if (checkOutValue.getTime() <= date.getTime()) {
                                                     const nextDay = new Date(date);
                                                     nextDay.setDate(nextDay.getDate() + 1);
                                                     setCheckOutValue(nextDay);
