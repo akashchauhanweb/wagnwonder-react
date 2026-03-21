@@ -151,7 +151,7 @@ const BookingDetailModal = ({ booking, onClose }) => {
                                         <span>₹{(parseFloat(booking.total_price) + parseFloat(booking.discount_amount)).toFixed(2)}</span>
                                     </div>
                                     <div className="payment-row" style={{ color: "#059669" }}>
-                                        <span><i className="bi bi-tag me-1"></i>Coupon Discount</span>
+                                        <span><i className="bi bi-tag me-1"></i>Coupon{booking.coupon_code ? ` (${booking.coupon_code})` : ""}</span>
                                         <span>−₹{parseFloat(booking.discount_amount).toFixed(2)}</span>
                                     </div>
                                 </>

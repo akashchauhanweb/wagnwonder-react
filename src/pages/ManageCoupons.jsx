@@ -60,7 +60,7 @@ const ManageCoupons = () => {
             const res = await callServicesApi({
                 action: "CREATE_COUPON", session_id,
                 code: form.code.trim().toUpperCase(),
-                auto_generate: form.auto_generate,
+                auto_generate: false,
                 discount_type: form.discount_type,
                 discount_value: parseFloat(form.discount_value),
                 max_discount: form.max_discount ? parseFloat(form.max_discount) : null,

@@ -565,7 +565,7 @@ const KennelsAdminPage = () => {
             const response = await callServicesApi({
                 action: "CREATE_COUPON", session_id,
                 code: couponForm.code.trim().toUpperCase(),
-                auto_generate: couponForm.auto_generate,
+                auto_generate: false,
                 discount_type: couponForm.discount_type,
                 discount_value: parseFloat(couponForm.discount_value),
                 max_discount: couponForm.max_discount ? parseFloat(couponForm.max_discount) : null,
@@ -3117,6 +3117,23 @@ const KennelsAdminPage = () => {
                                                         <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>{b.days} night{b.days !== 1 ? "s" : ""}</div>
                                                     </div>
                                                 </div>
+
+                                                {/* Coupon Applied */}
+                                                {parseFloat(b.discount_amount || 0) > 0 && (
+                                                    <div style={{
+                                                        display: "flex", alignItems: "center", gap: "8px",
+                                                        padding: "8px 12px", borderRadius: "8px",
+                                                        background: "#ecfdf5", border: "1px solid #bbf7d0", marginBottom: "14px"
+                                                    }}>
+                                                        <i className="bi bi-tag-fill" style={{ color: "#059669", fontSize: "0.8rem" }}></i>
+                                                        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#065f46" }}>
+                                                            Coupon{b.coupon_code ? ` ${b.coupon_code}` : ""} applied
+                                                        </span>
+                                                        <span style={{ fontSize: "0.8rem", color: "#059669", fontWeight: 700 }}>
+                                                            −₹{Math.round(parseFloat(b.discount_amount))}
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 {/* Row 3: Pets + Actions + Price */}
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
