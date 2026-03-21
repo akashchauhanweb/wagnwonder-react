@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { callServicesApi } from "../assets/js/servicesApi";
+import Pagination from "../assets/components/Pagination";
 
 export default function WoofWallet() {
     const navigate = useNavigate();
@@ -15,6 +16,8 @@ export default function WoofWallet() {
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(null);
     const [activeView, setActiveView] = useState("buy"); // "buy" or "history"
+    const [historyPage, setHistoryPage] = useState(1);
+    const historyPerPage = 5;
 
     useEffect(() => {
         if (!session_id || !userData) {
@@ -277,7 +280,7 @@ export default function WoofWallet() {
                             <i className="bi bi-clock-history" style={{ fontSize: "2rem", display: "block", marginBottom: "8px", opacity: 0.5 }}></i>
                             <p style={{ margin: 0 }}>No transactions yet</p>
                         </div>
-                    ) : transactions.map((tx) => (
+                    ) : transactions.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map((tx) => (
                         <div key={tx.id} style={{
                             display: "flex", alignItems: "center", gap: "14px",
                             padding: "14px 16px", background: "white", borderRadius: "10px",
@@ -307,6 +310,14 @@ export default function WoofWallet() {
                             </div>
                         </div>
                     ))}
+                    <Pagination
+                        currentPage={historyPage}
+                        totalPages={Math.ceil(transactions.length / historyPerPage)}
+                        onPageChange={setHistoryPage}
+                        itemsPerPage={historyPerPage}
+                        totalItems={transactions.length}
+                        theme="user"
+                    />
                 </div>
             )}
         </div>

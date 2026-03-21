@@ -7,7 +7,9 @@ import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { getBoardingBookingEmailHtml } from "../assets/js/boardingBookingEmail";
 import BookingDetailModal from "../assets/components/BookingDetailModal";
 import AddPetModal from "../assets/components/AddPetModal";
+import Pagination from "../assets/components/Pagination";
 import { getExtensionPaymentEmailHtml } from "../assets/js/extensionPaymentEmail";
+import { getCancellationEmailHtml } from "../assets/js/cancellationEmail";
 
 const KennelsAdminPage = () => {
     const userData = JSON.parse(localStorage.getItem("user_data"));
@@ -30,6 +32,9 @@ const KennelsAdminPage = () => {
     const [bookingsKennelFilter, setBookingsKennelFilter] = useState("all");
     const [bookingsStatusFilter, setBookingsStatusFilter] = useState("all");
     const [bookingsModeFilter, setBookingsModeFilter] = useState("all");
+    const [bookingsTab, setBookingsTab] = useState("active");
+    const [bookingsPage, setBookingsPage] = useState(1);
+    const [activeSubTab, setActiveSubTab] = useState("all");
     const [selectedBooking, setSelectedBooking] = useState(null);
 
     // Revenue
@@ -67,12 +72,14 @@ const KennelsAdminPage = () => {
     // Occupancy
     const [occupancyKennelId, setOccupancyKennelId] = useState("");
     const [occupancyDate, setOccupancyDate] = useState(new Date().toISOString().split("T")[0]);
-    const [occupancyEndDate, setOccupancyEndDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0];
-    });
     const [occupancyData, setOccupancyData] = useState(null);
     const [loadingOccupancy, setLoadingOccupancy] = useState(false);
     const [occupancyView, setOccupancyView] = useState("summary");
+    const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+    const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+    const [calendarMode, setCalendarMode] = useState("month"); // "month" or "year"
+    const [calendarKennelId, setCalendarKennelId] = useState("");
+    const [calTooltip, setCalTooltip] = useState({ show: false, x: 0, y: 0, text: "" });
     const [roomOccupancy, setRoomOccupancy] = useState([]);
     const [loadingRoomOccupancy, setLoadingRoomOccupancy] = useState(false);
     const [roomOccupancyCached, setRoomOccupancyCached] = useState(false);
@@ -125,6 +132,22 @@ const KennelsAdminPage = () => {
     const [conflictingBookings, setConflictingBookings] = useState([]);
     const [cancellingClosureId, setCancellingClosureId] = useState(null);
 
+    // Coupons
+    const [coupons, setCoupons] = useState([]);
+    const [loadingCoupons, setLoadingCoupons] = useState(false);
+    const [couponsCached, setCouponsCached] = useState(false);
+    const [showCreateCoupon, setShowCreateCoupon] = useState(false);
+    const [couponForm, setCouponForm] = useState({
+        code: "", auto_generate: false, discount_type: "flat", discount_value: "",
+        max_discount: "", min_booking_value: "", min_nights: "",
+        usage_limit: "", per_user_limit: "1", valid_from: "", valid_until: "",
+        is_public: true, kennel_id: ""
+    });
+    const [submittingCoupon, setSubmittingCoupon] = useState(false);
+    const [showAdvancedCoupon, setShowAdvancedCoupon] = useState(false);
+    const [togglingCouponId, setTogglingCouponId] = useState(null);
+    const [couponsFilter, setCouponsFilter] = useState("active");
+
     // Notes
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [notesBooking, setNotesBooking] = useState(null);
@@ -145,6 +168,10 @@ const KennelsAdminPage = () => {
     const [checkInBooking, setCheckInBooking] = useState(null);
     const [checkInNote, setCheckInNote] = useState("");
     const [submittingCheckIn, setSubmittingCheckIn] = useState(false);
+    const [checkInRooms, setCheckInRooms] = useState([]);
+    const [loadingCheckInRooms, setLoadingCheckInRooms] = useState(false);
+    const [checkInRoomAssignments, setCheckInRoomAssignments] = useState({});
+    const [futureCheckInBooking, setFutureCheckInBooking] = useState(null);
 
     // Checkout with notes
     const [showCheckoutNotesModal, setShowCheckoutNotesModal] = useState(false);
@@ -152,6 +179,7 @@ const KennelsAdminPage = () => {
     const [checkoutNotes, setCheckoutNotes] = useState([]);
     const [loadingCheckoutNotes, setLoadingCheckoutNotes] = useState(false);
     const [checkoutNote, setCheckoutNote] = useState("");
+    const [processingCheckout, setProcessingCheckout] = useState(false);
 
     // Checkout pending payments modal
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -502,6 +530,65 @@ const KennelsAdminPage = () => {
         finally { setCancellingClosureId(null); }
     };
 
+    // Coupon functions
+    const fetchCoupons = async (forceRefresh = false) => {
+        if (couponsCached && !forceRefresh) return;
+        setLoadingCoupons(true);
+        try {
+            const kennelIds = kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings).map(k => k.id);
+            if (kennelIds.length === 0) { setCoupons([]); setCouponsCached(true); setLoadingCoupons(false); return; }
+            const response = await callServicesApi({ action: "GET_COUPONS", session_id, kennel_ids: kennelIds });
+            if (response?.success) { setCoupons(response.coupons || []); setCouponsCached(true); }
+        } catch (err) { console.error("Error fetching coupons:", err); }
+        finally { setLoadingCoupons(false); }
+    };
+
+    const handleCreateCoupon = async () => {
+        if (!couponForm.discount_value || parseFloat(couponForm.discount_value) <= 0) { setErrorMsg("Please enter a discount value."); return; }
+        if (!couponForm.valid_from || !couponForm.valid_until) { setErrorMsg("Please select valid from and valid until dates."); return; }
+        if (!couponForm.auto_generate && !couponForm.code.trim()) { setErrorMsg("Please enter a coupon code or use auto-generate."); return; }
+        if (!couponForm.kennel_id) { setErrorMsg("Please select a kennel."); return; }
+        setSubmittingCoupon(true);
+        try {
+            const response = await callServicesApi({
+                action: "CREATE_COUPON", session_id,
+                code: couponForm.code.trim().toUpperCase(),
+                auto_generate: couponForm.auto_generate,
+                discount_type: couponForm.discount_type,
+                discount_value: parseFloat(couponForm.discount_value),
+                max_discount: couponForm.max_discount ? parseFloat(couponForm.max_discount) : null,
+                min_booking_value: couponForm.min_booking_value ? parseFloat(couponForm.min_booking_value) : null,
+                min_nights: couponForm.min_nights ? parseInt(couponForm.min_nights) : null,
+                usage_limit: couponForm.usage_limit ? parseInt(couponForm.usage_limit) : null,
+                pper_user_limit: couponForm.per_user_limit === "0" ? null : 1,
+                valid_from: couponForm.valid_from, valid_until: couponForm.valid_until,
+                is_public: couponForm.is_public ? 1 : 0, scope: "kennel",
+                kennel_ids: [parseInt(couponForm.kennel_id)], created_by: userData.id
+            });
+            if (response?.success) {
+                setSuccessMsg(`Coupon "${response.code}" created successfully!`);
+                setShowCreateCoupon(false);
+                setCouponForm({ code: "", auto_generate: false, discount_type: "flat", discount_value: "", max_discount: "", min_booking_value: "", min_nights: "", usage_limit: "", per_user_limit: "1", valid_from: "", valid_until: "", is_public: false, kennel_id: "" });
+                setShowAdvancedCoupon(false);
+                setCouponsCached(false);
+                await fetchCoupons(true);
+            } else { setErrorMsg(response?.message || "Failed to create coupon."); }
+        } catch { setErrorMsg("Error creating coupon."); }
+        finally { setSubmittingCoupon(false); }
+    };
+
+    const handleToggleCoupon = async (couponId) => {
+        setTogglingCouponId(couponId);
+        try {
+            const response = await callServicesApi({ action: "TOGGLE_COUPON", session_id, coupon_id: couponId, user_id: userData.id });
+            if (response?.success) {
+                setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, is_active: response.is_active } : c));
+                setSuccessMsg(response.message);
+            } else { setErrorMsg(response?.message || "Failed to toggle coupon."); }
+        } catch { setErrorMsg("Error toggling coupon."); }
+        finally { setTogglingCouponId(null); }
+    };
+
     // Derived: user permissions for current kennels
     const getUserPermissions = () => {
         const isOwner = kennels.some(k => k.user_role === "owner");
@@ -817,8 +904,8 @@ const KennelsAdminPage = () => {
         // Check for maintenance closure
         const closureConflict = closures.find(c =>
             c.kennel_id === parseInt(kennelId) &&
-            c.closure_start < checkOut &&
-            c.closure_end > checkIn
+            c.closure_start <= checkOut &&
+            c.closure_end >= checkIn
         );
         if (closureConflict) {
             setManualAvailability(null);
@@ -879,11 +966,14 @@ const KennelsAdminPage = () => {
     };
 
     useEffect(() => {
-        if ((activeTab === "bookings" || activeTab === "today" || activeTab === "occupancy" || activeTab === "revenue" || activeTab === "extensions") && kennels.length > 0) {
+        if ((activeTab === "bookings" || activeTab === "today" || activeTab === "occupancy" || activeTab === "revenue" || activeTab === "extensions" || activeTab === "coupons") && kennels.length > 0) {
             fetchAllBookings();
         }
         if (activeTab === "extensions" && kennels.length > 0) {
             fetchExtensions();
+        }
+        if (activeTab === "coupons" && kennels.length > 0) {
+            fetchCoupons();
         }
         if (activeTab === "employees" && kennels.length > 0) {
             const ownerKennels = kennels.filter(k => k.user_role === "owner");
@@ -1015,23 +1105,49 @@ const KennelsAdminPage = () => {
         fetchBookingNotes(booking.booking_id);
     };
 
+    const fetchCheckInRooms = async (booking) => {
+        setLoadingCheckInRooms(true);
+        setCheckInRooms([]);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ROOM_OCCUPANCY",
+                session_id,
+                kennel_id: booking.kennel_id,
+                check_in: booking.check_in_date,
+                check_out: booking.check_out_date
+            });
+            if (response?.success) {
+                setCheckInRooms(response.rooms || []);
+            }
+        } catch (err) {
+            console.error("Error fetching rooms for check-in:", err);
+        } finally {
+            setLoadingCheckInRooms(false);
+        }
+    };
+
     const handleCheckInWithNote = async () => {
         if (!checkInBooking) return;
         setSubmittingCheckIn(true);
         try {
+            const roomAssignments = Object.entries(checkInRoomAssignments)
+                .filter(([, roomId]) => roomId)
+                .map(([petId, roomId]) => ({ pet_id: parseInt(petId), room_id: parseInt(roomId) }));
             const response = await callServicesApi({
                 action: "UPDATE_BOOKING_STATUS",
                 session_id,
                 booking_id: checkInBooking.booking_id,
                 new_status: "checked_in",
                 note: checkInNote.trim(),
-                created_by: userData.id
+                created_by: userData.id,
+                room_assignments: roomAssignments
             });
             if (response?.success) {
                 setSuccessMsg(response.message);
                 setShowCheckInModal(false);
                 setCheckInBooking(null);
                 setCheckInNote("");
+                setCheckInRoomAssignments({});
                 setBookingsCached(false);
                 await fetchAllBookings(true);
             } else {
@@ -1064,6 +1180,7 @@ const KennelsAdminPage = () => {
     };
 
     const handleProceedCheckout = async () => {
+        setProcessingCheckout(true);
         // Save checkout note if provided
         if (checkoutNote.trim()) {
             await callServicesApi({
@@ -1076,6 +1193,7 @@ const KennelsAdminPage = () => {
             });
         }
         setShowCheckoutNotesModal(false);
+        setProcessingCheckout(false);
         // Proceed with normal checkout flow (which may show pending payments modal)
         handleUpdateBookingStatus(checkoutNotesBooking.booking_id, "completed");
     };
@@ -1122,6 +1240,32 @@ const KennelsAdminPage = () => {
                     msg += ` Cancellation fee: ₹${Math.round(response.refund_summary.cancellation_fee)}.`;
                 }
                 setSuccessMsg(msg);
+
+                // Send cancellation email to customer
+                try {
+                    const refundSummary = response.refund_summary || {};
+                    await callServicesApi({
+                        action: "SEND_EMAIL",
+                        session_id,
+                        email: adminCancelBooking.email,
+                        subject: response.new_status === "no_show" ? "Booking No-Show - Wag N Wonder" : "Booking Cancelled - Wag N Wonder",
+                        html: getCancellationEmailHtml({
+                            userName: `${adminCancelBooking.first_name} ${adminCancelBooking.last_name}`,
+                            kennelName: adminCancelBooking.kennel_name,
+                            bookingId: adminCancelBooking.booking_id,
+                            checkIn: formatDate(adminCancelBooking.check_in_date),
+                            checkOut: formatDate(adminCancelBooking.check_out_date),
+                            days: adminCancelBooking.days,
+                            pets: adminCancelBooking.pets?.map(p => ({ name: p.pet_name, breed: p.pet_breed })) || [],
+                            totalPrice: adminCancelBooking.total_price,
+                            cancellationFee: refundSummary.cancellation_fee || 0,
+                            walletRefund: refundSummary.wallet_refund || 0,
+                            onlineRefund: refundSummary.online_refund || 0,
+                            refundMethod: refundSummary.refund_method || "wallet",
+                            isNoShow: refundSummary.no_show || false
+                        })
+                    });
+                } catch (e) { console.error("Failed to send cancellation email:", e); }
                 setBookingsCached(false);
                 setExtensionsCached(false);
                 await fetchAllBookings(true);
@@ -1207,8 +1351,12 @@ const KennelsAdminPage = () => {
         }
     };
 
+    const getNextDay = (dateStr) => {
+        const d = new Date(dateStr); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0];
+    };
+
     const fetchRoomOccupancy = async (forceRefresh = false) => {
-        if (!occupancyKennelId || !occupancyDate || !occupancyEndDate) return;
+        if (!occupancyKennelId || !occupancyDate) return;
         if (roomOccupancyCached && !forceRefresh) return;
         setLoadingRoomOccupancy(true);
         try {
@@ -1217,7 +1365,7 @@ const KennelsAdminPage = () => {
                 session_id,
                 kennel_id: parseInt(occupancyKennelId),
                 check_in: occupancyDate,
-                check_out: occupancyEndDate
+                check_out: getNextDay(occupancyDate)
             });
             if (response?.success) {
                 setRoomOccupancy(response.rooms || []);
@@ -1231,7 +1379,7 @@ const KennelsAdminPage = () => {
     };
 
     const fetchOccupancy = async () => {
-        if (!occupancyKennelId || !occupancyDate || !occupancyEndDate) return;
+        if (!occupancyKennelId || !occupancyDate) return;
         setLoadingOccupancy(true);
         try {
             const response = await callServicesApi({
@@ -1240,7 +1388,7 @@ const KennelsAdminPage = () => {
                 kennel_id: parseInt(occupancyKennelId),
                 pet_count: 1,
                 check_in: occupancyDate,
-                check_out: occupancyEndDate
+                check_out: getNextDay(occupancyDate)
             });
             if (response?.success) {
                 setOccupancyData(response);
@@ -1257,10 +1405,10 @@ const KennelsAdminPage = () => {
                 fetchRoomOccupancy(true);
             }
         }
-    }, [occupancyKennelId, occupancyDate, occupancyEndDate, activeTab]);
+    }, [occupancyKennelId, occupancyDate, activeTab]);
 
     useEffect(() => {
-        if (occupancyView === "rooms" && occupancyKennelId && occupancyDate && occupancyEndDate) {
+        if (occupancyView === "rooms" && occupancyKennelId && occupancyDate) {
             fetchRoomOccupancy();
         }
     }, [occupancyView]);
@@ -1268,6 +1416,7 @@ const KennelsAdminPage = () => {
     useEffect(() => {
         if (activeTab === "occupancy" && kennels.length > 0 && !occupancyKennelId) {
             setOccupancyKennelId(kennels[0].id);
+            if (!calendarKennelId) setCalendarKennelId(kennels[0].id);
         }
     }, [activeTab, kennels]);
 
@@ -1279,6 +1428,12 @@ const KennelsAdminPage = () => {
     const todayCheckOuts = allBookings.filter(b =>
         b.check_out_date && new Date(b.check_out_date).toISOString().split("T")[0] === todayDate
         && (bookingsKennelFilter === "all" || b.kennel_id === parseInt(bookingsKennelFilter))
+    );
+
+    const overdueBookings = allBookings.filter(b =>
+        b.status === "checked_in"
+        && b.check_out_date
+        && new Date(b.check_out_date).toISOString().split("T")[0] < new Date().toISOString().split("T")[0]
     );
 
     const getPetWeightCategory = (weight) => {
@@ -1451,6 +1606,7 @@ const KennelsAdminPage = () => {
                     {activeTab === "occupancy" && "Occupancy"}
                     {activeTab === "employees" && "Employees"}
                     {activeTab === "closure" && "Maintenance Closure"}
+                    {activeTab === "coupons" && "Coupons"}
                 </h2>
             </div>
             {/* Closure Banners */}
@@ -2426,7 +2582,7 @@ const KennelsAdminPage = () => {
                                         type="text"
                                         placeholder="Search by name, email, phone, booking ID..."
                                         value={bookingsSearch}
-                                        onChange={(e) => setBookingsSearch(e.target.value)}
+                                        onChange={(e) => { setBookingsSearch(e.target.value); setBookingsPage(1); }}
                                     />
                                 </div>
                                 {kennels.length > 1 && (
@@ -2438,7 +2594,7 @@ const KennelsAdminPage = () => {
                                                 if (val === "all") { setBookingsKennelFilter("all"); return; }
                                                 const k = kennels.find(kn => kn.id === parseInt(val));
                                                 if (k && (k.user_role === "owner" || k.can_manage_bookings)) {
-                                                    setBookingsKennelFilter(val);
+                                                    setBookingsKennelFilter(val); setBookingsPage(1);
                                                 }
                                             }}
                                         >
@@ -2456,21 +2612,8 @@ const KennelsAdminPage = () => {
                                 )}
                                 <div className="status-filter">
                                     <select
-                                        value={bookingsStatusFilter}
-                                        onChange={(e) => setBookingsStatusFilter(e.target.value)}
-                                    >
-                                        <option value="all">All Statuses</option>
-                                        <option value="booked">Booked</option>
-                                        <option value="checked_in">Checked In</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                        <option value="no_show">No Show</option>
-                                    </select>
-                                </div>
-                                <div className="status-filter">
-                                    <select
                                         value={bookingsModeFilter}
-                                        onChange={(e) => setBookingsModeFilter(e.target.value)}
+                                        onChange={(e) => { setBookingsModeFilter(e.target.value); setBookingsPage(1); }}
                                     >
                                         <option value="all">All Modes</option>
                                         <option value="online">Online</option>
@@ -2489,19 +2632,166 @@ const KennelsAdminPage = () => {
                                 </button>
                             </div>
 
+                            {/* Overdue Checkouts Alert */}
+                            {overdueBookings.length > 0 && (
+                                <div style={{
+                                    borderRadius: "12px", overflow: "hidden",
+                                    border: "2px solid #fca5a5", marginBottom: "16px"
+                                }}>
+                                    <div style={{
+                                        padding: "12px 20px",
+                                        background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                                        borderBottom: "1px solid #fca5a5",
+                                        display: "flex", alignItems: "center", gap: "10px"
+                                    }}>
+                                        <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.1rem", color: "#dc2626" }}></i>
+                                        <div style={{ flex: 1 }}>
+                                            <span style={{ fontWeight: 600, color: "#991b1b", fontSize: "0.9rem" }}>
+                                                {overdueBookings.length} Overdue Checkout{overdueBookings.length !== 1 ? "s" : ""}
+                                            </span>
+                                            <div style={{ fontSize: "0.75rem", color: "#b91c1c", marginTop: "2px" }}>
+                                                These rooms are blocked from new bookings until resolved. Extend stays to collect pending payments.
+                                            </div>
+                                        </div>
+                                        <span style={{ fontSize: "0.78rem", color: "#dc2626", fontWeight: 500 }}>
+                                            Action required
+                                        </span>
+                                    </div>
+                                    <div style={{ padding: "10px 12px", background: "white" }}>
+                                        {overdueBookings.map(b => {
+                                            const daysOverdue = Math.floor((new Date() - new Date(b.check_out_date)) / 86400000);
+                                            return (
+                                                <div key={`overdue-${b.booking_id}`} style={{
+                                                    display: "flex", alignItems: "center", gap: "14px",
+                                                    padding: "12px 14px", borderRadius: "10px",
+                                                    border: "1px solid #fecaca", marginBottom: "8px",
+                                                    background: "#fff5f5"
+                                                }}>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                                            <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.9rem" }}>
+                                                                #{b.booking_id} · {b.first_name} {b.last_name}
+                                                            </span>
+                                                            <span style={{
+                                                                padding: "2px 8px", borderRadius: "6px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: "#fee2e2", color: "#dc2626"
+                                                            }}>
+                                                                {daysOverdue} day{daysOverdue !== 1 ? "s" : ""} overdue
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+                                                            <i className="bi bi-calendar me-1"></i>{formatDate(b.check_in_date)} → {formatDate(b.check_out_date)}
+                                                            <span style={{ margin: "0 6px" }}>·</span>
+                                                            {b.pets?.map(p => p.pet_name).join(", ")}
+                                                            {kennels.length > 1 && <><span style={{ margin: "0 6px" }}>·</span>{b.kennel_name}</>}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                                                        <button
+                                                            onClick={() => openExtendModal(b)}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px", border: "none",
+                                                                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                                                                color: "white", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-calendar-plus"></i> Extend
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openCheckoutWithNotes(b)}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px",
+                                                                border: "1px solid #dbeafe", background: "#eff6ff",
+                                                                color: "#2563eb", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-check-lg"></i> Checkout
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedBooking(b);
+                                                            }}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px",
+                                                                border: "1px solid #e2e8f0", background: "white",
+                                                                color: "#475569", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-eye"></i> View
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Booking Tabs */}
+                            <div style={{ display: "flex", gap: "0", marginBottom: "16px", borderBottom: "2px solid #e2e8f0" }}>
+                                {[
+                                    { key: "active", label: "Active", icon: "bi-calendar-check-fill", color: "#2563eb" },
+                                    { key: "completed", label: "Completed", icon: "bi-check-circle-fill", color: "#059669" },
+                                    { key: "cancelled", label: "Cancelled", icon: "bi-x-circle-fill", color: "#dc2626" }
+                                ].map(tab => {
+                                    const count = tab.key === "active"
+                                        ? filteredBookings.filter(b => b.status === "booked" || b.status === "checked_in").length
+                                        : tab.key === "completed"
+                                            ? filteredBookings.filter(b => b.status === "completed").length
+                                            : filteredBookings.filter(b => b.status === "cancelled" || b.status === "no_show").length;
+                                    const isActive = bookingsTab === tab.key;
+                                    return (
+                                        <button key={tab.key}
+                                            onClick={() => { setBookingsTab(tab.key); setBookingsPage(1); }}
+                                            style={{
+                                                padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
+                                                fontSize: "0.85rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px",
+                                                color: isActive ? tab.color : "#94a3b8",
+                                                borderBottom: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
+                                                marginBottom: "-2px", transition: "all 0.2s"
+                                            }}
+                                        >
+                                            <i className={`bi ${tab.icon}`}></i>
+                                            {tab.label}
+                                            <span style={{
+                                                padding: "1px 8px", borderRadius: "10px", fontSize: "0.7rem", fontWeight: 700,
+                                                background: isActive ? tab.color + "15" : "#f1f5f9",
+                                                color: isActive ? tab.color : "#94a3b8"
+                                            }}>{count}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
                             {loadingBookings ? (
                                 <div className="loading-spinner">
                                     <div className="spinner-border" role="status"></div>
-                                </div>
-                            ) : filteredBookings.length === 0 ? (
-                                <div className="empty-state">
-                                    <i className="bi bi-calendar-x"></i>
-                                    <p>No bookings found</p>
                                 </div>
                             ) : (() => {
                                 const activeBookings = filteredBookings.filter(b => b.status === "booked" || b.status === "checked_in");
                                 const completedBookings = filteredBookings.filter(b => b.status === "completed");
                                 const cancelledBookings = filteredBookings.filter(b => b.status === "cancelled" || b.status === "no_show");
+                                const currentList = bookingsTab === "active"
+                                    ? (activeSubTab === "all" ? activeBookings : activeBookings.filter(b => b.status === activeSubTab))
+                                    : bookingsTab === "completed" ? completedBookings : cancelledBookings;
+
+                                const sortedList = bookingsTab === "active"
+                                    ? [...currentList].sort((a, b) => {
+                                        if (a.status === "checked_in" && b.status !== "checked_in") return -1;
+                                        if (a.status !== "checked_in" && b.status === "checked_in") return 1;
+                                        return new Date(a.check_in_date) - new Date(b.check_in_date);
+                                    })
+                                    : currentList;
+
+                                const totalPages = Math.ceil(sortedList.length / 10);
+                                const safePage = Math.min(bookingsPage, totalPages || 1);
+                                const paginatedBookings = sortedList.slice((safePage - 1) * 10, safePage * 10);
 
                                 const BookingCard = ({ b }) => {
                                     const isCompleted = b.status === "completed";
@@ -2605,7 +2895,15 @@ const KennelsAdminPage = () => {
                                                             <div style={{ display: "flex", gap: "6px" }}>
                                                                 {b.status === "booked" && (
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); setCheckInBooking(b); setCheckInNote(""); setShowCheckInModal(true); }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const today = new Date().toISOString().split("T")[0];
+                                                                            if (b.check_in_date > today) {
+                                                                                setFutureCheckInBooking(b);
+                                                                            } else {
+                                                                                setCheckInBooking(b); setCheckInNote(""); setCheckInRoomAssignments({}); setShowCheckInModal(true); fetchCheckInRooms(b);
+                                                                            }
+                                                                        }}
                                                                         style={{
                                                                             padding: "5px 12px", borderRadius: "8px", border: "1px solid #dbeafe",
                                                                             background: "#eff6ff", color: "#2563eb", fontSize: "0.75rem",
@@ -2688,59 +2986,92 @@ const KennelsAdminPage = () => {
                                     );
                                 };
 
-                                const SectionHeader = ({ icon, title, count, color }) => (
-                                    <div style={{
-                                        display: "flex", alignItems: "center", gap: "10px",
-                                        marginBottom: "14px", marginTop: "8px"
-                                    }}>
-                                        <div style={{
-                                            width: "32px", height: "32px", borderRadius: "8px",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            background: color + "18", color: color
-                                        }}>
-                                            <i className={`bi ${icon}`} style={{ fontSize: "0.95rem" }}></i>
-                                        </div>
-                                        <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#1e293b" }}>{title}</h4>
-                                        <span style={{
-                                            padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600,
-                                            background: color + "18", color: color
-                                        }}>
-                                            {count}
-                                        </span>
+                                if (currentList.length === 0) return (
+                                    <div className="empty-state">
+                                        <i className={`bi ${bookingsTab === "active" ? "bi-calendar-check" : bookingsTab === "completed" ? "bi-check-circle" : "bi-x-circle"}`}></i>
+                                        <p>No {bookingsTab} bookings found</p>
                                     </div>
                                 );
 
                                 return (
                                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                        {/* Active Bookings */}
-                                        {activeBookings.length > 0 && (
+                                        {bookingsTab === "active" ? (
                                             <>
-                                                <SectionHeader icon="bi-calendar-check-fill" title="Active Bookings" count={activeBookings.length} color="#2563eb" />
-                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-                                                    {activeBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
+                                                    <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "20px", padding: "3px" }}>
+                                                        <button
+                                                            onClick={() => { setActiveSubTab("all"); setBookingsPage(1); }}
+                                                            style={{
+                                                                padding: "6px 16px", borderRadius: "18px", border: "none", cursor: "pointer",
+                                                                fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px",
+                                                                background: activeSubTab === "all" ? "#1e293b" : "transparent",
+                                                                color: activeSubTab === "all" ? "white" : "#64748b",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            All
+                                                            <span style={{
+                                                                padding: "0px 6px", borderRadius: "10px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: activeSubTab === "all" ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                                                                color: activeSubTab === "all" ? "white" : "#94a3b8"
+                                                            }}>{activeBookings.length}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setActiveSubTab("checked_in"); setBookingsPage(1); }}
+                                                            style={{
+                                                                padding: "6px 16px", borderRadius: "18px", border: "none", cursor: "pointer",
+                                                                fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px",
+                                                                background: activeSubTab === "checked_in" ? "#1e293b" : "transparent",
+                                                                color: activeSubTab === "checked_in" ? "white" : "#64748b",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-door-closed-fill"></i>
+                                                            In Kennel
+                                                            <span style={{
+                                                                padding: "0px 6px", borderRadius: "10px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: activeSubTab === "checked_in" ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                                                                color: activeSubTab === "checked_in" ? "white" : "#94a3b8"
+                                                            }}>{activeBookings.filter(b => b.status === "checked_in").length}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setActiveSubTab("booked"); setBookingsPage(1); }}
+                                                            style={{
+                                                                padding: "6px 16px", borderRadius: "18px", border: "none", cursor: "pointer",
+                                                                fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px",
+                                                                background: activeSubTab === "booked" ? "#1e293b" : "transparent",
+                                                                color: activeSubTab === "booked" ? "white" : "#64748b",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-calendar-check"></i>
+                                                            Upcoming
+                                                            <span style={{
+                                                                padding: "0px 6px", borderRadius: "10px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: activeSubTab === "booked" ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                                                                color: activeSubTab === "booked" ? "white" : "#94a3b8"
+                                                            }}>{activeBookings.filter(b => b.status === "booked").length}</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </>
-                                        )}
-
-                                        {/* Completed Bookings */}
-                                        {completedBookings.length > 0 && (
-                                            <>
-                                                <SectionHeader icon="bi-check-circle-fill" title="Completed" count={completedBookings.length} color="#059669" />
-                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-                                                    {completedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {/* Cancelled Bookings */}
-                                        {cancelledBookings.length > 0 && (
-                                            <>
-                                                <SectionHeader icon="bi-x-circle-fill" title="Cancelled" count={cancelledBookings.length} color="#dc2626" />
                                                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                                    {cancelledBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                    {paginatedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
                                                 </div>
                                             </>
+                                        ) : (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                                {paginatedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                            </div>
                                         )}
+
+                                        <Pagination
+                                            currentPage={safePage}
+                                            totalPages={totalPages}
+                                            onPageChange={(p) => { setBookingsPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                                            itemsPerPage={10}
+                                            totalItems={sortedList.length}
+                                            theme="admin"
+                                        />
                                     </div>
                                 );
                             })()}
@@ -3357,7 +3688,7 @@ const KennelsAdminPage = () => {
                                                             <i className="bi bi-link-45deg"></i> Payment Link
                                                         </a>
                                                     )}
-                                                    {!isPaid && !isExpired && (
+                                                    {!isPaid && !isExpired && ext.payment_mode === "online" && (
                                                         <button
                                                             onClick={() => handleResendExtensionEmail(ext)}
                                                             disabled={resendingExtensionId === ext.id}
@@ -3484,6 +3815,26 @@ const KennelsAdminPage = () => {
                         </div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                            {/* Overdue Alert (read-only) */}
+                            {overdueBookings.length > 0 && (
+                                <div style={{
+                                    display: "flex", alignItems: "center", gap: "10px",
+                                    padding: "14px 20px", borderRadius: "12px",
+                                    background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                                    border: "1px solid #fca5a5"
+                                }}>
+                                    <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.2rem", color: "#dc2626" }}></i>
+                                    <div style={{ flex: 1 }}>
+                                        <span style={{ fontWeight: 600, color: "#991b1b", fontSize: "0.9rem" }}>
+                                            {overdueBookings.length} booking{overdueBookings.length !== 1 ? "s" : ""} overdue for checkout
+                                        </span>
+                                        <span style={{ color: "#b91c1c", fontSize: "0.8rem", marginLeft: "8px" }}>
+                                            — Please extend them in the Bookings tab.
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Check-ins Section */}
                             <div style={{ background: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
                                 <div style={{
@@ -3644,56 +3995,48 @@ const KennelsAdminPage = () => {
                             <i className="bi bi-grid-3x3"></i>
                             Room View
                         </button>
-                    </div>
-
-                    <div className="events-filters">
-                        {kennels.length > 1 && (
-                            <div className="status-filter">
-                                <select
-                                    value={occupancyKennelId}
-                                    onChange={(e) => setOccupancyKennelId(e.target.value)}
-                                >
-                                    {kennels.map(k => (
-                                        <option key={k.id} value={k.id}>{k.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        <div className="search-box" style={{ maxWidth: "180px" }}>
-                            <i className="bi bi-calendar"></i>
-                            <input
-                                type="date"
-                                value={occupancyDate}
-                                onChange={(e) => {
-                                    setOccupancyDate(e.target.value);
-                                    if (occupancyEndDate <= e.target.value) {
-                                        const d = new Date(e.target.value);
-                                        d.setDate(d.getDate() + 1);
-                                        setOccupancyEndDate(d.toISOString().split("T")[0]);
-                                    }
-                                }}
-                                style={{ paddingLeft: "38px" }}
-                            />
-                        </div>
-                        <div className="search-box" style={{ maxWidth: "180px" }}>
-                            <i className="bi bi-calendar-check"></i>
-                            <input
-                                type="date"
-                                value={occupancyEndDate}
-                                min={occupancyDate}
-                                onChange={(e) => setOccupancyEndDate(e.target.value)}
-                                style={{ paddingLeft: "38px" }}
-                            />
-                        </div>
                         <button
-                            className="earnings-refresh-btn"
-                            onClick={() => { fetchOccupancy(); if (occupancyView === "rooms") fetchRoomOccupancy(true); }}
-                            disabled={loadingOccupancy || loadingRoomOccupancy}
-                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                            className={`submenu-item ${occupancyView === "calendar" ? "active" : ""}`}
+                            onClick={() => setOccupancyView("calendar")}
                         >
-                            <i className={`bi bi-arrow-clockwise ${(loadingOccupancy || loadingRoomOccupancy) ? 'spinning' : ''}`}></i>
+                            <i className="bi bi-calendar3"></i>
+                            Calendar
                         </button>
                     </div>
+
+                    {occupancyView !== "calendar" && (
+                        <div className="events-filters">
+                            {kennels.length > 1 && (
+                                <div className="status-filter">
+                                    <select
+                                        value={occupancyKennelId}
+                                        onChange={(e) => setOccupancyKennelId(e.target.value)}
+                                    >
+                                        {kennels.map(k => (
+                                            <option key={k.id} value={k.id}>{k.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <div className="search-box" style={{ maxWidth: "180px" }}>
+                                <i className="bi bi-calendar"></i>
+                                <input
+                                    type="date"
+                                    value={occupancyDate}
+                                    onChange={(e) => setOccupancyDate(e.target.value)}
+                                    style={{ paddingLeft: "38px" }}
+                                />
+                            </div>
+                            <button
+                                className="earnings-refresh-btn"
+                                onClick={() => { fetchOccupancy(); if (occupancyView === "rooms") fetchRoomOccupancy(true); }}
+                                disabled={loadingOccupancy || loadingRoomOccupancy}
+                                style={{ marginLeft: "auto", minWidth: "unset" }}
+                            >
+                                <i className={`bi bi-arrow-clockwise ${(loadingOccupancy || loadingRoomOccupancy) ? 'spinning' : ''}`}></i>
+                            </button>
+                        </div>
+                    )}
 
                     {/* ---- SUMMARY VIEW ---- */}
                     {occupancyView === "summary" && (
@@ -3714,11 +4057,12 @@ const KennelsAdminPage = () => {
                             ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                                     {occupancyData.room_types.map((rt, idx) => {
+                                        const nextDay = getNextDay(occupancyDate);
                                         const totalRooms = parseInt(rt.available_rooms) + (allBookings.filter(b =>
                                             b.kennel_id === parseInt(occupancyKennelId) &&
                                             b.room_type_name === rt.room_type &&
                                             (b.status === "booked" || b.status === "checked_in") &&
-                                            new Date(b.check_in_date) < new Date(occupancyEndDate) &&
+                                            new Date(b.check_in_date) < new Date(nextDay) &&
                                             new Date(b.check_out_date) > new Date(occupancyDate)
                                         ).length || 0);
                                         const occupied = totalRooms - parseInt(rt.available_rooms);
@@ -3869,6 +4213,298 @@ const KennelsAdminPage = () => {
                                     })()}
                                 </div>
                             )}
+                        </>
+                    )}
+
+                    {/* ---- CALENDAR VIEW ---- */}
+                    {occupancyView === "calendar" && (
+                        <>
+                            <div className="events-filters">
+                                {kennels.length > 1 && (
+                                    <div className="status-filter">
+                                        <select
+                                            value={calendarKennelId}
+                                            onChange={(e) => setCalendarKennelId(e.target.value)}
+                                        >
+                                            {kennels.map(k => (
+                                                <option key={k.id} value={k.id}>{k.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "8px", padding: "3px" }}>
+                                    <button
+                                        onClick={() => setCalendarMode("month")}
+                                        style={{
+                                            padding: "4px 14px", borderRadius: "6px", border: "none", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                                            background: calendarMode === "month" ? "white" : "transparent",
+                                            color: calendarMode === "month" ? "#1e293b" : "#64748b",
+                                            boxShadow: calendarMode === "month" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                                        }}
+                                    >Month</button>
+                                    <button
+                                        onClick={() => setCalendarMode("year")}
+                                        style={{
+                                            padding: "4px 14px", borderRadius: "6px", border: "none", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                                            background: calendarMode === "year" ? "white" : "transparent",
+                                            color: calendarMode === "year" ? "#1e293b" : "#64748b",
+                                            boxShadow: calendarMode === "year" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                                        }}
+                                    >Year</button>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "auto" }}>
+                                    <button onClick={() => {
+                                        if (calendarMode === "month") {
+                                            const prev = calendarMonth === 0 ? 11 : calendarMonth - 1;
+                                            setCalendarMonth(prev);
+                                            if (prev === 11) setCalendarYear(y => y - 1);
+                                        } else { setCalendarYear(y => y - 1); }
+                                    }} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: "8px", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#475569" }}>
+                                        <i className="bi bi-chevron-left"></i>
+                                    </button>
+                                    <span style={{ fontWeight: 700, fontSize: "1rem", color: "#1e293b", minWidth: "140px", textAlign: "center" }}>
+                                        {calendarMode === "month"
+                                            ? `${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][calendarMonth]} ${calendarYear}`
+                                            : calendarYear}
+                                    </span>
+                                    <button onClick={() => {
+                                        if (calendarMode === "month") {
+                                            const next = calendarMonth === 11 ? 0 : calendarMonth + 1;
+                                            setCalendarMonth(next);
+                                            if (next === 0) setCalendarYear(y => y + 1);
+                                        } else { setCalendarYear(y => y + 1); }
+                                    }} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: "8px", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#475569" }}>
+                                        <i className="bi bi-chevron-right"></i>
+                                    </button>
+                                    <button onClick={() => { setCalendarMonth(new Date().getMonth()); setCalendarYear(new Date().getFullYear()); }}
+                                        style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "4px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
+                                        Today
+                                    </button>
+                                </div>
+                            </div>
+
+                            {loadingBookings ? (
+                                <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+                            ) : (() => {
+                                const selectedKennel = kennels.find(k => String(k.id) === String(calendarKennelId));
+                                const totalRooms = selectedKennel ? parseInt(selectedKennel.total_rooms) || 0 : 0;
+                                const kennelBookings = allBookings.filter(b =>
+                                    b.kennel_id === parseInt(calendarKennelId) &&
+                                    (b.status === "booked" || b.status === "checked_in")
+                                );
+                                const kennelClosures = closures.filter(c => c.kennel_id === parseInt(calendarKennelId));
+
+                                const getDayData = (dateStr) => {
+                                    const d = new Date(dateStr);
+                                    const nextDay = new Date(d); nextDay.setDate(nextDay.getDate() + 1);
+                                    const occupied = kennelBookings.reduce((sum, b) => {
+                                        const ci = new Date(b.check_in_date);
+                                        const co = new Date(b.check_out_date);
+                                        if (ci < nextDay && co > d) return sum + (b.pets?.length || 1);
+                                        return sum;
+                                    }, 0);
+                                    const isClosed = kennelClosures.some(c => {
+                                        const cs = new Date(c.closure_start);
+                                        const ce = new Date(c.closure_end);
+                                        return cs <= d && ce >= d;
+                                    });
+                                    return { occupied, isClosed };
+                                };
+
+                                const getColor = (occupied, total, isClosed) => {
+                                    if (isClosed) return { bg: "#fef2f2", border: "#fca5a5", pattern: true };
+                                    if (total === 0 || occupied === 0) return { bg: "#f1f5f9", border: "#e2e8f0", pattern: false };
+                                    const pct = occupied / total;
+                                    if (pct <= 0.25) return { bg: "#dcfce7", border: "#86efac", pattern: false };
+                                    if (pct <= 0.5) return { bg: "#bbf7d0", border: "#4ade80", pattern: false };
+                                    if (pct <= 0.75) return { bg: "#86efac", border: "#22c55e", pattern: false };
+                                    return { bg: "#22c55e", border: "#16a34a", pattern: false };
+                                };
+
+                                const todayStr = new Date().toISOString().split("T")[0];
+                                const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+                                const renderMonth = (month, year, compact = false) => {
+                                    const firstDay = new Date(year, month, 1);
+                                    const lastDay = new Date(year, month + 1, 0);
+                                    const startPad = (firstDay.getDay() + 6) % 7;
+                                    const cells = [];
+                                    for (let i = 0; i < startPad; i++) cells.push(null);
+                                    for (let d = 1; d <= lastDay.getDate(); d++) cells.push(d);
+
+                                    const cellSize = compact ? "18px" : "44px";
+                                    const fontSize = compact ? "0.55rem" : "0.8rem";
+                                    const gap = compact ? "3px" : "4px";
+
+                                    return (
+                                        <div>
+                                            {!compact && (
+                                                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap, marginBottom: "4px" }}>
+                                                    {dayNames.map(dn => (
+                                                        <div key={dn} style={{ textAlign: "center", fontSize: "0.7rem", fontWeight: 600, color: "#94a3b8" }}>{dn}</div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap }}>
+                                                {cells.map((day, i) => {
+                                                    if (day === null) return <div key={`pad-${i}`} style={{ width: cellSize, height: cellSize }}></div>;
+                                                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                                    const { occupied, isClosed } = getDayData(dateStr);
+                                                    const color = getColor(occupied, totalRooms, isClosed);
+                                                    const isToday = dateStr === todayStr;
+                                                    const pct = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
+
+                                                    return (
+                                                        <div
+                                                            key={dateStr}
+                                                            onMouseEnter={(e) => {
+                                                                if (compact) return;
+                                                                e.currentTarget.style.transform = "scale(1.1)";
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setCalTooltip({
+                                                                    show: true,
+                                                                    x: rect.left + rect.width / 2,
+                                                                    y: rect.top - 8,
+                                                                    text: isClosed
+                                                                        ? `Closed for maintenance`
+                                                                        : `${occupied}/${totalRooms} occupied (${pct}%)`,
+                                                                    dateLabel: `${day} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month]} ${year}`,
+                                                                    isClosed
+                                                                });
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.transform = "scale(1)";
+                                                                setCalTooltip(t => ({ ...t, show: false }));
+                                                            }}
+                                                            onClick={() => {
+                                                                if (!isClosed) {
+                                                                    setOccupancyDate(dateStr);
+                                                                    setOccupancyKennelId(calendarKennelId);
+                                                                    setOccupancyView("summary");
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                width: cellSize, height: cellSize,
+                                                                borderRadius: compact ? "3px" : "8px",
+                                                                background: isClosed
+                                                                    ? "repeating-linear-gradient(135deg, #fef2f2, #fef2f2 3px, #fecaca 3px, #fecaca 6px)"
+                                                                    : color.bg,
+                                                                border: isToday ? "2px solid #1e293b" : `1px solid ${color.border}`,
+                                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                                fontSize, fontWeight: isToday ? 700 : 500,
+                                                                color: isClosed ? "#dc2626" : (occupied > 0 && totalRooms > 0 && occupied / totalRooms > 0.5) ? "#fff" : "#374151",
+                                                                cursor: isClosed ? "default" : "pointer",
+                                                                transition: "transform 0.15s",
+                                                                position: "relative"
+                                                            }}
+                                                        >
+                                                            {compact ? "" : day}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                };
+
+                                return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                        {totalRooms === 0 ? (
+                                            <div className="empty-state">
+                                                <i className="bi bi-door-open"></i>
+                                                <p>No rooms configured for this kennel</p>
+                                            </div>
+                                        ) : calendarMode === "month" ? (
+                                            <div style={{ background: "white", borderRadius: "12px", padding: "20px", border: "1px solid #e2e8f0" }}>
+                                                {renderMonth(calendarMonth, calendarYear, false)}
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                display: "grid",
+                                                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                                                gap: "16px"
+                                            }}>
+                                                {Array.from({ length: 12 }, (_, m) => (
+                                                    <div key={m} style={{
+                                                        background: "white", borderRadius: "12px", padding: "12px",
+                                                        border: m === new Date().getMonth() && calendarYear === new Date().getFullYear() ? "2px solid #1e293b" : "1px solid #e2e8f0",
+                                                        cursor: "pointer"
+                                                    }}
+                                                        onClick={() => { setCalendarMonth(m); setCalendarMode("month"); }}
+                                                    >
+                                                        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", textAlign: "center" }}>
+                                                            {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m]}
+                                                        </div>
+                                                        {renderMonth(m, calendarYear, true)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Legend */}
+                                        <div style={{
+                                            display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+                                            padding: "12px 16px", background: "white", borderRadius: "10px", border: "1px solid #e2e8f0"
+                                        }}>
+                                            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b" }}>Occupancy:</span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#f1f5f9", border: "1px solid #e2e8f0" }}></span>0%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#dcfce7", border: "1px solid #86efac" }}></span>1-25%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#bbf7d0", border: "1px solid #4ade80" }}></span>26-50%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#86efac", border: "1px solid #22c55e" }}></span>51-75%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#22c55e", border: "1px solid #16a34a" }}></span>76-100%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b", marginLeft: "8px" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "repeating-linear-gradient(135deg, #fef2f2, #fef2f2 3px, #fecaca 3px, #fecaca 6px)", border: "1px solid #fca5a5" }}></span>Closed
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b", marginLeft: "8px" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "white", border: "2px solid #1e293b" }}></span>Today
+                                            </span>
+                                        </div>
+
+                                        {/* Custom Tooltip */}
+                                        {calTooltip.show && (
+                                            <div style={{
+                                                position: "fixed",
+                                                left: calTooltip.x,
+                                                top: calTooltip.y,
+                                                transform: "translate(-50%, -100%)",
+                                                background: "#1e293b",
+                                                color: "white",
+                                                padding: "6px 12px",
+                                                borderRadius: "8px",
+                                                fontSize: "0.75rem",
+                                                whiteSpace: "nowrap",
+                                                pointerEvents: "none",
+                                                zIndex: 9999,
+                                                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                alignItems: "center",
+                                                gap: "2px"
+                                            }}>
+                                                <span style={{ fontWeight: 700 }}>{calTooltip.dateLabel}</span>
+                                                <span style={{ color: calTooltip.isClosed ? "#fca5a5" : "#86efac" }}>{calTooltip.text}</span>
+                                                <div style={{
+                                                    position: "absolute", bottom: "-4px", left: "50%", transform: "translateX(-50%)",
+                                                    width: 0, height: 0,
+                                                    borderLeft: "5px solid transparent",
+                                                    borderRight: "5px solid transparent",
+                                                    borderTop: "5px solid #1e293b"
+                                                }}></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </>
                     )}
                 </>
@@ -4327,6 +4963,237 @@ const KennelsAdminPage = () => {
                 </>
             )}
 
+            {/* ==================== COUPONS TAB ==================== */}
+            {activeTab === "coupons" && loadingKennels && (
+                <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+            )}
+            {activeTab === "coupons" && !loadingKennels && !permissions.canManageBookings && (
+                <div className="empty-state"><i className="bi bi-shield-lock"></i><p>You don't have access to manage coupons</p></div>
+            )}
+            {activeTab === "coupons" && !loadingKennels && permissions.canManageBookings && (
+                <>
+                    <div className="events-filters">
+                        <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "8px", padding: "3px" }}>
+                            {["active", "expired", "all"].map(f => (
+                                <button key={f} onClick={() => setCouponsFilter(f)}
+                                    style={{ padding: "4px 14px", borderRadius: "6px", border: "none", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", background: couponsFilter === f ? "white" : "transparent", color: couponsFilter === f ? "#1e293b" : "#64748b", boxShadow: couponsFilter === f ? "0 1px 3px rgba(0,0,0,0.1)" : "none", textTransform: "capitalize" }}
+                                >{f}</button>
+                            ))}
+                        </div>
+                        <button className="earnings-refresh-btn" onClick={() => fetchCoupons(true)} disabled={loadingCoupons} style={{ minWidth: "unset" }}>
+                            <i className={`bi bi-arrow-clockwise ${loadingCoupons ? 'spinning' : ''}`}></i>
+                        </button>
+                        <button onClick={() => { setShowCreateCoupon(!showCreateCoupon); if (!showCreateCoupon) { const bk = kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings); if (bk.length === 1) setCouponForm(prev => ({ ...prev, kennel_id: String(bk[0].id) })); } }}
+                            style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "white", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <i className={`bi ${showCreateCoupon ? 'bi-x-lg' : 'bi-plus-lg'}`}></i>
+                            {showCreateCoupon ? "Cancel" : "Create Coupon"}
+                        </button>
+                    </div>
+
+                    {showCreateCoupon && (
+                        <div style={{ background: "white", borderRadius: "12px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
+                            <h4 style={{ margin: "0 0 20px", fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>New Coupon</h4>
+
+                            {kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings).length > 1 && (
+                                <div style={{ marginBottom: "16px" }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Kennel</label>
+                                    <select value={couponForm.kennel_id} onChange={(e) => setCouponForm(prev => ({ ...prev, kennel_id: e.target.value }))}
+                                        style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }}>
+                                        <option value="">Select kennel</option>
+                                        {kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings).map(k => (
+                                            <option key={k.id} value={k.id}>{k.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Coupon Code</label>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    <input type="text" value={couponForm.code} readOnly
+                                        placeholder="Click generate to create a code"
+                                        style={{ flex: 1, padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem", fontFamily: "monospace", letterSpacing: "1px", background: "#f8fafc" }} />
+                                    <button onClick={() => {
+                                        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                                        let code = "WNW";
+                                        for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+                                        setCouponForm(prev => ({ ...prev, auto_generate: true, code }));
+                                    }}
+                                        style={{ padding: "10px 16px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                        <i className="bi bi-shuffle me-1"></i> Generate
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Discount Type</label>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                    {[{ key: "flat", label: "Flat Off", icon: "bi-currency-rupee" }, { key: "percentage", label: "Percentage Off", icon: "bi-percent" }].map(t => (
+                                        <button key={t.key} onClick={() => setCouponForm(prev => ({ ...prev, discount_type: t.key, max_discount: "" }))}
+                                            style={{ flex: 1, padding: "12px", borderRadius: "10px", cursor: "pointer", border: couponForm.discount_type === t.key ? "2px solid #1e293b" : "1px solid #e2e8f0", background: couponForm.discount_type === t.key ? "#f8fafc" : "white", color: "#1e293b", fontSize: "0.88rem", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                            <i className={`bi ${t.icon}`}></i> {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>
+                                        {couponForm.discount_type === "flat" ? "Discount Amount (₹)" : "Discount Percentage (%)"}
+                                    </label>
+                                    <input type="number" value={couponForm.discount_value} onChange={(e) => setCouponForm(prev => ({ ...prev, discount_value: e.target.value }))}
+                                        placeholder={couponForm.discount_type === "flat" ? "e.g. 200" : "e.g. 10"} min="0" max={couponForm.discount_type === "percentage" ? "100" : undefined}
+                                        style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                </div>
+                                {couponForm.discount_type === "percentage" && (
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Max Discount (₹) <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                        <input type="number" value={couponForm.max_discount} onChange={(e) => setCouponForm(prev => ({ ...prev, max_discount: e.target.value }))}
+                                            placeholder="e.g. 500" min="0" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Valid From</label>
+                                    <input type="date" value={couponForm.valid_from} onChange={(e) => setCouponForm(prev => ({ ...prev, valid_from: e.target.value }))}
+                                        min={new Date().toISOString().split("T")[0]} style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Valid Until</label>
+                                    <input type="date" value={couponForm.valid_until} onChange={(e) => setCouponForm(prev => ({ ...prev, valid_until: e.target.value }))}
+                                        min={couponForm.valid_from || new Date().toISOString().split("T")[0]} style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Usage Per Customer</label>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                    {[{ key: "1", label: "One-time per customer" }, { key: "0", label: "Unlimited per customer" }].map(o => (
+                                        <button key={o.key} onClick={() => setCouponForm(prev => ({ ...prev, per_user_limit: o.key }))}
+                                            style={{ flex: 1, padding: "12px", borderRadius: "10px", cursor: "pointer", border: couponForm.per_user_limit === o.key ? "2px solid #1e293b" : "1px solid #e2e8f0", background: couponForm.per_user_limit === o.key ? "#f8fafc" : "white", color: "#1e293b", fontSize: "0.85rem", fontWeight: 600 }}>
+                                            {o.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+                                <div>
+                                    <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1e293b" }}>Show on booking page</div>
+                                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Customers will see this coupon when booking your kennel</div>
+                                </div>
+                                <div onClick={() => setCouponForm(prev => ({ ...prev, is_public: !prev.is_public }))}
+                                    style={{ width: "44px", height: "24px", borderRadius: "12px", cursor: "pointer", background: couponForm.is_public ? "#1e293b" : "#cbd5e1", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                                    <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: couponForm.is_public ? "22px" : "2px", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}></div>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowAdvancedCoupon(!showAdvancedCoupon)}
+                                style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#64748b", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: showAdvancedCoupon ? "16px" : "20px" }}>
+                                <i className={`bi bi-chevron-${showAdvancedCoupon ? "up" : "down"}`}></i>
+                                {showAdvancedCoupon ? "Hide" : "Show"} Advanced Options
+                            </button>
+
+                            {showAdvancedCoupon && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                                    <div style={{ display: "flex", gap: "12px" }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Min. Booking Amount (₹) <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                            <input type="number" value={couponForm.min_booking_value} onChange={(e) => setCouponForm(prev => ({ ...prev, min_booking_value: e.target.value }))}
+                                                placeholder="e.g. 2000" min="0" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Min. Nights <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                            <input type="number" value={couponForm.min_nights} onChange={(e) => setCouponForm(prev => ({ ...prev, min_nights: e.target.value }))}
+                                                placeholder="e.g. 3" min="1" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Total Usage Limit <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                        <input type="number" value={couponForm.usage_limit} onChange={(e) => setCouponForm(prev => ({ ...prev, usage_limit: e.target.value }))}
+                                            placeholder="Unlimited" min="1" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <button onClick={handleCreateCoupon} disabled={submittingCoupon}
+                                style={{ width: "100%", padding: "14px", borderRadius: "10px", border: "none", background: submittingCoupon ? "#cbd5e1" : "linear-gradient(135deg, #1e293b, #0f172a)", color: submittingCoupon ? "#94a3b8" : "white", fontSize: "0.9rem", fontWeight: 600, cursor: submittingCoupon ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                {submittingCoupon ? (<><span className="spinner-border spinner-border-sm"></span> Creating...</>) : (<><i className="bi bi-plus-lg"></i> Create Coupon</>)}
+                            </button>
+                        </div>
+                    )}
+
+                    {loadingCoupons ? (
+                        <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+                    ) : (() => {
+                        const today = new Date().toISOString().split("T")[0];
+                        const filtered = coupons.filter(c => {
+                            if (couponsFilter === "active") return c.is_active && c.valid_until >= today;
+                            if (couponsFilter === "expired") return !c.is_active || c.valid_until < today;
+                            return true;
+                        });
+
+                        if (filtered.length === 0) return (
+                            <div className="empty-state">
+                                <i className="bi bi-ticket-perforated"></i>
+                                <p>No {couponsFilter !== "all" ? couponsFilter : ""} coupons found</p>
+                            </div>
+                        );
+
+                        return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                {filtered.map(c => {
+                                    const isExpired = c.valid_until < today;
+                                    const isExhausted = c.usage_limit !== null && c.times_used >= c.usage_limit;
+                                    const isInactive = !c.is_active;
+                                    const statusColor = isExpired ? "#dc2626" : isExhausted ? "#d97706" : isInactive ? "#64748b" : "#059669";
+                                    const statusBg = isExpired ? "#fef2f2" : isExhausted ? "#fffbeb" : isInactive ? "#f1f5f9" : "#ecfdf5";
+                                    const statusText = isExpired ? "Expired" : isExhausted ? "Limit Reached" : isInactive ? "Disabled" : "Active";
+
+                                    return (
+                                        <div key={c.id} style={{ background: "white", borderRadius: "12px", padding: "18px 20px", border: "1px solid #e2e8f0", opacity: (isExpired || isInactive) ? 0.7 : 1 }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                                                <div>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                                                        <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", letterSpacing: "1px" }}>{c.code}</span>
+                                                        <span style={{ padding: "2px 10px", borderRadius: "12px", fontSize: "0.7rem", fontWeight: 600, background: statusBg, color: statusColor }}>{statusText}</span>
+                                                        {c.is_public ? <span style={{ padding: "2px 8px", borderRadius: "12px", fontSize: "0.68rem", fontWeight: 600, background: "#dbeafe", color: "#2563eb" }}>Public</span> : null}
+                                                    </div>
+                                                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
+                                                        {c.discount_type === "flat" ? `₹${c.discount_value} off` : `${c.discount_value}% off`}
+                                                        {c.discount_type === "percentage" && c.max_discount && <span style={{ fontSize: "0.8rem", fontWeight: 400, color: "#64748b" }}> (max ₹{c.max_discount})</span>}
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                                    <button onClick={() => { navigator.clipboard.writeText(c.code); setSuccessMsg("Coupon code copied!"); }}
+                                                        style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                        <i className="bi bi-clipboard"></i>
+                                                    </button>
+                                                    {!isExpired && (
+                                                        <button onClick={() => handleToggleCoupon(c.id)} disabled={togglingCouponId === c.id}
+                                                            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: c.is_active ? "#fef2f2" : "#ecfdf5", color: c.is_active ? "#dc2626" : "#059669", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
+                                                            {togglingCouponId === c.id ? <span className="spinner-border spinner-border-sm"></span> : c.is_active ? "Disable" : "Enable"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "0.78rem", color: "#64748b" }}>
+                                                <span><i className="bi bi-calendar me-1"></i>{formatDate(c.valid_from)} → {formatDate(c.valid_until)}</span>
+                                                <span><i className="bi bi-people me-1"></i>{c.times_used}{c.usage_limit ? `/${c.usage_limit}` : ""} used</span>
+                                                {c.per_user_limit && <span><i className="bi bi-person me-1"></i>{c.per_user_limit}x per user</span>}
+                                                {c.min_booking_value && <span><i className="bi bi-cart me-1"></i>Min ₹{c.min_booking_value}</span>}
+                                                {c.min_nights && <span><i className="bi bi-moon me-1"></i>Min {c.min_nights} night{c.min_nights > 1 ? "s" : ""}</span>}
+                                                {c.kennel_name && <span><i className="bi bi-house-door me-1"></i>{c.kennel_name}</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
+                </>
+            )}
+
             {/* ==================== KENNEL INFO MODAL ==================== */}
             {showKennelModal && (
                 <div className="event-modal-overlay" onClick={() => { setShowKennelModal(false); setKennelInfo(null); }}>
@@ -4663,6 +5530,51 @@ const KennelsAdminPage = () => {
                 </div>
             )}
 
+            {futureCheckInBooking && (
+                <div className="event-modal-overlay" onClick={() => setFutureCheckInBooking(null)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "420px" }}>
+                        <div className="event-modal-header">
+                            <h3>Cannot Check In Yet</h3>
+                            <button onClick={() => setFutureCheckInBooking(null)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            <div style={{
+                                padding: "16px", borderRadius: "10px",
+                                background: "#fffbeb", border: "1px solid #fde68a", marginBottom: "16px",
+                                display: "flex", alignItems: "flex-start", gap: "10px"
+                            }}>
+                                <i className="bi bi-exclamation-triangle-fill" style={{ color: "#d97706", fontSize: "1.2rem", marginTop: "2px" }}></i>
+                                <div style={{ fontSize: "0.88rem", color: "#92400e", lineHeight: 1.5 }}>
+                                    This booking's check-in date is <strong>{formatDate(futureCheckInBooking.check_in_date)}</strong>, which is in the future. Pets can only be checked in on or after the check-in date.
+                                </div>
+                            </div>
+                            <div style={{
+                                padding: "16px", borderRadius: "10px",
+                                background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "20px",
+                                display: "flex", alignItems: "flex-start", gap: "10px"
+                            }}>
+                                <i className="bi bi-lightbulb-fill" style={{ color: "#16a34a", fontSize: "1.1rem", marginTop: "2px" }}></i>
+                                <div style={{ fontSize: "0.85rem", color: "#166534", lineHeight: 1.5 }}>
+                                    If the pet has arrived early, you can create an <strong>offline booking</strong> for the extra days from the Manual Booking section. Offline bookings have no platform commission.
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setFutureCheckInBooking(null)}
+                                style={{
+                                    width: "100%", padding: "12px", borderRadius: "10px",
+                                    border: "none", background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                                    color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                }}
+                            >
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Check-In Modal */}
             {showCheckInModal && checkInBooking && (
                 <div className="event-modal-overlay" onClick={() => setShowCheckInModal(false)}>
@@ -4684,6 +5596,71 @@ const KennelsAdminPage = () => {
                                 <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
                                     {checkInBooking.kennel_name} · {checkInBooking.pets?.map(p => p.pet_name).join(", ")}
                                 </div>
+                            </div>
+
+                            {/* Room Assignment */}
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "8px" }}>
+                                    Assign Rooms
+                                </label>
+                                {loadingCheckInRooms ? (
+                                    <div style={{ textAlign: "center", padding: "12px" }}>
+                                        <div className="spinner-border spinner-border-sm"></div>
+                                    </div>
+                                ) : checkInBooking.pets?.length > 0 ? (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        {checkInBooking.pets.map(pet => {
+                                            const roomTypeRooms = checkInRooms.filter(r =>
+                                                r.room_type_id === checkInBooking.room_type_id
+                                            );
+                                            const otherAssigned = Object.entries(checkInRoomAssignments)
+                                                .filter(([pid]) => parseInt(pid) !== pet.pet_id)
+                                                .map(([, rid]) => parseInt(rid));
+                                            return (
+                                                <div key={pet.pet_id} style={{
+                                                    padding: "10px 14px", borderRadius: "10px",
+                                                    background: "#f8fafc", border: "1px solid #e2e8f0"
+                                                }}>
+                                                    <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "2px" }}>
+                                                        <i className="bi bi-heart me-1" style={{ color: "#e11d48" }}></i>
+                                                        {pet.pet_name} <span style={{ fontWeight: 400, color: "#94a3b8" }}>({pet.pet_breed})</span>
+                                                    </div>
+                                                    <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "6px" }}>
+                                                        <i className="bi bi-door-open me-1"></i>
+                                                        Room Type: {roomTypeRooms.length > 0 ? roomTypeRooms[0].room_type_name : "Unknown"}
+                                                    </div>
+                                                    <select
+                                                        value={checkInRoomAssignments[pet.pet_id] || ""}
+                                                        onChange={(e) => setCheckInRoomAssignments(prev => ({
+                                                            ...prev, [pet.pet_id]: e.target.value
+                                                        }))}
+                                                        style={{
+                                                            width: "100%", padding: "8px 12px", borderRadius: "8px",
+                                                            border: "1px solid #e2e8f0", fontSize: "0.82rem",
+                                                            background: "white", color: "#1e293b"
+                                                        }}
+                                                    >
+                                                        <option value="">No room assigned</option>
+                                                        {roomTypeRooms.map(room => {
+                                                            const isOccupiedByOther = room.is_occupied && room.booking?.booking_id !== checkInBooking.booking_id;
+                                                            const isPickedByOtherPet = otherAssigned.includes(room.room_id);
+                                                            const disabled = isOccupiedByOther || isPickedByOtherPet;
+                                                            return (
+                                                                <option key={room.room_id} value={room.room_id} disabled={disabled}>
+                                                                    Room {room.display_number}
+                                                                    {isOccupiedByOther ? ` (Occupied - ${room.booking?.pet_name})` : ""}
+                                                                    {isPickedByOtherPet ? " (Selected above)" : ""}
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic" }}>No pet data available</div>
+                                )}
                             </div>
 
                             <div style={{ marginBottom: "20px" }}>
@@ -4716,11 +5693,17 @@ const KennelsAdminPage = () => {
                                 </button>
                                 <button
                                     onClick={handleCheckInWithNote}
-                                    disabled={submittingCheckIn}
+                                    disabled={submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id]))}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
-                                        border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                                        color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                        border: "none",
+                                        background: (submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id])))
+                                            ? "#cbd5e1" : "linear-gradient(135deg, #1e293b, #0f172a)",
+                                        color: (submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id])))
+                                            ? "#94a3b8" : "white",
+                                        fontSize: "0.9rem", fontWeight: 600,
+                                        cursor: (submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id])))
+                                            ? "not-allowed" : "pointer",
                                         display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
                                     }}
                                 >
@@ -4912,6 +5895,7 @@ const KennelsAdminPage = () => {
                             <div style={{ display: "flex", gap: "10px" }}>
                                 <button
                                     onClick={() => setShowCheckoutNotesModal(false)}
+                                    disabled={processingCheckout}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
                                         border: "1px solid #e2e8f0", background: "white",
@@ -4922,14 +5906,20 @@ const KennelsAdminPage = () => {
                                 </button>
                                 <button
                                     onClick={handleProceedCheckout}
+                                    disabled={processingCheckout}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
                                         border: "none", background: "linear-gradient(135deg, #059669, #047857)",
                                         color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
-                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                                        opacity: processingCheckout ? 0.7 : 1
                                     }}
                                 >
-                                    <i className="bi bi-check-lg"></i> Proceed to Checkout
+                                    {processingCheckout ? (
+                                        <><span className="spinner-border spinner-border-sm"></span> Processing...</>
+                                    ) : (
+                                        <><i className="bi bi-check-lg"></i> Proceed to Checkout</>
+                                    )}
                                 </button>
                             </div>
                         </div>

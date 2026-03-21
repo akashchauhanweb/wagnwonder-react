@@ -144,13 +144,27 @@ const BookingDetailModal = ({ booking, onClose }) => {
                     <div className="modal-section">
                         <h5>Payment Summary</h5>
                         <div className="modal-payment-summary">
-                            <div className="payment-row">
-                                <span>Subtotal</span>
-                                <span>₹{booking.total_price.toFixed(2)}</span>
-                            </div>
+                            {parseFloat(booking.discount_amount || 0) > 0 && (
+                                <>
+                                    <div className="payment-row">
+                                        <span>Subtotal</span>
+                                        <span>₹{(parseFloat(booking.total_price) + parseFloat(booking.discount_amount)).toFixed(2)}</span>
+                                    </div>
+                                    <div className="payment-row" style={{ color: "#059669" }}>
+                                        <span><i className="bi bi-tag me-1"></i>Coupon Discount</span>
+                                        <span>−₹{parseFloat(booking.discount_amount).toFixed(2)}</span>
+                                    </div>
+                                </>
+                            )}
+                            {!parseFloat(booking.discount_amount || 0) && (
+                                <div className="payment-row">
+                                    <span>Subtotal</span>
+                                    <span>₹{parseFloat(booking.total_price).toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="payment-row total">
                                 <span>Total Paid</span>
-                                <span>₹{booking.total_price.toFixed(2)}</span>
+                                <span>₹{parseFloat(booking.total_price).toFixed(2)}</span>
                             </div>
                         </div>
                     </div>

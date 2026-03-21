@@ -134,6 +134,7 @@ export default function PaymentStatus() {
                     // Kennel wallet booking — send confirmation email
                     const saved = JSON.parse(localStorage.getItem("pending_booking") || "{}");
                     if (saved.kennel) {
+                        const couponDiscountAmt = saved.couponDiscount || 0;
                         const emailHtml = getBoardingBookingEmailHtml({
                             userName: user.first_name || "Guest",
                             kennelName: saved.kennel.kennel_name,
@@ -141,9 +142,11 @@ export default function PaymentStatus() {
                             checkOut: formatDate(saved.checkout),
                             days: saved.days,
                             pets: saved.breakdown.map(p => ({ name: p.name, breed: p.breed, total: p.total })),
-                            totalPrice: saved.total,
+                            totalPrice: saved.total - couponDiscountAmt,
                             orderId: "WALLET",
-                            transactionId: "Woof Wallet"
+                            transactionId: "Woof Wallet",
+                            couponCode: saved.couponCode || null,
+                            couponDiscount: couponDiscountAmt
                         });
                         await sendConfirmationEmail({
                             email: user.email,
@@ -258,6 +261,7 @@ export default function PaymentStatus() {
                         const user = JSON.parse(localStorage.getItem("user_data") || "{}");
 
                         const walletDed = saved.walletDeduction || 0;
+                        const couponDiscountAmt = saved.couponDiscount || 0;
                         const bookingPayload = {
                             user_id: user.id,
                             action: "CREATE_BOOKING_ENTRY",
@@ -267,11 +271,12 @@ export default function PaymentStatus() {
                             check_in_date: saved.checkin,
                             check_out_date: saved.checkout,
                             days: saved.days,
-                            total_price: saved.total,
+                            total_price: saved.total - couponDiscountAmt,
                             wallet_amount: walletDed,
                             mode: saved.paymentMode || "online",
                             order_id: orderId,
                             cf_order_id: data.cf_order_id,
+                            coupon_code: saved.couponCode || "",
                             pets: saved.breakdown.map((p) => ({
                                 pet_id: p.id,
                                 price_per_day: p.perDay,
@@ -283,6 +288,7 @@ export default function PaymentStatus() {
                         await callServicesApi(bookingPayload);
                         
                         // Send confirmation email for boarding booking
+                        const couponDiscountAmt2 = saved.couponDiscount || 0;
                         const emailHtml = getBoardingBookingEmailHtml({
                             userName: user.first_name || "Guest",
                             kennelName: saved.kennel.kennel_name,
@@ -294,9 +300,11 @@ export default function PaymentStatus() {
                                 breed: p.breed,
                                 total: p.total
                             })),
-                            totalPrice: saved.total,
+                            totalPrice: saved.total - couponDiscountAmt2,
                             orderId: orderId,
-                            transactionId: data.cf_order_id
+                            transactionId: data.cf_order_id,
+                            couponCode: saved.couponCode || null,
+                            couponDiscount: couponDiscountAmt2
                         });
                         
                         await sendConfirmationEmail({

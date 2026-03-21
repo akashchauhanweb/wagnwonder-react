@@ -6,6 +6,7 @@ export default function KennelCard({
     bookLabel = "View Details",
     isLoading = false,
     showCity = false,
+    coupon = null,
 }) {
     const {
         kennel_id,
@@ -115,6 +116,12 @@ return (
                         <div className="kennel-card-badge">
                             <i className="bi bi-building"></i>
                             {kennel_city}
+                        </div>
+                    )}
+                    {coupon && (
+                        <div className="kennel-card-badge" style={{ background: "linear-gradient(135deg, #D84A39, #471915)", color: "white" }}>
+                            <i className="bi bi-tag-fill" style={{ color: "white" }}></i>
+                            {coupon.discount_type === "flat" ? `₹${coupon.discount_value} off` : `${coupon.discount_value}% off`}
                         </div>
                     )}
                 </div>

@@ -7,7 +7,6 @@ export default function SearchResults() {
     const { state } = useLocation();
     const navigate = useNavigate();
     const [loadingId, setLoadingId] = useState(null);
-
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -49,6 +48,8 @@ export default function SearchResults() {
             res.pet_count = petCount;
             res.check_in = check_in;
             res.check_out = check_out;
+            const sourceKennel = [...availableKennels, ...nearbyKennels].find(k => k.kennel_id === kennel_id);
+            res.public_coupons = sourceKennel?.public_coupons || [];
             navigate(`/search-results/${kennel_id}`, { state: res });
         } catch (err) {
             console.error("Booking fetch error:", err);
@@ -104,6 +105,7 @@ export default function SearchResults() {
                                                 onBook={() => handleBooking(k.kennel_id)}
                                                 bookLabel="Book Now"
                                                 isLoading={loadingId === k.kennel_id}
+                                                coupon={k.public_coupons?.length > 0 ? k.public_coupons[0] : null}
                                             />
                                         </div>
                                     ))}
@@ -134,6 +136,7 @@ export default function SearchResults() {
                                                 bookLabel="Book Now"
                                                 isLoading={loadingId === k.kennel_id}
                                                 showCity={true}
+                                                coupon={k.public_coupons?.length > 0 ? k.public_coupons[0] : null}
                                             />
                                         </div>
                                     ))}

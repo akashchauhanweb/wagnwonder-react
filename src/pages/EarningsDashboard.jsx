@@ -281,6 +281,8 @@ const EarningsDashboard = () => {
         }
 
         const total_revenue = filteredBookings.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+        const total_discounts = filteredBookings.reduce((sum, b) => sum + parseFloat(b.discount_amount || 0), 0);
+        const coupon_bookings = filteredBookings.filter(b => parseFloat(b.discount_amount || 0) > 0).length;
         const net_profit = filteredBookings.reduce((sum, b) => {
             if (b.mode === "offline") return sum;
             const markup = parseFloat(b.kennel_markup || 0);
@@ -291,6 +293,8 @@ const EarningsDashboard = () => {
         return {
             total_bookings: filteredBookings.length,
             total_revenue,
+            total_discounts,
+            coupon_bookings,
             net_profit,
             vendor_payout: total_revenue - net_profit,
             avg_booking_value: total_revenue / filteredBookings.length,
@@ -797,6 +801,16 @@ const EarningsDashboard = () => {
                                         <span className="summary-subtext">Wag N Wonder's markup earnings</span>
                                     </div>
                                 </div>
+                                {summary.total_discounts > 0 && (
+                                    <div className="earnings-card summary-card">
+                                        <div className="summary-card-icon" style={{ background: "linear-gradient(135deg, #fef3c7, #fde68a)", color: "#b45309" }}><i className="bi bi-tag"></i></div>
+                                        <div className="summary-card-content">
+                                            <span className="summary-label">Coupon Discounts</span>
+                                            <span className="summary-value">{formatCurrency(summary.total_discounts)}</span>
+                                            <span className="summary-subtext">{summary.coupon_bookings} booking{summary.coupon_bookings !== 1 ? "s" : ""} with coupons</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Revenue split bar */}
@@ -915,6 +929,16 @@ const EarningsDashboard = () => {
                                         <span className="summary-subtext">Avg: {formatCurrency(summary.avg_booking_value)}</span>
                                     </div>
                                 </div>
+                                {summary.total_discounts > 0 && (
+                                    <div className="earnings-card summary-card">
+                                        <div className="summary-card-icon" style={{ background: "linear-gradient(135deg, #fef3c7, #fde68a)", color: "#b45309" }}><i className="bi bi-tag"></i></div>
+                                        <div className="summary-card-content">
+                                            <span className="summary-label">Coupon Discounts</span>
+                                            <span className="summary-value">{formatCurrency(summary.total_discounts)}</span>
+                                            <span className="summary-subtext">{summary.coupon_bookings} booking{summary.coupon_bookings !== 1 ? "s" : ""} with coupons</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
