@@ -7,6 +7,7 @@ import { uploadImageToS3 } from "../assets/js/uploadImageToS3";
 import { getBoardingBookingEmailHtml } from "../assets/js/boardingBookingEmail";
 import BookingDetailModal from "../assets/components/BookingDetailModal";
 import AddPetModal from "../assets/components/AddPetModal";
+import Pagination from "../assets/components/Pagination";
 import { getExtensionPaymentEmailHtml } from "../assets/js/extensionPaymentEmail";
 
 const KennelsAdminPage = () => {
@@ -30,6 +31,9 @@ const KennelsAdminPage = () => {
     const [bookingsKennelFilter, setBookingsKennelFilter] = useState("all");
     const [bookingsStatusFilter, setBookingsStatusFilter] = useState("all");
     const [bookingsModeFilter, setBookingsModeFilter] = useState("all");
+    const [bookingsTab, setBookingsTab] = useState("active");
+    const [bookingsPage, setBookingsPage] = useState(1);
+    const [activeSubTab, setActiveSubTab] = useState("checked_in");
     const [selectedBooking, setSelectedBooking] = useState(null);
 
     // Revenue
@@ -147,6 +151,10 @@ const KennelsAdminPage = () => {
     const [checkInBooking, setCheckInBooking] = useState(null);
     const [checkInNote, setCheckInNote] = useState("");
     const [submittingCheckIn, setSubmittingCheckIn] = useState(false);
+    const [checkInRooms, setCheckInRooms] = useState([]);
+    const [loadingCheckInRooms, setLoadingCheckInRooms] = useState(false);
+    const [checkInRoomAssignments, setCheckInRoomAssignments] = useState({});
+    const [futureCheckInBooking, setFutureCheckInBooking] = useState(null);
 
     // Checkout with notes
     const [showCheckoutNotesModal, setShowCheckoutNotesModal] = useState(false);
@@ -1018,23 +1026,49 @@ const KennelsAdminPage = () => {
         fetchBookingNotes(booking.booking_id);
     };
 
+    const fetchCheckInRooms = async (booking) => {
+        setLoadingCheckInRooms(true);
+        setCheckInRooms([]);
+        try {
+            const response = await callServicesApi({
+                action: "GET_ROOM_OCCUPANCY",
+                session_id,
+                kennel_id: booking.kennel_id,
+                check_in: booking.check_in_date,
+                check_out: booking.check_out_date
+            });
+            if (response?.success) {
+                setCheckInRooms(response.rooms || []);
+            }
+        } catch (err) {
+            console.error("Error fetching rooms for check-in:", err);
+        } finally {
+            setLoadingCheckInRooms(false);
+        }
+    };
+
     const handleCheckInWithNote = async () => {
         if (!checkInBooking) return;
         setSubmittingCheckIn(true);
         try {
+            const roomAssignments = Object.entries(checkInRoomAssignments)
+                .filter(([, roomId]) => roomId)
+                .map(([petId, roomId]) => ({ pet_id: parseInt(petId), room_id: parseInt(roomId) }));
             const response = await callServicesApi({
                 action: "UPDATE_BOOKING_STATUS",
                 session_id,
                 booking_id: checkInBooking.booking_id,
                 new_status: "checked_in",
                 note: checkInNote.trim(),
-                created_by: userData.id
+                created_by: userData.id,
+                room_assignments: roomAssignments
             });
             if (response?.success) {
                 setSuccessMsg(response.message);
                 setShowCheckInModal(false);
                 setCheckInBooking(null);
                 setCheckInNote("");
+                setCheckInRoomAssignments({});
                 setBookingsCached(false);
                 await fetchAllBookings(true);
             } else {
@@ -2436,7 +2470,7 @@ const KennelsAdminPage = () => {
                                         type="text"
                                         placeholder="Search by name, email, phone, booking ID..."
                                         value={bookingsSearch}
-                                        onChange={(e) => setBookingsSearch(e.target.value)}
+                                        onChange={(e) => { setBookingsSearch(e.target.value); setBookingsPage(1); }}
                                     />
                                 </div>
                                 {kennels.length > 1 && (
@@ -2448,7 +2482,7 @@ const KennelsAdminPage = () => {
                                                 if (val === "all") { setBookingsKennelFilter("all"); return; }
                                                 const k = kennels.find(kn => kn.id === parseInt(val));
                                                 if (k && (k.user_role === "owner" || k.can_manage_bookings)) {
-                                                    setBookingsKennelFilter(val);
+                                                    setBookingsKennelFilter(val); setBookingsPage(1);
                                                 }
                                             }}
                                         >
@@ -2466,21 +2500,8 @@ const KennelsAdminPage = () => {
                                 )}
                                 <div className="status-filter">
                                     <select
-                                        value={bookingsStatusFilter}
-                                        onChange={(e) => setBookingsStatusFilter(e.target.value)}
-                                    >
-                                        <option value="all">All Statuses</option>
-                                        <option value="booked">Booked</option>
-                                        <option value="checked_in">Checked In</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                        <option value="no_show">No Show</option>
-                                    </select>
-                                </div>
-                                <div className="status-filter">
-                                    <select
                                         value={bookingsModeFilter}
-                                        onChange={(e) => setBookingsModeFilter(e.target.value)}
+                                        onChange={(e) => { setBookingsModeFilter(e.target.value); setBookingsPage(1); }}
                                     >
                                         <option value="all">All Modes</option>
                                         <option value="online">Online</option>
@@ -2499,19 +2520,61 @@ const KennelsAdminPage = () => {
                                 </button>
                             </div>
 
+                            {/* Booking Tabs */}
+                            <div style={{ display: "flex", gap: "0", marginBottom: "16px", borderBottom: "2px solid #e2e8f0" }}>
+                                {[
+                                    { key: "active", label: "Active", icon: "bi-calendar-check-fill", color: "#2563eb" },
+                                    { key: "completed", label: "Completed", icon: "bi-check-circle-fill", color: "#059669" },
+                                    { key: "cancelled", label: "Cancelled", icon: "bi-x-circle-fill", color: "#dc2626" }
+                                ].map(tab => {
+                                    const count = tab.key === "active"
+                                        ? filteredBookings.filter(b => b.status === "booked" || b.status === "checked_in").length
+                                        : tab.key === "completed"
+                                            ? filteredBookings.filter(b => b.status === "completed").length
+                                            : filteredBookings.filter(b => b.status === "cancelled" || b.status === "no_show").length;
+                                    const isActive = bookingsTab === tab.key;
+                                    return (
+                                        <button key={tab.key}
+                                            onClick={() => { setBookingsTab(tab.key); setBookingsPage(1); }}
+                                            style={{
+                                                padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
+                                                fontSize: "0.85rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px",
+                                                color: isActive ? tab.color : "#94a3b8",
+                                                borderBottom: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
+                                                marginBottom: "-2px", transition: "all 0.2s"
+                                            }}
+                                        >
+                                            <i className={`bi ${tab.icon}`}></i>
+                                            {tab.label}
+                                            <span style={{
+                                                padding: "1px 8px", borderRadius: "10px", fontSize: "0.7rem", fontWeight: 700,
+                                                background: isActive ? tab.color + "15" : "#f1f5f9",
+                                                color: isActive ? tab.color : "#94a3b8"
+                                            }}>{count}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
                             {loadingBookings ? (
                                 <div className="loading-spinner">
                                     <div className="spinner-border" role="status"></div>
-                                </div>
-                            ) : filteredBookings.length === 0 ? (
-                                <div className="empty-state">
-                                    <i className="bi bi-calendar-x"></i>
-                                    <p>No bookings found</p>
                                 </div>
                             ) : (() => {
                                 const activeBookings = filteredBookings.filter(b => b.status === "booked" || b.status === "checked_in");
                                 const completedBookings = filteredBookings.filter(b => b.status === "completed");
                                 const cancelledBookings = filteredBookings.filter(b => b.status === "cancelled" || b.status === "no_show");
+                                const currentList = bookingsTab === "active"
+                                    ? activeBookings.filter(b => b.status === activeSubTab)
+                                    : bookingsTab === "completed" ? completedBookings : cancelledBookings;
+
+                                const sortedList = bookingsTab === "active"
+                                    ? [...currentList].sort((a, b) => new Date(a.check_in_date) - new Date(b.check_in_date))
+                                    : currentList;
+
+                                const totalPages = Math.ceil(sortedList.length / 10);
+                                const safePage = Math.min(bookingsPage, totalPages || 1);
+                                const paginatedBookings = sortedList.slice((safePage - 1) * 10, safePage * 10);
 
                                 const BookingCard = ({ b }) => {
                                     const isCompleted = b.status === "completed";
@@ -2615,7 +2678,15 @@ const KennelsAdminPage = () => {
                                                             <div style={{ display: "flex", gap: "6px" }}>
                                                                 {b.status === "booked" && (
                                                                     <button
-                                                                        onClick={(e) => { e.stopPropagation(); setCheckInBooking(b); setCheckInNote(""); setShowCheckInModal(true); }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const today = new Date().toISOString().split("T")[0];
+                                                                            if (b.check_in_date > today) {
+                                                                                setFutureCheckInBooking(b);
+                                                                            } else {
+                                                                                setCheckInBooking(b); setCheckInNote(""); setCheckInRoomAssignments({}); setShowCheckInModal(true); fetchCheckInRooms(b);
+                                                                            }
+                                                                        }}
                                                                         style={{
                                                                             padding: "5px 12px", borderRadius: "8px", border: "1px solid #dbeafe",
                                                                             background: "#eff6ff", color: "#2563eb", fontSize: "0.75rem",
@@ -2698,59 +2769,75 @@ const KennelsAdminPage = () => {
                                     );
                                 };
 
-                                const SectionHeader = ({ icon, title, count, color }) => (
-                                    <div style={{
-                                        display: "flex", alignItems: "center", gap: "10px",
-                                        marginBottom: "14px", marginTop: "8px"
-                                    }}>
-                                        <div style={{
-                                            width: "32px", height: "32px", borderRadius: "8px",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            background: color + "18", color: color
-                                        }}>
-                                            <i className={`bi ${icon}`} style={{ fontSize: "0.95rem" }}></i>
-                                        </div>
-                                        <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#1e293b" }}>{title}</h4>
-                                        <span style={{
-                                            padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600,
-                                            background: color + "18", color: color
-                                        }}>
-                                            {count}
-                                        </span>
+                                if (currentList.length === 0) return (
+                                    <div className="empty-state">
+                                        <i className={`bi ${bookingsTab === "active" ? "bi-calendar-check" : bookingsTab === "completed" ? "bi-check-circle" : "bi-x-circle"}`}></i>
+                                        <p>No {bookingsTab} bookings found</p>
                                     </div>
                                 );
 
                                 return (
                                     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                        {/* Active Bookings */}
-                                        {activeBookings.length > 0 && (
+                                        {bookingsTab === "active" ? (
                                             <>
-                                                <SectionHeader icon="bi-calendar-check-fill" title="Active Bookings" count={activeBookings.length} color="#2563eb" />
-                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-                                                    {activeBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px" }}>
+                                                    <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "20px", padding: "3px" }}>
+                                                        <button
+                                                            onClick={() => { setActiveSubTab("checked_in"); setBookingsPage(1); }}
+                                                            style={{
+                                                                padding: "6px 16px", borderRadius: "18px", border: "none", cursor: "pointer",
+                                                                fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px",
+                                                                background: activeSubTab === "checked_in" ? "#1e293b" : "transparent",
+                                                                color: activeSubTab === "checked_in" ? "white" : "#64748b",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-door-closed-fill"></i>
+                                                            In Kennel
+                                                            <span style={{
+                                                                padding: "0px 6px", borderRadius: "10px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: activeSubTab === "checked_in" ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                                                                color: activeSubTab === "checked_in" ? "white" : "#94a3b8"
+                                                            }}>{activeBookings.filter(b => b.status === "checked_in").length}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setActiveSubTab("booked"); setBookingsPage(1); }}
+                                                            style={{
+                                                                padding: "6px 16px", borderRadius: "18px", border: "none", cursor: "pointer",
+                                                                fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px",
+                                                                background: activeSubTab === "booked" ? "#1e293b" : "transparent",
+                                                                color: activeSubTab === "booked" ? "white" : "#64748b",
+                                                                transition: "all 0.2s"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-calendar-check"></i>
+                                                            Upcoming
+                                                            <span style={{
+                                                                padding: "0px 6px", borderRadius: "10px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: activeSubTab === "booked" ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                                                                color: activeSubTab === "booked" ? "white" : "#94a3b8"
+                                                            }}>{activeBookings.filter(b => b.status === "booked").length}</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </>
-                                        )}
-
-                                        {/* Completed Bookings */}
-                                        {completedBookings.length > 0 && (
-                                            <>
-                                                <SectionHeader icon="bi-check-circle-fill" title="Completed" count={completedBookings.length} color="#059669" />
-                                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-                                                    {completedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {/* Cancelled Bookings */}
-                                        {cancelledBookings.length > 0 && (
-                                            <>
-                                                <SectionHeader icon="bi-x-circle-fill" title="Cancelled" count={cancelledBookings.length} color="#dc2626" />
                                                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                                    {cancelledBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                                    {paginatedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
                                                 </div>
                                             </>
+                                        ) : (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                                {paginatedBookings.map(b => <BookingCard key={b.booking_id} b={b} />)}
+                                            </div>
                                         )}
+
+                                        <Pagination
+                                            currentPage={safePage}
+                                            totalPages={totalPages}
+                                            onPageChange={(p) => { setBookingsPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                                            itemsPerPage={10}
+                                            totalItems={sortedList.length}
+                                            theme="admin"
+                                        />
                                     </div>
                                 );
                             })()}
@@ -3923,7 +4010,7 @@ const KennelsAdminPage = () => {
                                     </button>
                                     <span style={{ fontWeight: 700, fontSize: "1rem", color: "#1e293b", minWidth: "140px", textAlign: "center" }}>
                                         {calendarMode === "month"
-                                            ? `${["January","February","March","April","May","June","July","August","September","October","November","December"][calendarMonth]} ${calendarYear}`
+                                            ? `${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][calendarMonth]} ${calendarYear}`
                                             : calendarYear}
                                     </span>
                                     <button onClick={() => {
@@ -4027,7 +4114,7 @@ const KennelsAdminPage = () => {
                                                                     text: isClosed
                                                                         ? `Closed for maintenance`
                                                                         : `${occupied}/${totalRooms} occupied (${pct}%)`,
-                                                                    dateLabel: `${day} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month]} ${year}`,
+                                                                    dateLabel: `${day} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month]} ${year}`,
                                                                     isClosed
                                                                 });
                                                             }}
@@ -4092,7 +4179,7 @@ const KennelsAdminPage = () => {
                                                         onClick={() => { setCalendarMonth(m); setCalendarMode("month"); }}
                                                     >
                                                         <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", textAlign: "center" }}>
-                                                            {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m]}
+                                                            {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m]}
                                                         </div>
                                                         {renderMonth(m, calendarYear, true)}
                                                     </div>
@@ -4958,6 +5045,51 @@ const KennelsAdminPage = () => {
                 </div>
             )}
 
+            {futureCheckInBooking && (
+                <div className="event-modal-overlay" onClick={() => setFutureCheckInBooking(null)}>
+                    <div className="event-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "420px" }}>
+                        <div className="event-modal-header">
+                            <h3>Cannot Check In Yet</h3>
+                            <button onClick={() => setFutureCheckInBooking(null)}>
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div className="event-modal-body">
+                            <div style={{
+                                padding: "16px", borderRadius: "10px",
+                                background: "#fffbeb", border: "1px solid #fde68a", marginBottom: "16px",
+                                display: "flex", alignItems: "flex-start", gap: "10px"
+                            }}>
+                                <i className="bi bi-exclamation-triangle-fill" style={{ color: "#d97706", fontSize: "1.2rem", marginTop: "2px" }}></i>
+                                <div style={{ fontSize: "0.88rem", color: "#92400e", lineHeight: 1.5 }}>
+                                    This booking's check-in date is <strong>{formatDate(futureCheckInBooking.check_in_date)}</strong>, which is in the future. Pets can only be checked in on or after the check-in date.
+                                </div>
+                            </div>
+                            <div style={{
+                                padding: "16px", borderRadius: "10px",
+                                background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "20px",
+                                display: "flex", alignItems: "flex-start", gap: "10px"
+                            }}>
+                                <i className="bi bi-lightbulb-fill" style={{ color: "#16a34a", fontSize: "1.1rem", marginTop: "2px" }}></i>
+                                <div style={{ fontSize: "0.85rem", color: "#166534", lineHeight: 1.5 }}>
+                                    If the pet has arrived early, you can create an <strong>offline booking</strong> for the extra days from the Manual Booking section. Offline bookings have no platform commission.
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setFutureCheckInBooking(null)}
+                                style={{
+                                    width: "100%", padding: "12px", borderRadius: "10px",
+                                    border: "none", background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                                    color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer"
+                                }}
+                            >
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Check-In Modal */}
             {showCheckInModal && checkInBooking && (
                 <div className="event-modal-overlay" onClick={() => setShowCheckInModal(false)}>
@@ -4979,6 +5111,71 @@ const KennelsAdminPage = () => {
                                 <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
                                     {checkInBooking.kennel_name} · {checkInBooking.pets?.map(p => p.pet_name).join(", ")}
                                 </div>
+                            </div>
+
+                            {/* Room Assignment */}
+                            <div style={{ marginBottom: "20px" }}>
+                                <label style={{ display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "8px" }}>
+                                    Assign Rooms
+                                </label>
+                                {loadingCheckInRooms ? (
+                                    <div style={{ textAlign: "center", padding: "12px" }}>
+                                        <div className="spinner-border spinner-border-sm"></div>
+                                    </div>
+                                ) : checkInBooking.pets?.length > 0 ? (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        {checkInBooking.pets.map(pet => {
+                                            const roomTypeRooms = checkInRooms.filter(r =>
+                                                r.room_type_id === checkInBooking.room_type_id
+                                            );
+                                            const otherAssigned = Object.entries(checkInRoomAssignments)
+                                                .filter(([pid]) => parseInt(pid) !== pet.pet_id)
+                                                .map(([, rid]) => parseInt(rid));
+                                            return (
+                                                <div key={pet.pet_id} style={{
+                                                    padding: "10px 14px", borderRadius: "10px",
+                                                    background: "#f8fafc", border: "1px solid #e2e8f0"
+                                                }}>
+                                                    <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "2px" }}>
+                                                        <i className="bi bi-heart me-1" style={{ color: "#e11d48" }}></i>
+                                                        {pet.pet_name} <span style={{ fontWeight: 400, color: "#94a3b8" }}>({pet.pet_breed})</span>
+                                                    </div>
+                                                    <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "6px" }}>
+                                                        <i className="bi bi-door-open me-1"></i>
+                                                        Room Type: {roomTypeRooms.length > 0 ? roomTypeRooms[0].room_type_name : "Unknown"}
+                                                    </div>
+                                                    <select
+                                                        value={checkInRoomAssignments[pet.pet_id] || ""}
+                                                        onChange={(e) => setCheckInRoomAssignments(prev => ({
+                                                            ...prev, [pet.pet_id]: e.target.value
+                                                        }))}
+                                                        style={{
+                                                            width: "100%", padding: "8px 12px", borderRadius: "8px",
+                                                            border: "1px solid #e2e8f0", fontSize: "0.82rem",
+                                                            background: "white", color: "#1e293b"
+                                                        }}
+                                                    >
+                                                        <option value="">No room assigned</option>
+                                                        {roomTypeRooms.map(room => {
+                                                            const isOccupiedByOther = room.is_occupied && room.booking?.booking_id !== checkInBooking.booking_id;
+                                                            const isPickedByOtherPet = otherAssigned.includes(room.room_id);
+                                                            const disabled = isOccupiedByOther || isPickedByOtherPet;
+                                                            return (
+                                                                <option key={room.room_id} value={room.room_id} disabled={disabled}>
+                                                                    Room {room.display_number}
+                                                                    {isOccupiedByOther ? ` (Occupied - ${room.booking?.pet_name})` : ""}
+                                                                    {isPickedByOtherPet ? " (Selected above)" : ""}
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic" }}>No pet data available</div>
+                                )}
                             </div>
 
                             <div style={{ marginBottom: "20px" }}>
@@ -5011,11 +5208,17 @@ const KennelsAdminPage = () => {
                                 </button>
                                 <button
                                     onClick={handleCheckInWithNote}
-                                    disabled={submittingCheckIn}
+                                    disabled={submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id]))}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
-                                        border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                                        color: "white", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
+                                        border: "none",
+                                        background: (submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id])))
+                                            ? "#cbd5e1" : "linear-gradient(135deg, #1e293b, #0f172a)",
+                                        color: (submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id])))
+                                            ? "#94a3b8" : "white",
+                                        fontSize: "0.9rem", fontWeight: 600,
+                                        cursor: (submittingCheckIn || loadingCheckInRooms || (checkInBooking.pets?.length > 0 && checkInBooking.pets.some(p => !checkInRoomAssignments[p.pet_id])))
+                                            ? "not-allowed" : "pointer",
                                         display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
                                     }}
                                 >
