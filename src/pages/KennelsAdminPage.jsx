@@ -67,12 +67,14 @@ const KennelsAdminPage = () => {
     // Occupancy
     const [occupancyKennelId, setOccupancyKennelId] = useState("");
     const [occupancyDate, setOccupancyDate] = useState(new Date().toISOString().split("T")[0]);
-    const [occupancyEndDate, setOccupancyEndDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0];
-    });
     const [occupancyData, setOccupancyData] = useState(null);
     const [loadingOccupancy, setLoadingOccupancy] = useState(false);
     const [occupancyView, setOccupancyView] = useState("summary");
+    const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+    const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+    const [calendarMode, setCalendarMode] = useState("month"); // "month" or "year"
+    const [calendarKennelId, setCalendarKennelId] = useState("");
+    const [calTooltip, setCalTooltip] = useState({ show: false, x: 0, y: 0, text: "" });
     const [roomOccupancy, setRoomOccupancy] = useState([]);
     const [loadingRoomOccupancy, setLoadingRoomOccupancy] = useState(false);
     const [roomOccupancyCached, setRoomOccupancyCached] = useState(false);
@@ -818,8 +820,8 @@ const KennelsAdminPage = () => {
         // Check for maintenance closure
         const closureConflict = closures.find(c =>
             c.kennel_id === parseInt(kennelId) &&
-            c.closure_start < checkOut &&
-            c.closure_end > checkIn
+            c.closure_start <= checkOut &&
+            c.closure_end >= checkIn
         );
         if (closureConflict) {
             setManualAvailability(null);
@@ -1210,8 +1212,12 @@ const KennelsAdminPage = () => {
         }
     };
 
+    const getNextDay = (dateStr) => {
+        const d = new Date(dateStr); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0];
+    };
+
     const fetchRoomOccupancy = async (forceRefresh = false) => {
-        if (!occupancyKennelId || !occupancyDate || !occupancyEndDate) return;
+        if (!occupancyKennelId || !occupancyDate) return;
         if (roomOccupancyCached && !forceRefresh) return;
         setLoadingRoomOccupancy(true);
         try {
@@ -1220,7 +1226,7 @@ const KennelsAdminPage = () => {
                 session_id,
                 kennel_id: parseInt(occupancyKennelId),
                 check_in: occupancyDate,
-                check_out: occupancyEndDate
+                check_out: getNextDay(occupancyDate)
             });
             if (response?.success) {
                 setRoomOccupancy(response.rooms || []);
@@ -1234,7 +1240,7 @@ const KennelsAdminPage = () => {
     };
 
     const fetchOccupancy = async () => {
-        if (!occupancyKennelId || !occupancyDate || !occupancyEndDate) return;
+        if (!occupancyKennelId || !occupancyDate) return;
         setLoadingOccupancy(true);
         try {
             const response = await callServicesApi({
@@ -1243,7 +1249,7 @@ const KennelsAdminPage = () => {
                 kennel_id: parseInt(occupancyKennelId),
                 pet_count: 1,
                 check_in: occupancyDate,
-                check_out: occupancyEndDate
+                check_out: getNextDay(occupancyDate)
             });
             if (response?.success) {
                 setOccupancyData(response);
@@ -1260,10 +1266,10 @@ const KennelsAdminPage = () => {
                 fetchRoomOccupancy(true);
             }
         }
-    }, [occupancyKennelId, occupancyDate, occupancyEndDate, activeTab]);
+    }, [occupancyKennelId, occupancyDate, activeTab]);
 
     useEffect(() => {
-        if (occupancyView === "rooms" && occupancyKennelId && occupancyDate && occupancyEndDate) {
+        if (occupancyView === "rooms" && occupancyKennelId && occupancyDate) {
             fetchRoomOccupancy();
         }
     }, [occupancyView]);
@@ -1271,6 +1277,7 @@ const KennelsAdminPage = () => {
     useEffect(() => {
         if (activeTab === "occupancy" && kennels.length > 0 && !occupancyKennelId) {
             setOccupancyKennelId(kennels[0].id);
+            if (!calendarKennelId) setCalendarKennelId(kennels[0].id);
         }
     }, [activeTab, kennels]);
 
@@ -3647,56 +3654,48 @@ const KennelsAdminPage = () => {
                             <i className="bi bi-grid-3x3"></i>
                             Room View
                         </button>
-                    </div>
-
-                    <div className="events-filters">
-                        {kennels.length > 1 && (
-                            <div className="status-filter">
-                                <select
-                                    value={occupancyKennelId}
-                                    onChange={(e) => setOccupancyKennelId(e.target.value)}
-                                >
-                                    {kennels.map(k => (
-                                        <option key={k.id} value={k.id}>{k.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        <div className="search-box" style={{ maxWidth: "180px" }}>
-                            <i className="bi bi-calendar"></i>
-                            <input
-                                type="date"
-                                value={occupancyDate}
-                                onChange={(e) => {
-                                    setOccupancyDate(e.target.value);
-                                    if (occupancyEndDate <= e.target.value) {
-                                        const d = new Date(e.target.value);
-                                        d.setDate(d.getDate() + 1);
-                                        setOccupancyEndDate(d.toISOString().split("T")[0]);
-                                    }
-                                }}
-                                style={{ paddingLeft: "38px" }}
-                            />
-                        </div>
-                        <div className="search-box" style={{ maxWidth: "180px" }}>
-                            <i className="bi bi-calendar-check"></i>
-                            <input
-                                type="date"
-                                value={occupancyEndDate}
-                                min={occupancyDate}
-                                onChange={(e) => setOccupancyEndDate(e.target.value)}
-                                style={{ paddingLeft: "38px" }}
-                            />
-                        </div>
                         <button
-                            className="earnings-refresh-btn"
-                            onClick={() => { fetchOccupancy(); if (occupancyView === "rooms") fetchRoomOccupancy(true); }}
-                            disabled={loadingOccupancy || loadingRoomOccupancy}
-                            style={{ marginLeft: "auto", minWidth: "unset" }}
+                            className={`submenu-item ${occupancyView === "calendar" ? "active" : ""}`}
+                            onClick={() => setOccupancyView("calendar")}
                         >
-                            <i className={`bi bi-arrow-clockwise ${(loadingOccupancy || loadingRoomOccupancy) ? 'spinning' : ''}`}></i>
+                            <i className="bi bi-calendar3"></i>
+                            Calendar
                         </button>
                     </div>
+
+                    {occupancyView !== "calendar" && (
+                        <div className="events-filters">
+                            {kennels.length > 1 && (
+                                <div className="status-filter">
+                                    <select
+                                        value={occupancyKennelId}
+                                        onChange={(e) => setOccupancyKennelId(e.target.value)}
+                                    >
+                                        {kennels.map(k => (
+                                            <option key={k.id} value={k.id}>{k.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <div className="search-box" style={{ maxWidth: "180px" }}>
+                                <i className="bi bi-calendar"></i>
+                                <input
+                                    type="date"
+                                    value={occupancyDate}
+                                    onChange={(e) => setOccupancyDate(e.target.value)}
+                                    style={{ paddingLeft: "38px" }}
+                                />
+                            </div>
+                            <button
+                                className="earnings-refresh-btn"
+                                onClick={() => { fetchOccupancy(); if (occupancyView === "rooms") fetchRoomOccupancy(true); }}
+                                disabled={loadingOccupancy || loadingRoomOccupancy}
+                                style={{ marginLeft: "auto", minWidth: "unset" }}
+                            >
+                                <i className={`bi bi-arrow-clockwise ${(loadingOccupancy || loadingRoomOccupancy) ? 'spinning' : ''}`}></i>
+                            </button>
+                        </div>
+                    )}
 
                     {/* ---- SUMMARY VIEW ---- */}
                     {occupancyView === "summary" && (
@@ -3717,11 +3716,12 @@ const KennelsAdminPage = () => {
                             ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                                     {occupancyData.room_types.map((rt, idx) => {
+                                        const nextDay = getNextDay(occupancyDate);
                                         const totalRooms = parseInt(rt.available_rooms) + (allBookings.filter(b =>
                                             b.kennel_id === parseInt(occupancyKennelId) &&
                                             b.room_type_name === rt.room_type &&
                                             (b.status === "booked" || b.status === "checked_in") &&
-                                            new Date(b.check_in_date) < new Date(occupancyEndDate) &&
+                                            new Date(b.check_in_date) < new Date(nextDay) &&
                                             new Date(b.check_out_date) > new Date(occupancyDate)
                                         ).length || 0);
                                         const occupied = totalRooms - parseInt(rt.available_rooms);
@@ -3872,6 +3872,298 @@ const KennelsAdminPage = () => {
                                     })()}
                                 </div>
                             )}
+                        </>
+                    )}
+
+                    {/* ---- CALENDAR VIEW ---- */}
+                    {occupancyView === "calendar" && (
+                        <>
+                            <div className="events-filters">
+                                {kennels.length > 1 && (
+                                    <div className="status-filter">
+                                        <select
+                                            value={calendarKennelId}
+                                            onChange={(e) => setCalendarKennelId(e.target.value)}
+                                        >
+                                            {kennels.map(k => (
+                                                <option key={k.id} value={k.id}>{k.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "8px", padding: "3px" }}>
+                                    <button
+                                        onClick={() => setCalendarMode("month")}
+                                        style={{
+                                            padding: "4px 14px", borderRadius: "6px", border: "none", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                                            background: calendarMode === "month" ? "white" : "transparent",
+                                            color: calendarMode === "month" ? "#1e293b" : "#64748b",
+                                            boxShadow: calendarMode === "month" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                                        }}
+                                    >Month</button>
+                                    <button
+                                        onClick={() => setCalendarMode("year")}
+                                        style={{
+                                            padding: "4px 14px", borderRadius: "6px", border: "none", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                                            background: calendarMode === "year" ? "white" : "transparent",
+                                            color: calendarMode === "year" ? "#1e293b" : "#64748b",
+                                            boxShadow: calendarMode === "year" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+                                        }}
+                                    >Year</button>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "auto" }}>
+                                    <button onClick={() => {
+                                        if (calendarMode === "month") {
+                                            const prev = calendarMonth === 0 ? 11 : calendarMonth - 1;
+                                            setCalendarMonth(prev);
+                                            if (prev === 11) setCalendarYear(y => y - 1);
+                                        } else { setCalendarYear(y => y - 1); }
+                                    }} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: "8px", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#475569" }}>
+                                        <i className="bi bi-chevron-left"></i>
+                                    </button>
+                                    <span style={{ fontWeight: 700, fontSize: "1rem", color: "#1e293b", minWidth: "140px", textAlign: "center" }}>
+                                        {calendarMode === "month"
+                                            ? `${["January","February","March","April","May","June","July","August","September","October","November","December"][calendarMonth]} ${calendarYear}`
+                                            : calendarYear}
+                                    </span>
+                                    <button onClick={() => {
+                                        if (calendarMode === "month") {
+                                            const next = calendarMonth === 11 ? 0 : calendarMonth + 1;
+                                            setCalendarMonth(next);
+                                            if (next === 0) setCalendarYear(y => y + 1);
+                                        } else { setCalendarYear(y => y + 1); }
+                                    }} style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: "8px", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#475569" }}>
+                                        <i className="bi bi-chevron-right"></i>
+                                    </button>
+                                    <button onClick={() => { setCalendarMonth(new Date().getMonth()); setCalendarYear(new Date().getFullYear()); }}
+                                        style={{ background: "none", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "4px 12px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", color: "#475569" }}>
+                                        Today
+                                    </button>
+                                </div>
+                            </div>
+
+                            {loadingBookings ? (
+                                <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+                            ) : (() => {
+                                const selectedKennel = kennels.find(k => String(k.id) === String(calendarKennelId));
+                                const totalRooms = selectedKennel ? parseInt(selectedKennel.total_rooms) || 0 : 0;
+                                const kennelBookings = allBookings.filter(b =>
+                                    b.kennel_id === parseInt(calendarKennelId) &&
+                                    (b.status === "booked" || b.status === "checked_in")
+                                );
+                                const kennelClosures = closures.filter(c => c.kennel_id === parseInt(calendarKennelId));
+
+                                const getDayData = (dateStr) => {
+                                    const d = new Date(dateStr);
+                                    const nextDay = new Date(d); nextDay.setDate(nextDay.getDate() + 1);
+                                    const occupied = kennelBookings.reduce((sum, b) => {
+                                        const ci = new Date(b.check_in_date);
+                                        const co = new Date(b.check_out_date);
+                                        if (ci < nextDay && co > d) return sum + (b.pets?.length || 1);
+                                        return sum;
+                                    }, 0);
+                                    const isClosed = kennelClosures.some(c => {
+                                        const cs = new Date(c.closure_start);
+                                        const ce = new Date(c.closure_end);
+                                        return cs <= d && ce >= d;
+                                    });
+                                    return { occupied, isClosed };
+                                };
+
+                                const getColor = (occupied, total, isClosed) => {
+                                    if (isClosed) return { bg: "#fef2f2", border: "#fca5a5", pattern: true };
+                                    if (total === 0 || occupied === 0) return { bg: "#f1f5f9", border: "#e2e8f0", pattern: false };
+                                    const pct = occupied / total;
+                                    if (pct <= 0.25) return { bg: "#dcfce7", border: "#86efac", pattern: false };
+                                    if (pct <= 0.5) return { bg: "#bbf7d0", border: "#4ade80", pattern: false };
+                                    if (pct <= 0.75) return { bg: "#86efac", border: "#22c55e", pattern: false };
+                                    return { bg: "#22c55e", border: "#16a34a", pattern: false };
+                                };
+
+                                const todayStr = new Date().toISOString().split("T")[0];
+                                const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+                                const renderMonth = (month, year, compact = false) => {
+                                    const firstDay = new Date(year, month, 1);
+                                    const lastDay = new Date(year, month + 1, 0);
+                                    const startPad = (firstDay.getDay() + 6) % 7;
+                                    const cells = [];
+                                    for (let i = 0; i < startPad; i++) cells.push(null);
+                                    for (let d = 1; d <= lastDay.getDate(); d++) cells.push(d);
+
+                                    const cellSize = compact ? "18px" : "44px";
+                                    const fontSize = compact ? "0.55rem" : "0.8rem";
+                                    const gap = compact ? "3px" : "4px";
+
+                                    return (
+                                        <div>
+                                            {!compact && (
+                                                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap, marginBottom: "4px" }}>
+                                                    {dayNames.map(dn => (
+                                                        <div key={dn} style={{ textAlign: "center", fontSize: "0.7rem", fontWeight: 600, color: "#94a3b8" }}>{dn}</div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap }}>
+                                                {cells.map((day, i) => {
+                                                    if (day === null) return <div key={`pad-${i}`} style={{ width: cellSize, height: cellSize }}></div>;
+                                                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                                    const { occupied, isClosed } = getDayData(dateStr);
+                                                    const color = getColor(occupied, totalRooms, isClosed);
+                                                    const isToday = dateStr === todayStr;
+                                                    const pct = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
+
+                                                    return (
+                                                        <div
+                                                            key={dateStr}
+                                                            onMouseEnter={(e) => {
+                                                                if (compact) return;
+                                                                e.currentTarget.style.transform = "scale(1.1)";
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setCalTooltip({
+                                                                    show: true,
+                                                                    x: rect.left + rect.width / 2,
+                                                                    y: rect.top - 8,
+                                                                    text: isClosed
+                                                                        ? `Closed for maintenance`
+                                                                        : `${occupied}/${totalRooms} occupied (${pct}%)`,
+                                                                    dateLabel: `${day} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month]} ${year}`,
+                                                                    isClosed
+                                                                });
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.transform = "scale(1)";
+                                                                setCalTooltip(t => ({ ...t, show: false }));
+                                                            }}
+                                                            onClick={() => {
+                                                                if (!isClosed) {
+                                                                    setOccupancyDate(dateStr);
+                                                                    setOccupancyKennelId(calendarKennelId);
+                                                                    setOccupancyView("summary");
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                width: cellSize, height: cellSize,
+                                                                borderRadius: compact ? "3px" : "8px",
+                                                                background: isClosed
+                                                                    ? "repeating-linear-gradient(135deg, #fef2f2, #fef2f2 3px, #fecaca 3px, #fecaca 6px)"
+                                                                    : color.bg,
+                                                                border: isToday ? "2px solid #1e293b" : `1px solid ${color.border}`,
+                                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                                fontSize, fontWeight: isToday ? 700 : 500,
+                                                                color: isClosed ? "#dc2626" : (occupied > 0 && totalRooms > 0 && occupied / totalRooms > 0.5) ? "#fff" : "#374151",
+                                                                cursor: isClosed ? "default" : "pointer",
+                                                                transition: "transform 0.15s",
+                                                                position: "relative"
+                                                            }}
+                                                        >
+                                                            {compact ? "" : day}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                };
+
+                                return (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                        {totalRooms === 0 ? (
+                                            <div className="empty-state">
+                                                <i className="bi bi-door-open"></i>
+                                                <p>No rooms configured for this kennel</p>
+                                            </div>
+                                        ) : calendarMode === "month" ? (
+                                            <div style={{ background: "white", borderRadius: "12px", padding: "20px", border: "1px solid #e2e8f0" }}>
+                                                {renderMonth(calendarMonth, calendarYear, false)}
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                display: "grid",
+                                                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                                                gap: "16px"
+                                            }}>
+                                                {Array.from({ length: 12 }, (_, m) => (
+                                                    <div key={m} style={{
+                                                        background: "white", borderRadius: "12px", padding: "12px",
+                                                        border: m === new Date().getMonth() && calendarYear === new Date().getFullYear() ? "2px solid #1e293b" : "1px solid #e2e8f0",
+                                                        cursor: "pointer"
+                                                    }}
+                                                        onClick={() => { setCalendarMonth(m); setCalendarMode("month"); }}
+                                                    >
+                                                        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b", marginBottom: "8px", textAlign: "center" }}>
+                                                            {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m]}
+                                                        </div>
+                                                        {renderMonth(m, calendarYear, true)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Legend */}
+                                        <div style={{
+                                            display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+                                            padding: "12px 16px", background: "white", borderRadius: "10px", border: "1px solid #e2e8f0"
+                                        }}>
+                                            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b" }}>Occupancy:</span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#f1f5f9", border: "1px solid #e2e8f0" }}></span>0%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#dcfce7", border: "1px solid #86efac" }}></span>1-25%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#bbf7d0", border: "1px solid #4ade80" }}></span>26-50%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#86efac", border: "1px solid #22c55e" }}></span>51-75%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "#22c55e", border: "1px solid #16a34a" }}></span>76-100%
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b", marginLeft: "8px" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "repeating-linear-gradient(135deg, #fef2f2, #fef2f2 3px, #fecaca 3px, #fecaca 6px)", border: "1px solid #fca5a5" }}></span>Closed
+                                            </span>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.7rem", color: "#64748b", marginLeft: "8px" }}>
+                                                <span style={{ width: "14px", height: "14px", borderRadius: "4px", background: "white", border: "2px solid #1e293b" }}></span>Today
+                                            </span>
+                                        </div>
+
+                                        {/* Custom Tooltip */}
+                                        {calTooltip.show && (
+                                            <div style={{
+                                                position: "fixed",
+                                                left: calTooltip.x,
+                                                top: calTooltip.y,
+                                                transform: "translate(-50%, -100%)",
+                                                background: "#1e293b",
+                                                color: "white",
+                                                padding: "6px 12px",
+                                                borderRadius: "8px",
+                                                fontSize: "0.75rem",
+                                                whiteSpace: "nowrap",
+                                                pointerEvents: "none",
+                                                zIndex: 9999,
+                                                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                alignItems: "center",
+                                                gap: "2px"
+                                            }}>
+                                                <span style={{ fontWeight: 700 }}>{calTooltip.dateLabel}</span>
+                                                <span style={{ color: calTooltip.isClosed ? "#fca5a5" : "#86efac" }}>{calTooltip.text}</span>
+                                                <div style={{
+                                                    position: "absolute", bottom: "-4px", left: "50%", transform: "translateX(-50%)",
+                                                    width: 0, height: 0,
+                                                    borderLeft: "5px solid transparent",
+                                                    borderRight: "5px solid transparent",
+                                                    borderTop: "5px solid #1e293b"
+                                                }}></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </>
                     )}
                 </>
