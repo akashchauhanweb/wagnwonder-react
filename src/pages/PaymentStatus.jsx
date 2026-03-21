@@ -261,7 +261,7 @@ export default function PaymentStatus() {
                         const user = JSON.parse(localStorage.getItem("user_data") || "{}");
 
                         const walletDed = saved.walletDeduction || 0;
-                        const couponDiscountAmt = saved.couponDiscount || 0;
+                        // const couponDiscountAmt = saved.couponDiscount || 0;
                         const bookingPayload = {
                             user_id: user.id,
                             action: "CREATE_BOOKING_ENTRY",
@@ -271,7 +271,7 @@ export default function PaymentStatus() {
                             check_in_date: saved.checkin,
                             check_out_date: saved.checkout,
                             days: saved.days,
-                            total_price: saved.total - couponDiscountAmt,
+                            total_price: saved.total,
                             wallet_amount: walletDed,
                             mode: saved.paymentMode || "online",
                             order_id: orderId,

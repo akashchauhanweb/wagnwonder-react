@@ -112,7 +112,7 @@ export default function BookingReview() {
                     check_in_date: checkin,
                     check_out_date: checkout,
                     days: days,
-                    total_price: afterCoupon,
+                    total_price: total,
                     wallet_amount: walletDeduction,
                     mode: "wallet",
                     order_id: `WALLET_${Date.now()}`,
