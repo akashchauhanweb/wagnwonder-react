@@ -118,6 +118,14 @@ const KennelsAdminPage = () => {
     const [selectedFeatureIds, setSelectedFeatureIds] = useState([]);
     const [savingFeatures, setSavingFeatures] = useState(false);
     const [uploadingImages, setUploadingImages] = useState(false);
+    const [manageRooms, setManageRooms] = useState([]);
+    const [manageRoomTypes, setManageRoomTypes] = useState([]);
+    const [loadingManageRooms, setLoadingManageRooms] = useState(false);
+    const [addingRoom, setAddingRoom] = useState(false);
+    const [newRoomType, setNewRoomType] = useState("");
+    const [newRoomSuitableFor, setNewRoomSuitableFor] = useState("dogs");
+    const [newRoomPricing, setNewRoomPricing] = useState({ price_small: "", price_medium: "", price_large: "" });
+    const [deactivatingRoomId, setDeactivatingRoomId] = useState(null);
     const [imageUploadProgress, setImageUploadProgress] = useState({ current: 0, total: 0 });
     const [removingImage, setRemovingImage] = useState(null);
 
@@ -185,6 +193,7 @@ const KennelsAdminPage = () => {
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [checkoutBooking, setCheckoutBooking] = useState(null);
     const [checkoutPending, setCheckoutPending] = useState(null);
+    const [checkoutModalMsg, setCheckoutModalMsg] = useState({ type: "", text: "" });
     const [resendingCheckoutId, setResendingCheckoutId] = useState(null);
     const [forcingCheckout, setForcingCheckout] = useState(false);
     const [refreshingCheckout, setRefreshingCheckout] = useState(false);
@@ -196,6 +205,7 @@ const KennelsAdminPage = () => {
     const [extendAmount, setExtendAmount] = useState(0);
     const [extendCalculatedAmount, setExtendCalculatedAmount] = useState(0);
     const [submittingExtend, setSubmittingExtend] = useState(false);
+    const [extendError, setExtendError] = useState("");
 
     const [successMsg, setSuccessMsg] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -369,6 +379,7 @@ const KennelsAdminPage = () => {
         setExtendNewDate("");
         setExtendAmount(0);
         setExtendCalculatedAmount(0);
+        setExtendError("");
         setShowExtendModal(true);
     };
 
@@ -399,11 +410,12 @@ const KennelsAdminPage = () => {
 
     const handleSubmitExtension = async () => {
         if (!extendBooking || !extendNewDate) {
-            setErrorMsg("Please select a new checkout date."); return;
+            setExtendError("Please select a new checkout date."); return;
         }
         if (parseFloat(extendAmount) < 0) {
-            setErrorMsg("Amount cannot be negative."); return;
+            setExtendError("Amount cannot be negative."); return;
         }
+        setExtendError("");
         setSubmittingExtend(true);
         try {
             const response = await callServicesApi({
@@ -448,9 +460,9 @@ const KennelsAdminPage = () => {
                 await fetchAllBookings(true);
                 setExtensionsCached(false);
             } else {
-                setErrorMsg(response?.message || "Failed to extend booking.");
+                setExtendError(response?.message || "Failed to extend booking.");
             }
-        } catch { setErrorMsg("Error extending booking."); }
+        } catch { setExtendError("Error extending booking."); }
         finally { setSubmittingExtend(false); }
     };
 
@@ -587,6 +599,78 @@ const KennelsAdminPage = () => {
             } else { setErrorMsg(response?.message || "Failed to toggle coupon."); }
         } catch { setErrorMsg("Error toggling coupon."); }
         finally { setTogglingCouponId(null); }
+    };
+
+    // Room management functions
+    const fetchManageRoomsList = async (kennelId) => {
+        if (!kennelId) return;
+        setLoadingManageRooms(true);
+        try {
+            const response = await callServicesApi({ action: "MANAGE_ROOMS", session_id, kennel_id: parseInt(kennelId), action_type: "list" });
+            if (response?.success) {
+                setManageRooms(response.rooms || []);
+                setManageRoomTypes(response.room_types || []);
+            }
+        } catch (err) { console.error("Error fetching rooms:", err); }
+        finally { setLoadingManageRooms(false); }
+    };
+
+    const handleAddRoom = async () => {
+        if (!newRoomType) { setErrorMsg("Please select a room type."); return; }
+        const existingOfType = manageRooms.filter(r => r.room_type_id === parseInt(newRoomType) && r.is_active);
+        if (existingOfType.length === 0 && (!newRoomPricing.price_small && !newRoomPricing.price_medium && !newRoomPricing.price_large)) {
+            setErrorMsg("Please enter pricing for the first room of this type."); return;
+        }
+        setAddingRoom(true);
+        try {
+            const payload = {
+                action: "MANAGE_ROOMS", session_id, kennel_id: parseInt(profileKennelId),
+                action_type: "add", room_type_id: parseInt(newRoomType), suitable_for: newRoomSuitableFor
+            };
+            if (existingOfType.length === 0) {
+                payload.price_small = parseFloat(newRoomPricing.price_small) || 0;
+                payload.price_medium = parseFloat(newRoomPricing.price_medium) || 0;
+                payload.price_large = parseFloat(newRoomPricing.price_large) || 0;
+            }
+            const response = await callServicesApi(payload);
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                setNewRoomType(""); setNewRoomSuitableFor("dogs");
+                setNewRoomPricing({ price_small: "", price_medium: "", price_large: "" });
+                await fetchManageRoomsList(profileKennelId);
+            } else { setErrorMsg(response?.message || "Failed to add room."); }
+        } catch { setErrorMsg("Error adding room."); }
+        finally { setAddingRoom(false); }
+    };
+
+    const handleEnableRoom = async (roomId) => {
+        setDeactivatingRoomId(roomId);
+        try {
+            const response = await callServicesApi({
+                action: "MANAGE_ROOMS", session_id, kennel_id: parseInt(profileKennelId),
+                action_type: "activate", room_id: roomId
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                await fetchManageRoomsList(profileKennelId);
+            } else { setErrorMsg(response?.message || "Failed to enable room."); }
+        } catch { setErrorMsg("Error enabling room."); }
+        finally { setDeactivatingRoomId(null); }
+    };
+
+    const handleDeactivateRoom = async (roomId) => {
+        setDeactivatingRoomId(roomId);
+        try {
+            const response = await callServicesApi({
+                action: "MANAGE_ROOMS", session_id, kennel_id: parseInt(profileKennelId),
+                action_type: "deactivate", room_id: roomId
+            });
+            if (response?.success) {
+                setSuccessMsg(response.message);
+                await fetchManageRoomsList(profileKennelId);
+            } else { setErrorMsg(response?.message || "Failed to remove room."); }
+        } catch { setErrorMsg("Error removing room."); }
+        finally { setDeactivatingRoomId(null); }
     };
 
     // Derived: user permissions for current kennels
@@ -1297,6 +1381,7 @@ const KennelsAdminPage = () => {
                 const booking = allBookings.find(b => b.booking_id === bookingId);
                 setCheckoutBooking(booking);
                 setCheckoutPending(response);
+                setCheckoutModalMsg({ type: "", text: "" });
                 setShowCheckoutModal(true);
                 setUpdatingBookingId(null);
                 return;
@@ -1343,9 +1428,9 @@ const KennelsAdminPage = () => {
                 subject: `Payment Reminder: Booking Extension #${checkoutBooking.booking_id}`,
                 html: emailHtml
             });
-            setSuccessMsg(`Reminder sent to ${checkoutBooking.email}`);
+            setCheckoutModalMsg({ type: "success", text: `Reminder sent to ${checkoutBooking.email}` });
         } catch {
-            setErrorMsg("Failed to send reminder email.");
+            setCheckoutModalMsg({ type: "error", text: "Failed to send reminder email." });
         } finally {
             setResendingCheckoutId(null);
         }
@@ -1777,6 +1862,13 @@ const KennelsAdminPage = () => {
                             <i className="bi bi-stars"></i>
                             Features
                         </button>
+                        <button
+                            className={`submenu-item ${profileTab === "rooms" ? "active" : ""}`}
+                            onClick={() => { setProfileTab("rooms"); fetchManageRoomsList(profileKennelId); }}
+                        >
+                            <i className="bi bi-door-open"></i>
+                            Manage Rooms
+                        </button>
                     </div>
 
                     <div className="events-filters">
@@ -1797,9 +1889,25 @@ const KennelsAdminPage = () => {
                                 </select>
                             </div>
                         )}
+                        {profileTab === "rooms" && manageRooms.length > 0 && (
+                            <div style={{
+                                display: "flex", alignItems: "center", gap: "12px", flex: 1,
+                                padding: "8px 16px", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0"
+                            }}>
+                                <i className="bi bi-door-open" style={{ color: "#475569" }}></i>
+                                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
+                                    {manageRooms.filter(r => r.is_active).length} active room{manageRooms.filter(r => r.is_active).length !== 1 ? "s" : ""}
+                                </span>
+                                {manageRooms.filter(r => !r.is_active).length > 0 && (
+                                    <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                                        · {manageRooms.filter(r => !r.is_active).length} disabled
+                                    </span>
+                                )}
+                            </div>
+                        )}
                         <button
                             className="earnings-refresh-btn"
-                            onClick={() => fetchProfileData(profileKennelId)}
+                            onClick={() => { fetchProfileData(profileKennelId); if (profileTab === "rooms") fetchManageRoomsList(profileKennelId); }}
                             disabled={loadingProfile}
                             style={{ marginLeft: "auto", minWidth: "unset" }}
                         >
@@ -1979,6 +2087,143 @@ const KennelsAdminPage = () => {
                                                 </div>
                                             ))}
                                         </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {profileTab === "rooms" && (
+                                <div>
+                                    {loadingManageRooms ? (
+                                        <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+                                    ) : (
+                                        <>
+                                            {/* Add Room Form */}
+                                            <div style={{ background: "white", borderRadius: "12px", padding: "20px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
+                                                <h4 style={{ margin: "0 0 16px", fontSize: "0.95rem", fontWeight: 600, color: "#1e293b" }}>Add Room</h4>
+                                                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-end" }}>
+                                                    <div style={{ flex: 1, minWidth: "150px" }}>
+                                                        <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Room Type</label>
+                                                        <select value={newRoomType} onChange={(e) => {
+                                                            setNewRoomType(e.target.value);
+                                                            setNewRoomPricing({ price_small: "", price_medium: "", price_large: "" });
+                                                        }}
+                                                            style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }}>
+                                                            <option value="">Select type</option>
+                                                            {manageRoomTypes.map(rt => (
+                                                                <option key={rt.id} value={rt.id}>{rt.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: "150px" }}>
+                                                        <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Suitable For</label>
+                                                        <div style={{ display: "flex", gap: "4px" }}>
+                                                            {["dogs", "cats", "both"].map(s => (
+                                                                <button key={s} onClick={() => setNewRoomSuitableFor(s)}
+                                                                    style={{ flex: 1, padding: "10px", borderRadius: "8px", border: newRoomSuitableFor === s ? "2px solid #1e293b" : "1px solid #e2e8f0", background: newRoomSuitableFor === s ? "#f8fafc" : "white", color: "#1e293b", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", textTransform: "capitalize" }}>
+                                                                    {s}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={handleAddRoom} disabled={addingRoom}
+                                                        style={{ padding: "10px 20px", borderRadius: "10px", border: "none", background: addingRoom ? "#cbd5e1" : "linear-gradient(135deg, #1e293b, #0f172a)", color: "white", fontSize: "0.85rem", fontWeight: 600, cursor: addingRoom ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap", height: "42px" }}>
+                                                        {addingRoom ? <span className="spinner-border spinner-border-sm"></span> : <><i className="bi bi-plus-lg"></i> Add Room</>}
+                                                    </button>
+                                                </div>
+
+                                                {/* Pricing fields — only show if first room of this type */}
+                                                {newRoomType && manageRooms.filter(r => r.room_type_id === parseInt(newRoomType) && r.is_active).length === 0 && (
+                                                    <div style={{ marginTop: "14px", padding: "14px 16px", borderRadius: "10px", background: "#fffbeb", border: "1px solid #fde68a" }}>
+                                                        <div style={{ fontSize: "0.8rem", color: "#92400e", marginBottom: "10px", fontWeight: 600 }}>
+                                                            <i className="bi bi-info-circle me-1"></i> First room of this type — please set pricing
+                                                        </div>
+                                                        <div style={{ display: "flex", gap: "10px" }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <label style={{ fontSize: "0.75rem", color: "#64748b" }}>Small (₹/day)</label>
+                                                                <input type="number" value={newRoomPricing.price_small} onChange={(e) => setNewRoomPricing(prev => ({ ...prev, price_small: e.target.value }))}
+                                                                    placeholder="0" min="0" style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.85rem" }} />
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <label style={{ fontSize: "0.75rem", color: "#64748b" }}>Medium (₹/day)</label>
+                                                                <input type="number" value={newRoomPricing.price_medium} onChange={(e) => setNewRoomPricing(prev => ({ ...prev, price_medium: e.target.value }))}
+                                                                    placeholder="0" min="0" style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.85rem" }} />
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <label style={{ fontSize: "0.75rem", color: "#64748b" }}>Large (₹/day)</label>
+                                                                <input type="number" value={newRoomPricing.price_large} onChange={(e) => setNewRoomPricing(prev => ({ ...prev, price_large: e.target.value }))}
+                                                                    placeholder="0" min="0" style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.85rem" }} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Room List */}
+                                            {manageRooms.length === 0 ? (
+                                                <div className="empty-state">
+                                                    <i className="bi bi-door-open"></i>
+                                                    <p>No rooms configured for this kennel</p>
+                                                </div>
+                                            ) : (() => {
+                                                const grouped = {};
+                                                manageRooms.forEach(r => {
+                                                    if (!grouped[r.room_type_name]) grouped[r.room_type_name] = [];
+                                                    grouped[r.room_type_name].push(r);
+                                                });
+                                                return Object.entries(grouped).map(([typeName, rooms]) => {
+                                                    const activeCount = rooms.filter(r => r.is_active).length;
+                                                    const inactiveCount = rooms.filter(r => !r.is_active).length;
+                                                    return (
+                                                        <div key={typeName} style={{ marginBottom: "20px" }}>
+                                                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                                                                <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>{typeName}</h4>
+                                                                <span style={{ padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600, background: "#ecfdf5", color: "#059669" }}>
+                                                                    {activeCount} active
+                                                                </span>
+                                                                {inactiveCount > 0 && (
+                                                                    <span style={{ padding: "2px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600, background: "#f1f5f9", color: "#64748b" }}>
+                                                                        {inactiveCount} removed
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px" }}>
+                                                                {rooms.map((room, idx) => (
+                                                                    <div key={room.id} style={{
+                                                                        padding: "14px 16px", borderRadius: "10px",
+                                                                        border: room.is_active ? "1px solid #d1fae5" : "1px solid #e2e8f0",
+                                                                        background: room.is_active ? "linear-gradient(135deg, #f0fdf4, #d1fae5)" : "#f8fafc",
+                                                                        opacity: room.is_active ? 1 : 0.6
+                                                                    }}>
+                                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                                                                            <span style={{ fontWeight: 700, fontSize: "0.95rem", color: room.is_active ? "#1e293b" : "#94a3b8" }}>
+                                                                                <i className={`bi ${room.is_active ? "bi-door-open" : "bi-door-closed"} me-1`} style={{ color: room.is_active ? "#059669" : "#94a3b8" }}></i>
+                                                                                Room {idx + 1}
+                                                                            </span>
+                                                                            {room.is_active ? (
+                                                                                <button onClick={() => handleDeactivateRoom(room.id)} disabled={deactivatingRoomId === room.id}
+                                                                                    style={{ padding: "3px 10px", borderRadius: "6px", border: "none", background: "#fef2f2", color: "#dc2626", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>
+                                                                                    {deactivatingRoomId === room.id ? <span className="spinner-border spinner-border-sm"></span> : "Disable"}
+                                                                                </button>
+                                                                            ) : (
+                                                                                <button onClick={() => handleEnableRoom(room.id)} disabled={deactivatingRoomId === room.id}
+                                                                                    style={{ padding: "3px 10px", borderRadius: "6px", border: "none", background: "#ecfdf5", color: "#059669", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>
+                                                                                    {deactivatingRoomId === room.id ? <span className="spinner-border spinner-border-sm"></span> : "Enable"}
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                        <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                                                                            <span style={{ textTransform: "capitalize" }}>{room.suitable_for || "dogs"}</span>
+                                                                            <span style={{ margin: "0 6px" }}>·</span>
+                                                                            S: ₹{room.price_small} · M: ₹{room.price_medium} · L: ₹{room.price_large}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -5340,6 +5585,21 @@ const KennelsAdminPage = () => {
                                 </div>
                             </div>
 
+                            {checkoutModalMsg.text && (
+                                <div style={{
+                                    padding: "10px 14px", borderRadius: "10px",
+                                    background: checkoutModalMsg.type === "success" ? "#ecfdf5" : "#fef2f2",
+                                    border: `1px solid ${checkoutModalMsg.type === "success" ? "#bbf7d0" : "#fecaca"}`,
+                                    fontSize: "0.82rem",
+                                    color: checkoutModalMsg.type === "success" ? "#059669" : "#dc2626",
+                                    marginBottom: "16px",
+                                    display: "flex", alignItems: "center", gap: "8px"
+                                }}>
+                                    <i className={`bi ${checkoutModalMsg.type === "success" ? "bi-check-circle-fill" : "bi-exclamation-circle-fill"}`}></i>
+                                    {checkoutModalMsg.text}
+                                </div>
+                            )}
+
                             {/* All paid state */}
                             {!checkoutPending && (
                                 <div style={{
@@ -5495,6 +5755,17 @@ const KennelsAdminPage = () => {
                             )}
 
                             {/* Actions */}
+                            {checkoutPending && checkoutPending.online_pending_total > 0 && (
+                                <div style={{
+                                    padding: "10px 14px", borderRadius: "10px",
+                                    background: "#fef2f2", border: "1px solid #fecaca",
+                                    fontSize: "0.82rem", color: "#dc2626", marginBottom: "12px",
+                                    display: "flex", alignItems: "center", gap: "8px"
+                                }}>
+                                    <i className="bi bi-exclamation-circle-fill"></i>
+                                    Online payment(s) must be completed before checkout. Resend the payment link or refresh to check payment status.
+                                </div>
+                            )}
                             <div style={{ display: "flex", gap: "10px" }}>
                                 <button
                                     onClick={() => setShowCheckoutModal(false)}
@@ -5509,12 +5780,15 @@ const KennelsAdminPage = () => {
                                 </button>
                                 <button
                                     onClick={handleForceCheckout}
-                                    disabled={forcingCheckout}
+                                    disabled={forcingCheckout || (checkoutPending && checkoutPending.online_pending_total > 0)}
                                     style={{
                                         flex: 1, padding: "12px", borderRadius: "10px",
-                                        border: "none", background: "linear-gradient(135deg, #059669, #047857)",
-                                        color: "white", fontSize: "0.9rem", fontWeight: 600,
-                                        cursor: "pointer", display: "flex", alignItems: "center",
+                                        border: "none",
+                                        background: (checkoutPending && checkoutPending.online_pending_total > 0) ? "#cbd5e1" : "linear-gradient(135deg, #059669, #047857)",
+                                        color: (checkoutPending && checkoutPending.online_pending_total > 0) ? "#94a3b8" : "white",
+                                        fontSize: "0.9rem", fontWeight: 600,
+                                        cursor: (checkoutPending && checkoutPending.online_pending_total > 0) ? "not-allowed" : "pointer",
+                                        display: "flex", alignItems: "center",
                                         justifyContent: "center", gap: "6px"
                                     }}
                                 >
@@ -5953,6 +6227,18 @@ const KennelsAdminPage = () => {
                                     Payment mode: <span className={`mode-badge ${extendBooking.mode === 'online' ? 'mode-online' : 'mode-offline'}`}>{extendBooking.mode}</span>
                                 </div>
                             </div>
+
+                            {extendError && (
+                                <div style={{
+                                    padding: "10px 14px", borderRadius: "10px",
+                                    background: "#fef2f2", border: "1px solid #fecaca",
+                                    fontSize: "0.82rem", color: "#dc2626", marginBottom: "16px",
+                                    display: "flex", alignItems: "center", gap: "8px"
+                                }}>
+                                    <i className="bi bi-exclamation-circle-fill"></i>
+                                    {extendError}
+                                </div>
+                            )}
 
                             {/* New Date */}
                             <div style={{ marginBottom: "16px" }}>
