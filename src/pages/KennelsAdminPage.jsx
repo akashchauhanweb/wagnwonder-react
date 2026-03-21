@@ -1352,6 +1352,12 @@ const KennelsAdminPage = () => {
         && (bookingsKennelFilter === "all" || b.kennel_id === parseInt(bookingsKennelFilter))
     );
 
+    const overdueBookings = allBookings.filter(b =>
+        b.status === "checked_in"
+        && b.check_out_date
+        && new Date(b.check_out_date).toISOString().split("T")[0] < new Date().toISOString().split("T")[0]
+    );
+
     const getPetWeightCategory = (weight) => {
         if (!weight) return null;
         const w = weight.toLowerCase();
@@ -2547,6 +2553,107 @@ const KennelsAdminPage = () => {
                                 </button>
                             </div>
 
+                            {/* Overdue Checkouts Alert */}
+                            {overdueBookings.length > 0 && (
+                                <div style={{
+                                    borderRadius: "12px", overflow: "hidden",
+                                    border: "2px solid #fca5a5", marginBottom: "16px"
+                                }}>
+                                    <div style={{
+                                        padding: "12px 20px",
+                                        background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                                        borderBottom: "1px solid #fca5a5",
+                                        display: "flex", alignItems: "center", gap: "10px"
+                                    }}>
+                                        <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.1rem", color: "#dc2626" }}></i>
+                                        <div style={{ flex: 1 }}>
+                                            <span style={{ fontWeight: 600, color: "#991b1b", fontSize: "0.9rem" }}>
+                                                {overdueBookings.length} Overdue Checkout{overdueBookings.length !== 1 ? "s" : ""}
+                                            </span>
+                                            <div style={{ fontSize: "0.75rem", color: "#b91c1c", marginTop: "2px" }}>
+                                                These rooms are blocked from new bookings until resolved
+                                            </div>
+                                        </div>
+                                        <span style={{ fontSize: "0.78rem", color: "#dc2626", fontWeight: 500 }}>
+                                            Action required
+                                        </span>
+                                    </div>
+                                    <div style={{ padding: "10px 12px", background: "white" }}>
+                                        {overdueBookings.map(b => {
+                                            const daysOverdue = Math.floor((new Date() - new Date(b.check_out_date)) / 86400000);
+                                            return (
+                                                <div key={`overdue-${b.booking_id}`} style={{
+                                                    display: "flex", alignItems: "center", gap: "14px",
+                                                    padding: "12px 14px", borderRadius: "10px",
+                                                    border: "1px solid #fecaca", marginBottom: "8px",
+                                                    background: "#fff5f5"
+                                                }}>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                                            <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.9rem" }}>
+                                                                #{b.booking_id} · {b.first_name} {b.last_name}
+                                                            </span>
+                                                            <span style={{
+                                                                padding: "2px 8px", borderRadius: "6px", fontSize: "0.68rem", fontWeight: 700,
+                                                                background: "#fee2e2", color: "#dc2626"
+                                                            }}>
+                                                                {daysOverdue} day{daysOverdue !== 1 ? "s" : ""} overdue
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+                                                            <i className="bi bi-calendar me-1"></i>{formatDate(b.check_in_date)} → {formatDate(b.check_out_date)}
+                                                            <span style={{ margin: "0 6px" }}>·</span>
+                                                            {b.pets?.map(p => p.pet_name).join(", ")}
+                                                            {kennels.length > 1 && <><span style={{ margin: "0 6px" }}>·</span>{b.kennel_name}</>}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                                                        <button
+                                                            onClick={() => openExtendModal(b)}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px", border: "none",
+                                                                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                                                                color: "white", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-calendar-plus"></i> Extend
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openCheckoutWithNotes(b)}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px",
+                                                                border: "1px solid #dbeafe", background: "#eff6ff",
+                                                                color: "#2563eb", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-check-lg"></i> Checkout
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedBooking(b);
+                                                            }}
+                                                            style={{
+                                                                padding: "6px 14px", borderRadius: "8px",
+                                                                border: "1px solid #e2e8f0", background: "white",
+                                                                color: "#475569", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
+                                                                whiteSpace: "nowrap"
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-eye"></i> View
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Booking Tabs */}
                             <div style={{ display: "flex", gap: "0", marginBottom: "16px", borderBottom: "2px solid #e2e8f0" }}>
                                 {[
@@ -3502,7 +3609,7 @@ const KennelsAdminPage = () => {
                                                             <i className="bi bi-link-45deg"></i> Payment Link
                                                         </a>
                                                     )}
-                                                    {!isPaid && !isExpired && (
+                                                    {!isPaid && !isExpired && ext.payment_mode === "online" && (
                                                         <button
                                                             onClick={() => handleResendExtensionEmail(ext)}
                                                             disabled={resendingExtensionId === ext.id}
@@ -3629,6 +3736,26 @@ const KennelsAdminPage = () => {
                         </div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                            {/* Overdue Alert (read-only) */}
+                            {overdueBookings.length > 0 && (
+                                <div style={{
+                                    display: "flex", alignItems: "center", gap: "10px",
+                                    padding: "14px 20px", borderRadius: "12px",
+                                    background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                                    border: "1px solid #fca5a5"
+                                }}>
+                                    <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.2rem", color: "#dc2626" }}></i>
+                                    <div style={{ flex: 1 }}>
+                                        <span style={{ fontWeight: 600, color: "#991b1b", fontSize: "0.9rem" }}>
+                                            {overdueBookings.length} booking{overdueBookings.length !== 1 ? "s" : ""} overdue for checkout
+                                        </span>
+                                        <span style={{ color: "#b91c1c", fontSize: "0.8rem", marginLeft: "8px" }}>
+                                            — Please extend them in the Bookings tab.
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Check-ins Section */}
                             <div style={{ background: "white", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
                                 <div style={{
