@@ -14,10 +14,52 @@ export default function BookingReview() {
     // Wallet state — read from localStorage, no API call
     const [walletBalance] = useState(() => parseFloat(localStorage.getItem("woof_balance") || "0"));
     const [useWallet, setUseWallet] = useState(false);
+    const [couponCode, setCouponCode] = useState("");
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponError, setCouponError] = useState("");
+    const [validatingCoupon, setValidatingCoupon] = useState(false);
+    const publicCoupons = location.state?.public_coupons || [];
 
-    const walletDeduction = useWallet ? Math.min(walletBalance, total) : 0;
-    const onlineAmount = total - walletDeduction;
-    const paymentMode = walletDeduction >= total ? "wallet" : walletDeduction > 0 ? "partial" : "online";
+    const couponDiscount = appliedCoupon ? appliedCoupon.discount_amount : 0;
+    const afterCoupon = total - couponDiscount;
+    const walletDeduction = useWallet ? Math.min(walletBalance, afterCoupon) : 0;
+    const onlineAmount = afterCoupon - walletDeduction;
+    const paymentMode = walletDeduction >= afterCoupon ? "wallet" : walletDeduction > 0 ? "partial" : "online";
+
+    const handleApplyCoupon = async (code) => {
+        const codeToApply = (code || couponCode).trim().toUpperCase();
+        if (!codeToApply) { setCouponError("Please enter a coupon code."); return; }
+        setCouponError("");
+        setValidatingCoupon(true);
+        try {
+            const user = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const res = await callServicesApi({
+                action: "GET_COUPONS",
+                session_id: localStorage.getItem("session_id"),
+                mode: "validate",
+                code: codeToApply,
+                kennel_id: kennel.kennel_id,
+                user_id: user.id,
+                booking_value: total,
+                nights: days
+            });
+            if (res?.success && res?.valid) {
+                setAppliedCoupon(res.coupon);
+                setCouponCode(res.coupon.code);
+                if (useWallet) setUseWallet(false);
+            } else {
+                setCouponError(res?.message || "Invalid coupon code.");
+                setAppliedCoupon(null);
+            }
+        } catch { setCouponError("Error validating coupon."); }
+        finally { setValidatingCoupon(false); }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCode("");
+        setCouponError("");
+    };
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -54,7 +96,7 @@ export default function BookingReview() {
         setIsProcessing(true);
         localStorage.setItem(
             "pending_booking",
-            JSON.stringify({ kennel, checkin, checkout, breakdown, total, days, room_type_id, walletDeduction, paymentMode })
+            JSON.stringify({ kennel, checkin, checkout, breakdown, total, days, room_type_id, walletDeduction, paymentMode, couponCode: appliedCoupon?.code || "", couponDiscount })
         );
         try {
             let customer_data = JSON.parse(localStorage.getItem("user_data"));
@@ -70,11 +112,12 @@ export default function BookingReview() {
                     check_in_date: checkin,
                     check_out_date: checkout,
                     days: days,
-                    total_price: total,
+                    total_price: afterCoupon,
                     wallet_amount: walletDeduction,
                     mode: "wallet",
                     order_id: `WALLET_${Date.now()}`,
                     cf_order_id: null,
+                    coupon_code: appliedCoupon?.code || "",
                     pets: breakdown.map((p) => ({
                         pet_id: p.id,
                         price_per_day: p.perDay,
@@ -211,6 +254,68 @@ export default function BookingReview() {
                     </div>
                 </div>
 
+                {/* Coupon Section */}
+                <div className="booking-review-card">
+                    <div className="booking-review-card-header">
+                        <i className="bi bi-tag"></i>
+                        <h3>Coupon Code</h3>
+                    </div>
+                    <div style={{ padding: "4px 0" }}>
+                        {appliedCoupon ? (
+                            <div style={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "14px 16px", borderRadius: "10px",
+                                background: "#ecfdf5", border: "1.5px solid #059669"
+                            }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                    <i className="bi bi-check-circle-fill" style={{ color: "#059669", fontSize: "1.1rem" }}></i>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#065f46", fontFamily: "monospace", letterSpacing: "1px" }}>
+                                            {appliedCoupon.code}
+                                        </div>
+                                        <div style={{ fontSize: "0.8rem", color: "#059669" }}>
+                                            {appliedCoupon.discount_type === "flat" ? `₹${appliedCoupon.discount_value} off` : `${appliedCoupon.discount_value}% off`} · You save ₹{Math.round(couponDiscount)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onClick={handleRemoveCoupon}
+                                    style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}>
+                                    Remove
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                    <input type="text" value={couponCode}
+                                        onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
+                                        placeholder="Enter coupon code"
+                                        style={{ flex: 1, padding: "12px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.9rem", fontFamily: "monospace", letterSpacing: "1px" }} />
+                                    <button onClick={() => handleApplyCoupon()} disabled={validatingCoupon}
+                                        style={{ padding: "12px 20px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #D84A39, #471915)", color: "white", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                        {validatingCoupon ? <span className="spinner-border spinner-border-sm"></span> : "Apply"}
+                                    </button>
+                                </div>
+                                {couponError && (
+                                    <div style={{ fontSize: "0.8rem", color: "#dc2626", marginTop: "8px", paddingLeft: "4px" }}>
+                                        <i className="bi bi-exclamation-circle me-1"></i>{couponError}
+                                    </div>
+                                )}
+                                {publicCoupons.length > 0 && (
+                                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" }}>
+                                        {publicCoupons.map(c => (
+                                            <button key={c.id} onClick={() => { setCouponCode(c.code); handleApplyCoupon(c.code); }}
+                                                style={{ padding: "5px 12px", borderRadius: "20px", border: "1px solid #fde68a", background: "#fffbeb", color: "#92400e", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                <i className="bi bi-tag-fill" style={{ fontSize: "0.7rem" }}></i>
+                                                {c.code} · {c.discount_type === "flat" ? `₹${c.discount_value} off` : `${c.discount_value}% off`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+
                 {/* Wallet Section */}
                 <div className="booking-review-card">
                     <div className="booking-review-card-header">
@@ -225,7 +330,12 @@ export default function BookingReview() {
                             border: useWallet ? "1.5px solid #D84A39" : "1px solid #e2e8f0",
                             cursor: "pointer", transition: "all 0.2s"
                         }}
-                            onClick={() => setUseWallet(!useWallet)}
+                            onClick={() => {
+                                if (appliedCoupon && !useWallet) {
+                                    handleRemoveCoupon();
+                                }
+                                setUseWallet(!useWallet);
+                            }}
                         >
                             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                                 <div style={{
@@ -267,6 +377,12 @@ export default function BookingReview() {
                         <span>Subtotal ({breakdown.length} {breakdown.length === 1 ? 'pet' : 'pets'} × {days} {days === 1 ? 'night' : 'nights'})</span>
                         <span>₹{total}</span>
                     </div>
+                    {appliedCoupon && couponDiscount > 0 && (
+                        <div className="booking-review-total-row" style={{ color: "#059669" }}>
+                            <span><i className="bi bi-tag me-1"></i>Coupon ({appliedCoupon.code})</span>
+                            <span>−₹{Math.round(couponDiscount).toLocaleString("en-IN")}</span>
+                        </div>
+                    )}
                     {useWallet && walletDeduction > 0 && (
                         <div className="booking-review-total-row" style={{ color: "#059669" }}>
                             <span><i className="bi bi-wallet2 me-1"></i>Woof Wallet</span>

@@ -132,6 +132,22 @@ const KennelsAdminPage = () => {
     const [conflictingBookings, setConflictingBookings] = useState([]);
     const [cancellingClosureId, setCancellingClosureId] = useState(null);
 
+    // Coupons
+    const [coupons, setCoupons] = useState([]);
+    const [loadingCoupons, setLoadingCoupons] = useState(false);
+    const [couponsCached, setCouponsCached] = useState(false);
+    const [showCreateCoupon, setShowCreateCoupon] = useState(false);
+    const [couponForm, setCouponForm] = useState({
+        code: "", auto_generate: false, discount_type: "flat", discount_value: "",
+        max_discount: "", min_booking_value: "", min_nights: "",
+        usage_limit: "", per_user_limit: "1", valid_from: "", valid_until: "",
+        is_public: true, kennel_id: ""
+    });
+    const [submittingCoupon, setSubmittingCoupon] = useState(false);
+    const [showAdvancedCoupon, setShowAdvancedCoupon] = useState(false);
+    const [togglingCouponId, setTogglingCouponId] = useState(null);
+    const [couponsFilter, setCouponsFilter] = useState("active");
+
     // Notes
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [notesBooking, setNotesBooking] = useState(null);
@@ -514,6 +530,65 @@ const KennelsAdminPage = () => {
         finally { setCancellingClosureId(null); }
     };
 
+    // Coupon functions
+    const fetchCoupons = async (forceRefresh = false) => {
+        if (couponsCached && !forceRefresh) return;
+        setLoadingCoupons(true);
+        try {
+            const kennelIds = kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings).map(k => k.id);
+            if (kennelIds.length === 0) { setCoupons([]); setCouponsCached(true); setLoadingCoupons(false); return; }
+            const response = await callServicesApi({ action: "GET_COUPONS", session_id, kennel_ids: kennelIds });
+            if (response?.success) { setCoupons(response.coupons || []); setCouponsCached(true); }
+        } catch (err) { console.error("Error fetching coupons:", err); }
+        finally { setLoadingCoupons(false); }
+    };
+
+    const handleCreateCoupon = async () => {
+        if (!couponForm.discount_value || parseFloat(couponForm.discount_value) <= 0) { setErrorMsg("Please enter a discount value."); return; }
+        if (!couponForm.valid_from || !couponForm.valid_until) { setErrorMsg("Please select valid from and valid until dates."); return; }
+        if (!couponForm.auto_generate && !couponForm.code.trim()) { setErrorMsg("Please enter a coupon code or use auto-generate."); return; }
+        if (!couponForm.kennel_id) { setErrorMsg("Please select a kennel."); return; }
+        setSubmittingCoupon(true);
+        try {
+            const response = await callServicesApi({
+                action: "CREATE_COUPON", session_id,
+                code: couponForm.code.trim().toUpperCase(),
+                auto_generate: couponForm.auto_generate,
+                discount_type: couponForm.discount_type,
+                discount_value: parseFloat(couponForm.discount_value),
+                max_discount: couponForm.max_discount ? parseFloat(couponForm.max_discount) : null,
+                min_booking_value: couponForm.min_booking_value ? parseFloat(couponForm.min_booking_value) : null,
+                min_nights: couponForm.min_nights ? parseInt(couponForm.min_nights) : null,
+                usage_limit: couponForm.usage_limit ? parseInt(couponForm.usage_limit) : null,
+                pper_user_limit: couponForm.per_user_limit === "0" ? null : 1,
+                valid_from: couponForm.valid_from, valid_until: couponForm.valid_until,
+                is_public: couponForm.is_public ? 1 : 0, scope: "kennel",
+                kennel_ids: [parseInt(couponForm.kennel_id)], created_by: userData.id
+            });
+            if (response?.success) {
+                setSuccessMsg(`Coupon "${response.code}" created successfully!`);
+                setShowCreateCoupon(false);
+                setCouponForm({ code: "", auto_generate: false, discount_type: "flat", discount_value: "", max_discount: "", min_booking_value: "", min_nights: "", usage_limit: "", per_user_limit: "1", valid_from: "", valid_until: "", is_public: false, kennel_id: "" });
+                setShowAdvancedCoupon(false);
+                setCouponsCached(false);
+                await fetchCoupons(true);
+            } else { setErrorMsg(response?.message || "Failed to create coupon."); }
+        } catch { setErrorMsg("Error creating coupon."); }
+        finally { setSubmittingCoupon(false); }
+    };
+
+    const handleToggleCoupon = async (couponId) => {
+        setTogglingCouponId(couponId);
+        try {
+            const response = await callServicesApi({ action: "TOGGLE_COUPON", session_id, coupon_id: couponId, user_id: userData.id });
+            if (response?.success) {
+                setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, is_active: response.is_active } : c));
+                setSuccessMsg(response.message);
+            } else { setErrorMsg(response?.message || "Failed to toggle coupon."); }
+        } catch { setErrorMsg("Error toggling coupon."); }
+        finally { setTogglingCouponId(null); }
+    };
+
     // Derived: user permissions for current kennels
     const getUserPermissions = () => {
         const isOwner = kennels.some(k => k.user_role === "owner");
@@ -891,11 +966,14 @@ const KennelsAdminPage = () => {
     };
 
     useEffect(() => {
-        if ((activeTab === "bookings" || activeTab === "today" || activeTab === "occupancy" || activeTab === "revenue" || activeTab === "extensions") && kennels.length > 0) {
+        if ((activeTab === "bookings" || activeTab === "today" || activeTab === "occupancy" || activeTab === "revenue" || activeTab === "extensions" || activeTab === "coupons") && kennels.length > 0) {
             fetchAllBookings();
         }
         if (activeTab === "extensions" && kennels.length > 0) {
             fetchExtensions();
+        }
+        if (activeTab === "coupons" && kennels.length > 0) {
+            fetchCoupons();
         }
         if (activeTab === "employees" && kennels.length > 0) {
             const ownerKennels = kennels.filter(k => k.user_role === "owner");
@@ -1528,6 +1606,7 @@ const KennelsAdminPage = () => {
                     {activeTab === "occupancy" && "Occupancy"}
                     {activeTab === "employees" && "Employees"}
                     {activeTab === "closure" && "Maintenance Closure"}
+                    {activeTab === "coupons" && "Coupons"}
                 </h2>
             </div>
             {/* Closure Banners */}
@@ -2571,7 +2650,7 @@ const KennelsAdminPage = () => {
                                                 {overdueBookings.length} Overdue Checkout{overdueBookings.length !== 1 ? "s" : ""}
                                             </span>
                                             <div style={{ fontSize: "0.75rem", color: "#b91c1c", marginTop: "2px" }}>
-                                                These rooms are blocked from new bookings until resolved
+                                                These rooms are blocked from new bookings until resolved. Extend stays to collect pending payments.
                                             </div>
                                         </div>
                                         <span style={{ fontSize: "0.78rem", color: "#dc2626", fontWeight: 500 }}>
@@ -4881,6 +4960,237 @@ const KennelsAdminPage = () => {
                             </div>
                         )}
                     </div>
+                </>
+            )}
+
+            {/* ==================== COUPONS TAB ==================== */}
+            {activeTab === "coupons" && loadingKennels && (
+                <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+            )}
+            {activeTab === "coupons" && !loadingKennels && !permissions.canManageBookings && (
+                <div className="empty-state"><i className="bi bi-shield-lock"></i><p>You don't have access to manage coupons</p></div>
+            )}
+            {activeTab === "coupons" && !loadingKennels && permissions.canManageBookings && (
+                <>
+                    <div className="events-filters">
+                        <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "8px", padding: "3px" }}>
+                            {["active", "expired", "all"].map(f => (
+                                <button key={f} onClick={() => setCouponsFilter(f)}
+                                    style={{ padding: "4px 14px", borderRadius: "6px", border: "none", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", background: couponsFilter === f ? "white" : "transparent", color: couponsFilter === f ? "#1e293b" : "#64748b", boxShadow: couponsFilter === f ? "0 1px 3px rgba(0,0,0,0.1)" : "none", textTransform: "capitalize" }}
+                                >{f}</button>
+                            ))}
+                        </div>
+                        <button className="earnings-refresh-btn" onClick={() => fetchCoupons(true)} disabled={loadingCoupons} style={{ minWidth: "unset" }}>
+                            <i className={`bi bi-arrow-clockwise ${loadingCoupons ? 'spinning' : ''}`}></i>
+                        </button>
+                        <button onClick={() => { setShowCreateCoupon(!showCreateCoupon); if (!showCreateCoupon) { const bk = kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings); if (bk.length === 1) setCouponForm(prev => ({ ...prev, kennel_id: String(bk[0].id) })); } }}
+                            style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "white", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <i className={`bi ${showCreateCoupon ? 'bi-x-lg' : 'bi-plus-lg'}`}></i>
+                            {showCreateCoupon ? "Cancel" : "Create Coupon"}
+                        </button>
+                    </div>
+
+                    {showCreateCoupon && (
+                        <div style={{ background: "white", borderRadius: "12px", padding: "24px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
+                            <h4 style={{ margin: "0 0 20px", fontSize: "1rem", fontWeight: 600, color: "#1e293b" }}>New Coupon</h4>
+
+                            {kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings).length > 1 && (
+                                <div style={{ marginBottom: "16px" }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Kennel</label>
+                                    <select value={couponForm.kennel_id} onChange={(e) => setCouponForm(prev => ({ ...prev, kennel_id: e.target.value }))}
+                                        style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }}>
+                                        <option value="">Select kennel</option>
+                                        {kennels.filter(k => k.user_role === "owner" || k.can_manage_bookings).map(k => (
+                                            <option key={k.id} value={k.id}>{k.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Coupon Code</label>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    <input type="text" value={couponForm.code} readOnly
+                                        placeholder="Click generate to create a code"
+                                        style={{ flex: 1, padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem", fontFamily: "monospace", letterSpacing: "1px", background: "#f8fafc" }} />
+                                    <button onClick={() => {
+                                        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                                        let code = "WNW";
+                                        for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+                                        setCouponForm(prev => ({ ...prev, auto_generate: true, code }));
+                                    }}
+                                        style={{ padding: "10px 16px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "white", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                        <i className="bi bi-shuffle me-1"></i> Generate
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Discount Type</label>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                    {[{ key: "flat", label: "Flat Off", icon: "bi-currency-rupee" }, { key: "percentage", label: "Percentage Off", icon: "bi-percent" }].map(t => (
+                                        <button key={t.key} onClick={() => setCouponForm(prev => ({ ...prev, discount_type: t.key, max_discount: "" }))}
+                                            style={{ flex: 1, padding: "12px", borderRadius: "10px", cursor: "pointer", border: couponForm.discount_type === t.key ? "2px solid #1e293b" : "1px solid #e2e8f0", background: couponForm.discount_type === t.key ? "#f8fafc" : "white", color: "#1e293b", fontSize: "0.88rem", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                            <i className={`bi ${t.icon}`}></i> {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>
+                                        {couponForm.discount_type === "flat" ? "Discount Amount (₹)" : "Discount Percentage (%)"}
+                                    </label>
+                                    <input type="number" value={couponForm.discount_value} onChange={(e) => setCouponForm(prev => ({ ...prev, discount_value: e.target.value }))}
+                                        placeholder={couponForm.discount_type === "flat" ? "e.g. 200" : "e.g. 10"} min="0" max={couponForm.discount_type === "percentage" ? "100" : undefined}
+                                        style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                </div>
+                                {couponForm.discount_type === "percentage" && (
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Max Discount (₹) <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                        <input type="number" value={couponForm.max_discount} onChange={(e) => setCouponForm(prev => ({ ...prev, max_discount: e.target.value }))}
+                                            placeholder="e.g. 500" min="0" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Valid From</label>
+                                    <input type="date" value={couponForm.valid_from} onChange={(e) => setCouponForm(prev => ({ ...prev, valid_from: e.target.value }))}
+                                        min={new Date().toISOString().split("T")[0]} style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Valid Until</label>
+                                    <input type="date" value={couponForm.valid_until} onChange={(e) => setCouponForm(prev => ({ ...prev, valid_until: e.target.value }))}
+                                        min={couponForm.valid_from || new Date().toISOString().split("T")[0]} style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Usage Per Customer</label>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                    {[{ key: "1", label: "One-time per customer" }, { key: "0", label: "Unlimited per customer" }].map(o => (
+                                        <button key={o.key} onClick={() => setCouponForm(prev => ({ ...prev, per_user_limit: o.key }))}
+                                            style={{ flex: 1, padding: "12px", borderRadius: "10px", cursor: "pointer", border: couponForm.per_user_limit === o.key ? "2px solid #1e293b" : "1px solid #e2e8f0", background: couponForm.per_user_limit === o.key ? "#f8fafc" : "white", color: "#1e293b", fontSize: "0.85rem", fontWeight: 600 }}>
+                                            {o.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
+                                <div>
+                                    <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1e293b" }}>Show on booking page</div>
+                                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Customers will see this coupon when booking your kennel</div>
+                                </div>
+                                <div onClick={() => setCouponForm(prev => ({ ...prev, is_public: !prev.is_public }))}
+                                    style={{ width: "44px", height: "24px", borderRadius: "12px", cursor: "pointer", background: couponForm.is_public ? "#1e293b" : "#cbd5e1", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                                    <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: "white", position: "absolute", top: "2px", left: couponForm.is_public ? "22px" : "2px", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}></div>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowAdvancedCoupon(!showAdvancedCoupon)}
+                                style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc", color: "#64748b", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: showAdvancedCoupon ? "16px" : "20px" }}>
+                                <i className={`bi bi-chevron-${showAdvancedCoupon ? "up" : "down"}`}></i>
+                                {showAdvancedCoupon ? "Hide" : "Show"} Advanced Options
+                            </button>
+
+                            {showAdvancedCoupon && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                                    <div style={{ display: "flex", gap: "12px" }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Min. Booking Amount (₹) <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                            <input type="number" value={couponForm.min_booking_value} onChange={(e) => setCouponForm(prev => ({ ...prev, min_booking_value: e.target.value }))}
+                                                placeholder="e.g. 2000" min="0" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Min. Nights <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                            <input type="number" value={couponForm.min_nights} onChange={(e) => setCouponForm(prev => ({ ...prev, min_nights: e.target.value }))}
+                                                placeholder="e.g. 3" min="1" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: "block", fontSize: "0.82rem", color: "#64748b", marginBottom: "6px" }}>Total Usage Limit <span style={{ color: "#94a3b8" }}>optional</span></label>
+                                        <input type="number" value={couponForm.usage_limit} onChange={(e) => setCouponForm(prev => ({ ...prev, usage_limit: e.target.value }))}
+                                            placeholder="Unlimited" min="1" style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <button onClick={handleCreateCoupon} disabled={submittingCoupon}
+                                style={{ width: "100%", padding: "14px", borderRadius: "10px", border: "none", background: submittingCoupon ? "#cbd5e1" : "linear-gradient(135deg, #1e293b, #0f172a)", color: submittingCoupon ? "#94a3b8" : "white", fontSize: "0.9rem", fontWeight: 600, cursor: submittingCoupon ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                {submittingCoupon ? (<><span className="spinner-border spinner-border-sm"></span> Creating...</>) : (<><i className="bi bi-plus-lg"></i> Create Coupon</>)}
+                            </button>
+                        </div>
+                    )}
+
+                    {loadingCoupons ? (
+                        <div className="loading-spinner"><div className="spinner-border" role="status"></div></div>
+                    ) : (() => {
+                        const today = new Date().toISOString().split("T")[0];
+                        const filtered = coupons.filter(c => {
+                            if (couponsFilter === "active") return c.is_active && c.valid_until >= today;
+                            if (couponsFilter === "expired") return !c.is_active || c.valid_until < today;
+                            return true;
+                        });
+
+                        if (filtered.length === 0) return (
+                            <div className="empty-state">
+                                <i className="bi bi-ticket-perforated"></i>
+                                <p>No {couponsFilter !== "all" ? couponsFilter : ""} coupons found</p>
+                            </div>
+                        );
+
+                        return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                {filtered.map(c => {
+                                    const isExpired = c.valid_until < today;
+                                    const isExhausted = c.usage_limit !== null && c.times_used >= c.usage_limit;
+                                    const isInactive = !c.is_active;
+                                    const statusColor = isExpired ? "#dc2626" : isExhausted ? "#d97706" : isInactive ? "#64748b" : "#059669";
+                                    const statusBg = isExpired ? "#fef2f2" : isExhausted ? "#fffbeb" : isInactive ? "#f1f5f9" : "#ecfdf5";
+                                    const statusText = isExpired ? "Expired" : isExhausted ? "Limit Reached" : isInactive ? "Disabled" : "Active";
+
+                                    return (
+                                        <div key={c.id} style={{ background: "white", borderRadius: "12px", padding: "18px 20px", border: "1px solid #e2e8f0", opacity: (isExpired || isInactive) ? 0.7 : 1 }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                                                <div>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                                                        <span style={{ fontFamily: "monospace", fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", letterSpacing: "1px" }}>{c.code}</span>
+                                                        <span style={{ padding: "2px 10px", borderRadius: "12px", fontSize: "0.7rem", fontWeight: 600, background: statusBg, color: statusColor }}>{statusText}</span>
+                                                        {c.is_public ? <span style={{ padding: "2px 8px", borderRadius: "12px", fontSize: "0.68rem", fontWeight: 600, background: "#dbeafe", color: "#2563eb" }}>Public</span> : null}
+                                                    </div>
+                                                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
+                                                        {c.discount_type === "flat" ? `₹${c.discount_value} off` : `${c.discount_value}% off`}
+                                                        {c.discount_type === "percentage" && c.max_discount && <span style={{ fontSize: "0.8rem", fontWeight: 400, color: "#64748b" }}> (max ₹{c.max_discount})</span>}
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                                    <button onClick={() => { navigator.clipboard.writeText(c.code); setSuccessMsg("Coupon code copied!"); }}
+                                                        style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                                                        <i className="bi bi-clipboard"></i>
+                                                    </button>
+                                                    {!isExpired && (
+                                                        <button onClick={() => handleToggleCoupon(c.id)} disabled={togglingCouponId === c.id}
+                                                            style={{ padding: "6px 12px", borderRadius: "8px", border: "none", background: c.is_active ? "#fef2f2" : "#ecfdf5", color: c.is_active ? "#dc2626" : "#059669", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
+                                                            {togglingCouponId === c.id ? <span className="spinner-border spinner-border-sm"></span> : c.is_active ? "Disable" : "Enable"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "0.78rem", color: "#64748b" }}>
+                                                <span><i className="bi bi-calendar me-1"></i>{formatDate(c.valid_from)} → {formatDate(c.valid_until)}</span>
+                                                <span><i className="bi bi-people me-1"></i>{c.times_used}{c.usage_limit ? `/${c.usage_limit}` : ""} used</span>
+                                                {c.per_user_limit && <span><i className="bi bi-person me-1"></i>{c.per_user_limit}x per user</span>}
+                                                {c.min_booking_value && <span><i className="bi bi-cart me-1"></i>Min ₹{c.min_booking_value}</span>}
+                                                {c.min_nights && <span><i className="bi bi-moon me-1"></i>Min {c.min_nights} night{c.min_nights > 1 ? "s" : ""}</span>}
+                                                {c.kennel_name && <span><i className="bi bi-house-door me-1"></i>{c.kennel_name}</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
                 </>
             )}
 

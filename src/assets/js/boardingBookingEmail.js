@@ -8,7 +8,9 @@ export const getBoardingBookingEmailHtml = (bookingDetails) => {
         pets,
         totalPrice,
         orderId,
-        transactionId
+        transactionId,
+        couponCode,
+        couponDiscount
     } = bookingDetails;
 
     const petsList = pets.map(pet => `
@@ -103,6 +105,12 @@ export const getBoardingBookingEmailHtml = (bookingDetails) => {
                             <!-- Total Box -->
                             <div style="background-color: #fef2f0; border: 2px solid #D84A39; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
                                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                    ${couponCode && couponDiscount > 0 ? `
+                                    <tr>
+                                        <td style="color: #059669; font-size: 14px; padding-bottom: 8px;">Coupon (${couponCode})</td>
+                                        <td style="color: #059669; font-size: 14px; font-weight: 600; text-align: right; padding-bottom: 8px;">-₹${Math.round(couponDiscount)}</td>
+                                    </tr>
+                                    ` : ''}
                                     <tr>
                                         <td style="color: #1a1a1a; font-size: 16px; font-weight: 600;">Total Paid</td>
                                         <td style="color: #D84A39; font-size: 20px; font-weight: 700; text-align: right;">₹${totalPrice}</td>

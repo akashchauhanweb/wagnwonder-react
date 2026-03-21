@@ -40,6 +40,7 @@ import KennelsAdminPage from './pages/KennelsAdminPage.jsx';
 import KennelTickets from './pages/KennelTickets.jsx';
 import ManageServiceCities from './pages/ManageServiceCities.jsx';
 import WoofWallet from './pages/WoofWallet.jsx';
+import ManageCoupons from './pages/ManageCoupons.jsx';
 import { useSession, setGlobalSessionHandler } from './contexts/SessionContext';
 import SessionExpiredModal from './assets/components/SessionExpiredModal';
 
@@ -98,7 +99,7 @@ function AppContent() {
           <Route path="manage-cities" element={<ManageServiceCities />} />
           <Route path="manage-bookings" element={<ManageBookings />} />
           <Route path="manage-events" element={<ManageEvents />} />
-          <Route path="support-tickets" element={<SupportTickets />} />
+          <Route path="manage-coupons" element={<ManageCoupons />} />
           <Route path="kennels-admin" element={<KennelsAdminPage />} />
           <Route path="kennels-admin/:section" element={<KennelsAdminPage />} />
           <Route path="kennel-tickets" element={<KennelTickets />} />

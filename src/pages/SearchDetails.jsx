@@ -15,6 +15,7 @@ export default function SearchDetails() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [isFetchingPets, setIsFetchingPets] = useState(true);
     const carouselRef = useRef(null);
+    const publicCoupons = booking?.public_coupons || [];
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -226,6 +227,27 @@ export default function SearchDetails() {
                     </div>
                 )}
 
+                {/* Coupon Banner */}
+                {publicCoupons.length > 0 && (
+                    <div style={{
+                        padding: "14px 20px", borderRadius: "12px", marginBottom: "20px",
+                        background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+                        border: "1px solid #fcd34d",
+                        display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap"
+                    }}>
+                        <i className="bi bi-tag-fill" style={{ fontSize: "1.2rem", color: "#b45309" }}></i>
+                        <div style={{ flex: 1, minWidth: "200px" }}>
+                            {publicCoupons.map((c, i) => (
+                                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: i < publicCoupons.length - 1 ? "6px" : 0 }}>
+                                    <span style={{ fontSize: "0.9rem", color: "#78350f", fontWeight: 600 }}>
+                                        Use code <span style={{ fontFamily: "monospace", background: "#fff", padding: "2px 8px", borderRadius: "6px", letterSpacing: "1px", fontWeight: 700 }}>{c.code}</span> for {c.discount_type === "flat" ? `₹${c.discount_value} off` : `${c.discount_value}% off`}{c.discount_type === "percentage" && c.max_discount ? ` (up to ₹${c.max_discount})` : ""}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Pet Selection */}
                 <div className="search-details-section">
                     <div className="search-details-section-header">
@@ -352,7 +374,8 @@ export default function SearchDetails() {
                                                         breakdown: breakdown,
                                                         total: total,
                                                         days: days,
-                                                        room_type_id: room.room_type_id
+                                                        room_type_id: room.room_type_id,
+                                                        public_coupons: publicCoupons
                                                     },
                                                 });
                                             }}

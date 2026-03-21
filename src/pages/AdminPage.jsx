@@ -13,6 +13,7 @@ const MENU_ITEMS = [
     { path: "/admin/manage-cities", icon: "bi-geo-alt-fill", label: "Service Cities" },
     { path: "/admin/manage-bookings", icon: "bi-calendar-check-fill", label: "Manage Bookings" },
     { path: "/admin/manage-events", icon: "bi-calendar-event", label: "Manage Events" },
+    { path: "/admin/manage-coupons", icon: "bi-ticket-perforated-fill", label: "Manage Coupons" },
     { path: "/admin/support-tickets", icon: "bi-chat-dots-fill", label: "Support Tickets" },
 ];
 
@@ -248,6 +249,13 @@ const AdminPage = () => {
                                     >
                                         <i className="bi bi-person-badge-fill"></i>
                                         <span>Employees</span>
+                                    </Link>
+                                    <Link
+                                        to="/admin/kennels-admin/coupons"
+                                        className={`admin-nav-item ${location.pathname === "/admin/kennels-admin/coupons" ? "active" : ""}`}
+                                    >
+                                        <i className="bi bi-ticket-perforated-fill"></i>
+                                        <span>Coupons</span>
                                     </Link>
                                     <Link
                                         to="/admin/kennel-tickets"
