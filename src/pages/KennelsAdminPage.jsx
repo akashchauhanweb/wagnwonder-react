@@ -773,6 +773,31 @@ const KennelsAdminPage = () => {
     };
 
     const [resendingExtensionId, setResendingExtensionId] = useState(null);
+    const [markingExtensionId, setMarkingExtensionId] = useState(null);
+
+    const handleMarkExtensionPaid = async (ext) => {
+        if (!window.confirm(`Mark ₹${parseFloat(ext.amount).toFixed(0)} offline extension for booking #${ext.booking_id} as collected?`)) return;
+        setMarkingExtensionId(ext.id);
+        try {
+            const response = await callServicesApi({
+                action: "UPDATE_BOOKING_STATUS",
+                session_id,
+                booking_id: ext.booking_id,
+                new_status: "mark_extension_paid",
+                extension_id: ext.id
+            });
+            if (response?.success) {
+                setExtensionsCached(false);
+                fetchExtensions(true);
+            } else {
+                alert(response?.message || "Failed to mark as collected.");
+            }
+        } catch (err) {
+            console.error("Error marking extension paid:", err);
+        } finally {
+            setMarkingExtensionId(null);
+        }
+    };
 
     const handleResendExtensionEmail = async (ext) => {
         setResendingExtensionId(ext.id);
@@ -4010,6 +4035,25 @@ const KennelsAdminPage = () => {
                                                                 <span className="spinner-border spinner-border-sm"></span>
                                                             ) : (
                                                                 <><i className="bi bi-envelope"></i> Resend Email</>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    {!isPaid && !isExpired && ext.payment_mode === "offline" && (
+                                                        <button
+                                                            onClick={() => handleMarkExtensionPaid(ext)}
+                                                            disabled={markingExtensionId === ext.id}
+                                                            style={{
+                                                                padding: "4px 10px", borderRadius: "8px",
+                                                                border: "1px solid #bbf7d0", background: "#f0fdf4",
+                                                                color: "#166534", fontSize: "0.75rem", fontWeight: 600,
+                                                                cursor: "pointer", display: "inline-flex",
+                                                                alignItems: "center", gap: "4px"
+                                                            }}
+                                                        >
+                                                            {markingExtensionId === ext.id ? (
+                                                                <span className="spinner-border spinner-border-sm"></span>
+                                                            ) : (
+                                                                <><i className="bi bi-check-circle"></i> Mark as Collected</>
                                                             )}
                                                         </button>
                                                     )}

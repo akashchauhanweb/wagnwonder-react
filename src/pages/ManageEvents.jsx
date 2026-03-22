@@ -718,7 +718,7 @@ const ManageEvents = () => {
 
     // Delete event
     const handleDeleteEvent = async (eventId) => {
-        if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
+        if (!window.confirm("Are you sure you want to cancel this event? Active manager assignments will be removed.")) {
             return;
         }
 
@@ -1039,6 +1039,7 @@ const ManageEvents = () => {
                             >
                                 <option value="upcoming">Upcoming</option>
                                 <option value="past">Past</option>
+                                <option value="cancelled">Cancelled</option>
                                 <option value="all">All Events</option>
                             </select>
                         </div>
@@ -1713,9 +1714,9 @@ const ManageEvents = () => {
                                             {deletingEventId === eventInfo.id ? (
                                                 <span className="spinner-border spinner-border-sm"></span>
                                             ) : (
-                                                <i className="bi bi-trash"></i>
+                                                <i className="bi bi-x-circle"></i>
                                             )}
-                                            Delete Event
+                                            Cancel Event
                                         </button>
                                     </div>
                                 </>
