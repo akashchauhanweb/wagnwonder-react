@@ -73,7 +73,8 @@ export default function WoofWallet() {
                     user_id: userData.id,
                     woofs: woofs,
                     order_id: orderId,
-                    cf_order_id: verifyRes.cf_order_id
+                    cf_order_id: verifyRes.cf_order_id,
+                    paid_amount: verifyRes.order_amount
                 });
                 if (topupRes?.success) {
                     setBalance(topupRes.new_balance);
