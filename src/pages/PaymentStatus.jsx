@@ -285,8 +285,15 @@ export default function PaymentStatus() {
                             })),
                         };
 
-                        await callServicesApi(bookingPayload);
+                        const bookingRes = await callServicesApi(bookingPayload);
                         
+                        if (!bookingRes?.success) {
+                            setStatus("failed");
+                            setMessage(bookingRes?.message || "Booking could not be created. Your payment was received — please contact support for assistance.");
+                            localStorage.removeItem("pending_booking");
+                            return;
+                        }
+
                         // Send confirmation email for boarding booking
                         const couponDiscountAmt2 = saved.couponDiscount || 0;
                         const emailHtml = getBoardingBookingEmailHtml({
