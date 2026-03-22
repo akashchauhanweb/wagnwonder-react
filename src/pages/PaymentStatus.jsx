@@ -289,7 +289,11 @@ export default function PaymentStatus() {
                         
                         if (!bookingRes?.success) {
                             setStatus("failed");
-                            setMessage(bookingRes?.message || "Booking could not be created. Your payment was received — please contact support for assistance.");
+                            if (bookingRes?.auto_refund) {
+                                setMessage("The rooms you selected are no longer available. A full refund has been initiated — online payments will be returned within 5-7 business days.");
+                            } else {
+                                setMessage(bookingRes?.message || "Booking could not be created. Please contact support.");
+                            }
                             localStorage.removeItem("pending_booking");
                             return;
                         }

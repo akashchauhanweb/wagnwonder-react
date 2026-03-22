@@ -248,6 +248,8 @@ export default function CrecheBookings() {
                                 const isActive = booking.status === "booked" || booking.status === "checked_in";
                                 const isCompleted = booking.status === "completed";
                                 const isCancelled = booking.status === "cancelled" || booking.status === "no_show";
+                                const isFailed = booking.status === "failed";
+                                if (isFailed) return null;
 
                                 return (
                                     <div key={booking.booking_id} className={`booking-card ${isCancelled ? "booking-card-cancelled" : ""}`}>
