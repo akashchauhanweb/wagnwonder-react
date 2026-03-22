@@ -285,8 +285,19 @@ export default function PaymentStatus() {
                             })),
                         };
 
-                        await callServicesApi(bookingPayload);
+                        const bookingRes = await callServicesApi(bookingPayload);
                         
+                        if (!bookingRes?.success) {
+                            setStatus("failed");
+                            if (bookingRes?.auto_refund) {
+                                setMessage("The rooms you selected are no longer available. A full refund has been initiated — online payments will be returned within 5-7 business days.");
+                            } else {
+                                setMessage(bookingRes?.message || "Booking could not be created. Please contact support.");
+                            }
+                            localStorage.removeItem("pending_booking");
+                            return;
+                        }
+
                         // Send confirmation email for boarding booking
                         const couponDiscountAmt2 = saved.couponDiscount || 0;
                         const emailHtml = getBoardingBookingEmailHtml({

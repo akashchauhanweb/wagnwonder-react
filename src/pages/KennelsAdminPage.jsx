@@ -1641,11 +1641,10 @@ const KennelsAdminPage = () => {
                     const petDetails = manualSelectedPets.map(petId => {
                         const pet = manualPets.find(p => p.id === petId);
                         const pricePerDay = calculatePetPrice(pet, manualRoomType);
-                        const markup = manualKennel?.markup ? (1 + parseFloat(manualKennel.markup) / 100) : 1;
                         return {
                             name: pet?.name || `Pet #${petId}`,
                             breed: pet?.breed || "-",
-                            total: Math.round(pricePerDay * markup * manualDays * 100) / 100
+                            total: Math.round(pricePerDay * manualDays * 100) / 100
                         };
                     });
                     const emailHtml = getBoardingBookingEmailHtml({
