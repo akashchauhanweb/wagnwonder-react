@@ -147,8 +147,8 @@ const EarningsDashboard = () => {
         if (!rawData?.bookings) return [];
 
         return rawData.bookings.filter(booking => {
-            // Status filter - only booked and completed
-            if (!['booked', 'completed', 'no_show'].includes(booking.status)) return false;
+            // Status filter - only booked, checked_in, completed, no_show
+            if (!['booked', 'checked_in', 'completed', 'no_show'].includes(booking.status)) return false;
 
             // Location filters
             if (selectedState && booking.kennel_state !== selectedState) return false;
@@ -456,7 +456,7 @@ const EarningsDashboard = () => {
         thirtyDaysAgo.setHours(0, 0, 0, 0);
 
         const relevantBookings = rawData.bookings.filter(b => {
-            if (!['booked', 'completed', 'no_show'].includes(b.status)) return false;
+            if (!['booked', 'checked_in', 'completed', 'no_show'].includes(b.status)) return false;
             if (selectedState && b.kennel_state !== selectedState) return false;
             if (selectedCity && b.kennel_city !== selectedCity) return false;
             if (selectedKennel && b.kennel_id !== parseInt(selectedKennel)) return false;
@@ -542,7 +542,7 @@ const EarningsDashboard = () => {
         }
 
         const locationFiltered = rawData.bookings.filter(b => {
-            if (!['booked', 'completed', 'no_show'].includes(b.status)) return false;
+            if (!['booked', 'checked_in', 'completed', 'no_show'].includes(b.status)) return false;
             if (selectedState && b.kennel_state !== selectedState) return false;
             if (selectedCity && b.kennel_city !== selectedCity) return false;
             if (selectedKennel && b.kennel_id !== parseInt(selectedKennel)) return false;
