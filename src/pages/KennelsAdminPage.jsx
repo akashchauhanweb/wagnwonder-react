@@ -61,6 +61,7 @@ const KennelsAdminPage = () => {
     const [loadingManualPets, setLoadingManualPets] = useState(false);
     const [loadingManualKennel, setLoadingManualKennel] = useState(false);
     const [manualSubmitting, setManualSubmitting] = useState(false);
+    const [manualPriceOverride, setManualPriceOverride] = useState(null);
     const [showAddPetModal, setShowAddPetModal] = useState(false);
 
     // Add User modal
@@ -1545,7 +1546,7 @@ const KennelsAdminPage = () => {
         return diff > 0 ? diff : 0;
     })();
 
-    const manualTotal = (() => {
+    const manualCalculatedTotal = (() => {
         if (!manualRoomType || manualSelectedPets.length === 0 || manualDays === 0) return 0;
         let total = 0;
         for (const petId of manualSelectedPets) {
@@ -1554,6 +1555,12 @@ const KennelsAdminPage = () => {
         }
         return Math.round(total * 100) / 100;
     })();
+
+    const manualTotal = manualPriceOverride !== null ? parseFloat(manualPriceOverride) || 0 : manualCalculatedTotal;
+
+    useEffect(() => {
+        setManualPriceOverride(null);
+    }, [manualCalculatedTotal]);
 
     const handleManualSubmit = async () => {
         if (!manualKennelInfo || !manualUser || !manualRoomType) {
@@ -1649,6 +1656,7 @@ const KennelsAdminPage = () => {
                 setManualRoomType(null);
                 setManualCheckIn("");
                 setManualCheckOut("");
+                setManualPriceOverride(null);
                 setManualPets([]);
                 setManualSelectedPets([]);
                 setManualSelectedRooms([]);
@@ -3759,22 +3767,58 @@ const KennelsAdminPage = () => {
                                                 <span>{manualUser?.first_name} {manualUser?.last_name}</span>
                                             </div>
                                             <div className="summary-row">
-                                                <span>Pets</span>
-                                                <span>{manualSelectedPets.map(id => manualPets.find(p => p.id === id)?.name).join(", ")}</span>
-                                            </div>
-                                            <div className="summary-row">
                                                 <span>Dates</span>
                                                 <span>{formatDate(manualCheckIn)} → {formatDate(manualCheckOut)} ({manualDays} nights)</span>
                                             </div>
-                                            <div className="summary-row total">
-                                                <span>Total</span>
-                                                <span>₹{manualTotal}</span>
+
+                                            {/* Pet-wise breakdown */}
+                                            <div style={{ margin: "10px 0 6px", fontSize: "0.78rem", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Breakdown</div>
+                                            {manualSelectedPets.map(petId => {
+                                                const pet = manualPets.find(p => p.id === petId);
+                                                const perDay = calculatePetPrice(pet, manualRoomType);
+                                                return (
+                                                    <div key={petId} className="summary-row" style={{ fontSize: "0.85rem" }}>
+                                                        <span>{pet?.name} <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>₹{perDay}/night × {manualDays}</span></span>
+                                                        <span>₹{Math.round(perDay * manualDays)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                            <div className="summary-row" style={{ fontSize: "0.82rem", color: "#64748b", borderTop: "1px solid #e2e8f0", paddingTop: "8px", marginTop: "6px" }}>
+                                                <span>Calculated Total</span>
+                                                <span>₹{manualCalculatedTotal}</span>
                                             </div>
+
+                                            {/* Editable Total */}
+                                            <div className="summary-row total" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "10px", marginTop: "6px", fontSize: "1.05rem" }}>
+                                                <span style={{ fontWeight: 700, color: "#1e293b" }}>Final Price</span>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                                    <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>₹</span>
+                                                    <input
+                                                        type="number"
+                                                        value={manualPriceOverride !== null ? manualPriceOverride : manualCalculatedTotal}
+                                                        onChange={(e) => setManualPriceOverride(e.target.value)}
+                                                        min="0"
+                                                        style={{ width: "100px", padding: "6px 10px", borderRadius: "6px", border: "2px solid #1e293b", fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", textAlign: "right" }}
+                                                    />
+                                                    {manualPriceOverride !== null && parseFloat(manualPriceOverride) !== manualCalculatedTotal && (
+                                                        <button onClick={() => setManualPriceOverride(null)}
+                                                            style={{ padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", background: "white", color: "#64748b", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
+                                                            Reset
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {manualPriceOverride !== null && parseFloat(manualPriceOverride) < manualCalculatedTotal && (
+                                                <div style={{ fontSize: "0.78rem", color: "#059669", marginTop: "4px", textAlign: "right" }}>
+                                                    <i className="bi bi-tag me-1"></i>
+                                                    Discount of ₹{Math.round(manualCalculatedTotal - parseFloat(manualPriceOverride))} applied
+                                                </div>
+                                            )}
                                         </div>
                                         <button
                                             className="manual-entry-submit"
                                             onClick={handleManualSubmit}
-                                            disabled={manualSubmitting}
+                                            disabled={manualSubmitting || manualTotal <= 0}
                                         >
                                             {manualSubmitting ? (
                                                 <>
@@ -3784,7 +3828,7 @@ const KennelsAdminPage = () => {
                                             ) : (
                                                 <>
                                                     <i className="bi bi-check-circle"></i>
-                                                    Create Booking
+                                                    Create Booking · ₹{manualTotal}
                                                 </>
                                             )}
                                         </button>
@@ -4319,14 +4363,7 @@ const KennelsAdminPage = () => {
                             ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                                     {occupancyData.room_types.map((rt, idx) => {
-                                        const nextDay = getNextDay(occupancyDate);
-                                        const totalRooms = parseInt(rt.available_rooms) + (allBookings.filter(b =>
-                                            b.kennel_id === parseInt(occupancyKennelId) &&
-                                            b.room_type_name === rt.room_type &&
-                                            (b.status === "booked" || b.status === "checked_in") &&
-                                            new Date(b.check_in_date) < new Date(nextDay) &&
-                                            new Date(b.check_out_date) > new Date(occupancyDate)
-                                        ).length || 0);
+                                        const totalRooms = parseInt(rt.total_rooms);
                                         const occupied = totalRooms - parseInt(rt.available_rooms);
                                         const percentage = totalRooms > 0 ? (occupied / totalRooms) * 100 : 0;
                                         return (
